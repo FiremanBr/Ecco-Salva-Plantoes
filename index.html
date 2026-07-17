@@ -2372,20 +2372,14 @@ async function rodarAnalise() {
     const raw = data.content.map(b => b.text || '').join('').trim();
     if (!raw) throw new Error('Resposta vazia da API. Tente novamente.');
 
-    // Extração robusta do JSON — ignora texto antes/depois das chaves
-    let clean = raw
-      .replace(/^[\s\S]*?(\{)/,'$1')   // remove tudo antes do primeiro {
-      .replace(/\}[\s\S]*$/,match => match.slice(0, match.lastIndexOf('}') + 1)); // remove após último }
-    // Limpeza robusta: remover markdown e pegar apenas o JSON
+    // Extração robusta do JSON — remove qualquer markdown e isola o objeto
     let cleanJson = raw;
-    // Remover blocos de código markdown
-    cleanJson = cleanJson.replace(/^```[a-z]*\n?/im, '').replace(/\n?```$/m, '');
-    cleanJson = cleanJson.replace(/```[a-z]*/gi, '').replace(/```/g, '');
+    cleanJson = cleanJson.replace(/```[a-z]*\s*/gi, '').replace(/```/g, '');
     cleanJson = cleanJson.trim();
     const fb = cleanJson.indexOf('{');
     const lb = cleanJson.lastIndexOf('}');
-    if (fb === -1 || lb === -1) {
-      res.innerHTML = `<div class="an-body" style="border:1px solid var(--border);border-radius:10px;padding:13px;white-space:pre-wrap;font-size:12px">${raw}</div>`;
+    if (fb === -1 || lb === -1 || lb < fb) {
+      res.innerHTML = `<div class="error-box">❌ Resposta inesperada da IA. Tente novamente.</div>`;
       btn.disabled = false;
       return;
     }
@@ -2393,7 +2387,11 @@ async function rodarAnalise() {
     try {
       d = JSON.parse(cleanJson.slice(fb, lb + 1));
     } catch(parseErr) {
-      res.innerHTML = `<div class="an-body" style="border:1px solid var(--border);border-radius:10px;padding:13px;white-space:pre-wrap;font-size:12px">${raw}</div>`;
+      const stopReason = data.stop_reason || '';
+      const msg = stopReason === 'max_tokens'
+        ? '❌ Resposta muito longa foi cortada. Tente novamente.'
+        : '❌ Erro ao interpretar resposta da IA. Tente novamente.';
+      res.innerHTML = `<div class="error-box">${msg}</div>`;
       btn.disabled = false;
       return;
     }
