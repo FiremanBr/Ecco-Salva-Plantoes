@@ -302,7 +302,7 @@
             </button>
             <span style="font-size:10px;color:var(--text-dim)">cada toque adiciona uma imagem</span>
           </div>
-          <input type="file" id="anFotoInput" accept="image/*" capture="environment" style="display:none" onchange="anFotoSelecionada(this)">
+          <input type="file" id="anFotoInput" accept="image/*" style="display:none" onchange="anFotoSelecionada(this)">
         </div>
       </div>
       <div id="anPreviewGrid" style="display:none;margin-top:8px">
@@ -1404,7 +1404,7 @@ function buildFormularioAnalise() {
           </button>
           <span style="font-size:10px;color:var(--text-dim)">cada toque adiciona uma imagem</span>
         </div>
-        <input type="file" id="anFotoInput" accept="image/*" capture="environment" style="display:none" onchange="anFotoSelecionada(this)">
+        <input type="file" id="anFotoInput" accept="image/*" style="display:none" onchange="anFotoSelecionada(this)">
       </div></div>
       <div id="anPreviewGrid" style="display:none;margin-top:8px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
@@ -1514,7 +1514,7 @@ async function salvarAtd() {
                 <div style="font-size:10px;margin-top:2px;color:var(--text-dim)">cada toque adiciona uma imagem</div>
               </div>
             </button>
-            <input type="file" id="anFotoInput" accept="image/*" capture="environment" style="display:none" onchange="anFotoSelecionada(this)">
+            <input type="file" id="anFotoInput" accept="image/*" style="display:none" onchange="anFotoSelecionada(this)">
           </div>
         </div>
         <div id="anPreviewGrid" style="display:none;margin-top:8px">
@@ -2541,8 +2541,8 @@ async function rodarAnalise() {
     if (comorbVal) textPrompt += `Doenças prévias/comorbidades: ${comorbVal}\n`;
     if (queixaVal) textPrompt += `Queixa principal: ${queixaVal}\n`;
     const medsCont = (document.getElementById('anMedsContinuos') || {value:''}).value.trim();
-    if (medsCont) textPrompt += `Medicamentos de uso contínuo do paciente: ${medsCont}\nIMPORTANTE: analise se algum desses medicamentos de rotina pode estar causando, agravando ou interagindo com o problema atual.\n`;
-    if (!_anFotos.length && !medsCont) textPrompt += `(Sem medicamentos de uso contínuo informados)`;
+    if (medsCont) textPrompt += `Medicamentos de uso contínuo do paciente: ${medsCont}\nIMPORTANTE: analise se algum desses medicamentos de rotina pode estar causando, agravando ou interagindo com o problema atual.\nATENÇÃO CRÍTICA: O campo classes_medicamentos deve conter EXATAMENTE estes medicamentos listados acima e NENHUM OUTRO. Não invente, não adicione, não sugira outros medicamentos nesse campo.\n`;
+    if (!_anFotos.length && !medsCont) textPrompt += `(Sem medicamentos de uso contínuo informados. Retorne classes_medicamentos como array vazio [])`;
     userContent.push({ type: 'text', text: textPrompt });
 
     // Montar conteúdo para Groq (texto apenas — imagens via OCR separado)
@@ -2596,6 +2596,24 @@ async function rodarAnalise() {
     }
 
     const pacLabel = nomeRaw || '';
+
+    // Filtro de segurança: remover de classes_medicamentos qualquer med que não está no campo digitado
+    const medsCont2 = (document.getElementById('anMedsContinuos') || {value:''}).value.trim().toLowerCase();
+    if (d.classes_medicamentos && d.classes_medicamentos.length && medsCont2) {
+      // Manter apenas classes que têm pelo menos um item correspondente ao que foi digitado
+      d.classes_medicamentos = d.classes_medicamentos.map(c => {
+        const itensFiltrados = c.itens.filter(item => {
+          const itemLower = item.toLowerCase();
+          // Verificar se alguma palavra do campo digitado aparece no item
+          const palavrasMeds = medsCont2.split(/[,\s]+/).filter(p => p.length > 2);
+          return palavrasMeds.some(p => itemLower.includes(p));
+        });
+        return { ...c, itens: itensFiltrados };
+      }).filter(c => c.itens.length > 0);
+    } else if (!medsCont2) {
+      // Se não tem nada digitado, não mostrar medicamentos identificados
+      d.classes_medicamentos = [];
+    }
 
     let html = '';
 
