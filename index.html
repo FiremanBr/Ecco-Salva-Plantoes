@@ -2235,7 +2235,7 @@ FORMATO OBRIGATÓRIO:
 👁️ Oftalmológico | 🚽 Urinário/Próstata | 💊 Outros
 
 REGRAS CRÍTICAS:
-- classes_medicamentos: agrupar medicamentos identificados na foto por classe farmacológica; sem foto retorne []
+- classes_medicamentos: agrupar SOMENTE os medicamentos que o paciente já usa (informados no campo 'Medicamentos de uso contínuo' ou identificados na foto) por classe farmacológica. NUNCA inclua medicamentos que você está recomendando — apenas os que o paciente já toma. Se não houver medicamentos de uso contínuo informados, retorne []
 - cada item: "Nome — Ação principal" em uma linha curta
 - hipotese_pontos: SEMPRE 2-3 pontos diagnósticos baseados no que foi informado. NUNCA diga "dados insuficientes". Com queixa "pressão alta" → ["Crise hipertensiva", "Avaliar urgência vs emergência hipertensiva"]. Máximo 1 linha por ponto.
 - hipotese_detalhada: explicação completa para aprofundar
