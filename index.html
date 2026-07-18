@@ -2368,6 +2368,23 @@ function renderThumbs() {
     </div>`).join('');
 }
 
+const VISION_KEY = 'AIzaSyDy93YhuJVLG9pSDQNzjvQakG_qsXe-axM';
+
+async function extrairTextoVision(base64) {
+  try {
+    const resp = await fetch('https://vision.googleapis.com/v1/images:annotate?key=' + VISION_KEY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: [{ image: { content: base64 }, features: [{ type: 'TEXT_DETECTION', maxResults: 1 }] }]
+      })
+    });
+    const data = await resp.json();
+    const texto = data?.responses?.[0]?.fullTextAnnotation?.text || '';
+    return texto.trim();
+  } catch(e) { return ''; }
+}
+
 function anFotoSelecionada(input) {
   const file = input.files[0];
   if (!file) return;
@@ -2376,8 +2393,7 @@ function anFotoSelecionada(input) {
   const reader = new FileReader();
   reader.onload = e => {
     const img = new Image();
-    img.onload = () => {
-      // Redimensionar para max 800px mantendo proporção
+    img.onload = async () => {
       const MAX = 800;
       let w = img.width, h = img.height;
       if (w > MAX || h > MAX) {
@@ -2390,6 +2406,29 @@ function anFotoSelecionada(input) {
       const base64 = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
       _anFotos.push({ base64, mime });
       renderThumbs();
+
+      // OCR — extrair texto da foto e preencher campo de medicamentos
+      const campoMeds = document.getElementById('anMedsContinuos');
+      if (campoMeds) {
+        const fotoTxt = document.getElementById('anFotoTxt');
+        if (fotoTxt) fotoTxt.textContent = 'Lendo medicamentos...';
+        const textoExtraido = await extrairTextoVision(base64);
+        if (textoExtraido) {
+          // Adicionar ao campo sem sobrescrever o que já está digitado
+          const atual = campoMeds.value.trim();
+          campoMeds.value = atual ? atual + ', ' + textoExtraido : textoExtraido;
+          _campoPaciente.medsContinuos = campoMeds.value;
+          if (fotoTxt) fotoTxt.textContent = '+ Adicionar mais foto';
+          // Toast de confirmação
+          const t = document.createElement('div');
+          t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#22C97A;color:white;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;z-index:999;white-space:nowrap';
+          t.textContent = '✅ Medicamentos lidos da foto!';
+          document.body.appendChild(t);
+          setTimeout(() => t.remove(), 2500);
+        } else {
+          if (fotoTxt) fotoTxt.textContent = '+ Adicionar mais foto';
+        }
+      }
     };
     img.src = e.target.result;
   };
