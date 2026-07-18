@@ -41,6 +41,11 @@
     --border: #2A3A52; --text: #E8EFF8; --text-muted: #7A92B0; --text-dim: #4A6080;
     --accent: #E8323C; --blue: #3B9BE8; --green: #22C97A; --yellow: #F5C842; --orange: #FF6B35; --purple: #A78BFA;
   }
+  body.light-mode {
+    --bg: #F0F4F8; --surface: #FFFFFF; --surface2: #E8EFF8; --surface3: #D8E4F0;
+    --border: #C0D0E0; --text: #0A1628; --text-muted: #4A6080; --text-dim: #7A92B0;
+    --accent: #E8323C; --blue: #2A80CC; --green: #18A060; --yellow: #D4A800; --orange: #E05020; --purple: #7B6BD4;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; max-width: 480px; margin: 0 auto; }
 
@@ -206,9 +211,16 @@
 </head>
 <body>
 <div class="header">
-  <div class="header-row">
+  <div class="header-row" style="justify-content:space-between">
     <img class="logo-img" src="data:image/png;base64,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" alt="Ecco Salva">
-    <div class="header-title">Atendi<span>mentos</span></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="header-title">Atendi<span>mentos</span></div>
+      <span id="atdCounter" style="display:none;background:var(--accent);color:white;font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px;letter-spacing:.3px"></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span id="onlineIndicator" title="Status de conexão" style="font-size:10px;font-weight:700;padding:3px 7px;border-radius:8px;background:rgba(34,201,122,0.15);color:var(--green);border:1px solid rgba(34,201,122,0.3)">🟢</span>
+      <button onclick="toggleTema()" id="btnTema" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:14px;cursor:pointer;color:var(--text-muted)">☀️</button>
+    </div>
   </div>
   <div class="tabs">
     <button class="tab active" data-color="#3B9BE8" onclick="switchTab('analise',this)">🔬 Análise</button>
@@ -240,9 +252,13 @@
   </div>
 
   <div class="panel" id="panel-historico">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px">📋 Atendimentos — <span id="dataHoje"></span></div>
       <button onclick="limparHistorico()" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 9px;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer">Limpar</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <input id="buscaHistorico" type="text" placeholder="🔍 Buscar por nome, data ou medicamento..." oninput="filtrarHistorico()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 11px;color:var(--text);font-family:Inter,sans-serif;font-size:12px;outline:none">
+      <button onclick="document.getElementById('buscaHistorico').value='';filtrarHistorico()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text-dim);font-size:12px;cursor:pointer">✕</button>
     </div>
     <div id="listaAtd"></div>
   </div>
@@ -1007,6 +1023,7 @@ JSON:
 
 // ── ESTADO ───────────────────────────────
 let selecionados = new Set();
+let _modoEstudo = false;
 
 // ── RENDER MALETA (dados locais, sem IA) ──
 function renderMaleta() {
@@ -1023,7 +1040,14 @@ function renderMaleta() {
     html += `<div class="med-chip${isNovaLetra ? ' new-letter' : ''}" data-med="${med}" onclick="toggleMed('${med}',this)"><span class="ck">✓</span>${nomeExibido}</div>`;
   });
   grid.innerHTML = `<div class="med-grid">${html}</div>
-    <div style="margin-top:16px;padding:10px 12px;border-top:1px solid var(--border);font-size:10px;color:var(--text-dim);text-align:center;line-height:1.6">
+    <div style="margin-top:16px;padding:12px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div style="font-size:11px;color:var(--text-muted);line-height:1.4">Toque para ver a ficha<br><span style="color:var(--blue)">Modo Estudo</span> para comparar interações</div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button id="btnModoEstudo" onclick="toggleModoEstudo()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap">📚 Modo Estudo</button>
+        <button onclick="abrirTabelaInteracoes()" style="background:rgba(232,50,60,0.1);border:1px solid rgba(232,50,60,0.35);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap">⚠️ Interações</button>
+      </div>
+    </div>
+    <div style="padding:6px 12px 12px;font-size:10px;color:var(--text-dim);text-align:center;line-height:1.6">
       📚 Referências: Bula ANVISA · Manual Farmacêutico Einstein · COFEN · AHA/ILCOR<br>
       Confirme sempre com a bula do lote em uso.
     </div>`;
@@ -1075,6 +1099,16 @@ function toggleMed(nome, el) {
 }
 
 function _continuarToggle(nome, el) {
+  if (_modoEstudo) {
+    if (selecionados.has(nome)) {
+      selecionados.delete(nome); _maletaExtras.delete(nome);
+      if (el) el.classList.remove('selected');
+    } else {
+      selecionados.add(nome); _maletaExtras.add(nome);
+      if (el) el.classList.add('selected');
+    }
+    atualizarBar(); verificarInteracoes(); return;
+  }
   if (!temDadosPaciente()) { mostrarFichaConsulta(nome); return; }
   if (!el) {
     document.querySelectorAll('.med-chip').forEach(c => {
@@ -1124,6 +1158,7 @@ function mostrarFichaConsulta(nome) {
 }
 
 function atualizarBar() {
+  if (typeof verificarInteracoes === 'function') setTimeout(verificarInteracoes, 50);
   // Garantir que selecionados tem TUDO: recs marcadas + extras da maleta
   _recsMarcaradas.forEach(n => selecionados.add(n));
   _maletaExtras.forEach(n => selecionados.add(n));
@@ -1152,6 +1187,8 @@ function limparSel() {
   selecionados.clear();
   _recsMarcaradas.clear();
   document.querySelectorAll('.med-chip').forEach(c => c.classList.remove('selected'));
+  const box = document.getElementById('interacoesAlertBox');
+  if (box) box.innerHTML = '';
   atualizarBar();
 }
 
@@ -1344,6 +1381,43 @@ function horaAgora() {
   return new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
 }
 
+// ── FORMULÁRIO DE ANÁLISE (fonte única) ───
+function buildFormularioAnalise() {
+  return `<div class="pac-form" style="margin-bottom:10px">
+      <div class="pac-title">🔬 Análise Clínica</div>
+      <div class="pac-row" style="gap:8px">
+        <div class="pac-field" style="flex:0 0 38%"><span class="pac-lbl">Nome / Idade</span><input class="pac-input" id="anNome" type="text" placeholder="Ex: Maria, 80" oninput="_campoPaciente.nome=this.value"></div>
+        <div class="pac-field" style="flex:1"><span class="pac-lbl">Sinal Vital Alterado</span><input class="pac-input" id="anSinais" type="text" placeholder="PA 200x120, SpO2 92%..." oninput="_campoPaciente.sinais=this.value"></div>
+      </div>
+      <div class="pac-row"><div class="pac-field"><span class="pac-lbl">Doenças Prévias / Comorbidades</span>
+        <input class="pac-input" id="anComorbidades" type="text" placeholder="Ex: HAS, DM, ICC, DPOC..." oninput="_campoPaciente.comorb=this.value">
+      </div></div>
+      <div class="pac-row"><div class="pac-field"><span class="pac-lbl">Queixa Principal</span>
+        <input class="pac-input" id="anQueixa" type="text" placeholder="Ex: dor torácica, dispneia, vômitos..." oninput="_campoPaciente.queixa=this.value">
+      </div></div>
+      <div class="pac-row"><div class="pac-field">
+        <span class="pac-lbl">💊 Medicamentos de Uso Contínuo</span>
+        <input class="pac-input" id="anMedsContinuos" type="text" placeholder="Ex: Losartana, Metformina, AAS..." oninput="_campoPaciente.medsContinuos=this.value">
+        <div style="margin-top:6px;display:flex;align-items:center;gap:8px">
+          <button onclick="abrirCamera()" style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px dashed var(--border);border-radius:7px;padding:8px 12px;cursor:pointer;font-size:11px;color:var(--text-muted);font-family:Inter,sans-serif">
+            <span>📸</span><span id="anFotoTxt">Adicionar foto</span>
+          </button>
+          <span style="font-size:10px;color:var(--text-dim)">cada toque adiciona uma imagem</span>
+        </div>
+        <input type="file" id="anFotoInput" accept="image/*" capture="environment" style="display:none" onchange="anFotoSelecionada(this)">
+      </div></div>
+      <div id="anPreviewGrid" style="display:none;margin-top:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+          <span id="anFotoCount" style="font-size:11px;font-weight:700;color:var(--green)"></span>
+          <button onclick="limparFotos()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text-dim);font-size:11px;padding:3px 8px;cursor:pointer;font-family:Inter,sans-serif">✕ Limpar tudo</button>
+        </div>
+        <div id="anImgGrid" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+    </div>
+    <button id="anBtn" onclick="rodarAnalise()" style="width:100%;padding:12px;border-radius:9px;border:none;background:var(--accent);color:white;font-family:Inter,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px">🔬 Analisar Paciente</button>
+    <div id="anResult"></div>`;
+}
+
 async function salvarAtd() {
   const nomeVal    = (document.getElementById('anNome')          && document.getElementById('anNome').value.trim())          || _pacNome   || 'Não identificado';
   const sinaisAtd  = (document.getElementById('anSinais')        && document.getElementById('anSinais').value.trim())        || '';
@@ -1477,6 +1551,7 @@ async function salvarAtd() {
   t.textContent = `✅ Atendimento ${String(num).padStart(2,'0')} salvo!`;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 2500);
+  atualizarContadorAtd();
 }
 
 async function deletarAtd(idx) {
@@ -1591,7 +1666,11 @@ function verAtd(idx) {
 
 function toggleHipDetalhe(id) {
   var el = document.getElementById(id);
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  if (!el) return;
+  if (el.style.display === 'none' || el.style.display === '') {
+    if (!el.innerHTML.trim() && window['_hipDet_' + id]) el.innerHTML = window['_hipDet_' + id];
+    el.style.display = 'block';
+  } else { el.style.display = 'none'; }
 }
 
 function _exibirModal(a) {
@@ -1628,8 +1707,9 @@ function _exibirModal(a) {
       html += '<div style="font-size:12px;color:var(--text);line-height:1.5">' + a.analise.hipotese + '</div>';
     }
     if (temDetalhe) {
-      html += '<span onclick="toggleHipDetalhe(\"' + idDet + '\")" style="color:#60BFFF;font-size:11px;cursor:pointer">▶ saiba mais</span>';
-      html += '<div id="' + idDet + '" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid rgba(59,155,232,0.2);font-size:12px;color:var(--text);line-height:1.7">' + a.analise.hipoteseDetalhe + '</div>';
+      window['_hipDet_' + idDet] = a.analise.hipoteseDetalhe;
+      html += '<span data-hipdet="' + idDet + '" style="color:#60BFFF;font-size:11px;cursor:pointer;display:inline-block;margin-top:4px">▶ saiba mais</span>';
+      html += '<div id="' + idDet + '" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid rgba(59,155,232,0.2);font-size:12px;color:var(--text);line-height:1.7"></div>';
     }
     html += '</div>';
   }
@@ -1650,7 +1730,18 @@ function _exibirModal(a) {
     html += '<div style="margin-top:10px"><div class="row-lbl">💊 Uso contínuo (foto)</div><div style="margin-top:5px">' + classesHtml + '</div></div>';
   }
 
+  // Botão WhatsApp
+  const chave = a._id || a.hora + a.nome;
+  window._compartilharChave = chave;
+  html += '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">' +
+    '<button onclick="compartilharAtd(window._compartilharChave)" style="width:100%;padding:11px;border-radius:9px;border:none;background:#25D366;color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">📲 Compartilhar via WhatsApp</button>' +
+    '</div>';
   document.getElementById('modalContent').innerHTML = html;
+  // Event delegation para saiba mais
+  document.getElementById('modalContent').onclick = function(e) {
+    const el = e.target.closest('[data-hipdet]');
+    if (el) toggleHipDetalhe(el.getAttribute('data-hipdet'));
+  };
   document.getElementById('modalOv').classList.add('open');
 }
 
@@ -1827,42 +1918,32 @@ function voltarMaleta() {
 
 // ── BUSCA LIVRE (usa IA — medicamentos fora da maleta) ──
 async function callClaude(query, tentativa = 1) {
+  const GROQ_KEY = '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';
   let res;
   try {
-    res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": "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", "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+    res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6", max_tokens: 4000,
-        system: SYSTEM_BUSCA,
-        messages: [{ role: "user", content: "Consulta: " + query }]
+        model: 'llama-3.3-70b-versatile', max_tokens: 4000, temperature: 0.3,
+        messages: [{ role: 'system', content: SYSTEM_BUSCA }, { role: 'user', content: 'Consulta: ' + query }]
       })
     });
   } catch(netErr) {
     throw new Error('Falha de conexão. Verifique sua internet.');
   }
-
   if (res.status === 429) {
-    if (tentativa <= 3) {
-      const espera = tentativa * 3000;
-      await new Promise(r => setTimeout(r, espera));
-      return callClaude(query, tentativa + 1);
-    }
+    if (tentativa <= 3) { await new Promise(r => setTimeout(r, tentativa * 3000)); return callClaude(query, tentativa + 1); }
     throw new Error('Muitas requisições. Aguarde alguns segundos e tente de novo.');
   }
-
   if (!res.ok) throw new Error('Erro HTTP ' + res.status);
   const data = await res.json();
-  if (!data.content) throw new Error('Resposta inválida');
-  const raw = data.content.map(b => b.text||'').join('').trim();
-  let clean = raw;
-  clean = clean.replace(/^```[a-z]*\n?/im, '').replace(/\n?```$/m, '');
-  clean = clean.replace(/```[a-z]*/gi, '').replace(/```/g, '');
-  clean = clean.trim();
+  const raw = (data?.choices?.[0]?.message?.content || '').trim();
+  if (!raw) throw new Error('Resposta inválida');
+  let clean = raw.replace(/```[a-z]*\s*/gi, '').replace(/```/g, '').trim();
   const fb = clean.indexOf('{'), lb = clean.lastIndexOf('}');
   if (fb === -1 || lb === -1) throw new Error('JSON não encontrado na resposta');
-  clean = clean.slice(fb, lb+1);
-  return JSON.parse(clean);
+  return JSON.parse(clean.slice(fb, lb+1));
 }
 
 async function buscarLivre() {
@@ -1921,7 +2002,7 @@ function limparBusca() {
   document.getElementById('buscaInput').value = '';
 }
 
-function switchTab(tab, el) {
+function _switchTabCore(tab, el) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => {
     t.classList.remove('active');
@@ -2165,7 +2246,14 @@ REGRAS CRÍTICAS:
   * Para hipertensão: verifique Captopril, Clonidina, Metoprolol na lista
   * Para náuseas: verifique Ondansetrona, Metoclopramida, Prometazina na lista
   * Para dor: verifique Dipirona, Paracetamol, Tramadol na lista
-- Baseie-se em: Protocolo Einstein, ANVISA, COFEN, AHA/ILCOR, Micromedex`;
+- Baseie-se em: Protocolo Einstein, ANVISA, COFEN, AHA/ILCOR, Micromedex
+
+REGRA CLÍNICA ESSENCIAL — MEDICAMENTOS DE USO CONTÍNUO:
+Se o paciente já usa cronicamente um medicamento, NÃO recomende esse mesmo nas medicacoes_recomendadas. Priorize alternativas de mecanismo diferente. Use alerta_rotina para explicar.
+Exemplos: Captopril em uso → prefira Clonidina. Furosemida em uso → avaliar outra abordagem. Metoprolol em uso → avaliar Amiodarona se arritmia.
+
+RECONHECIMENTO DE MEDICAMENTOS:
+Interprete variações fonéticas: "forchiga"/"forsiga" → Forxiga (dapagliflozina); "glifage"/"glifagem" → Glifage (metformina); "clopidroguel" → Clopidogrel; "lozartana" → Losartana; "criptopril" → Captopril.`
 })();
 
 // Array de fotos: cada item = { base64, mime }
@@ -2191,6 +2279,30 @@ function formatarTexto(str) {
     if (siglas.includes(clean)) return word.toUpperCase();
     return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
   }).join(' ');
+}
+function formatarListaTermos(str) {
+  if (!str) return str;
+  if (str.includes(',') || str.includes(';')) {
+    return str.split(/[,;]/).map(t => formatarTexto(t.trim())).filter(Boolean).join(', ');
+  }
+  const siglas = ['PA','FC','FR','SPO2','HGT','ECG','AVC','IAM','PCR','DM','HAS','ICC','DPOC','AVCI','TCE','TVP','TEP','SAMU','APH','SCA','EV','IM','SC','SL','VO','SF','SG','BPM','AAS','RCP','UTI','UPA','UBS','SSVV','GCS','SNS','AVCH','AVE','VM','O2','SAT'];
+  const conectores = ['de','do','da','dos','das','no','na','nos','nas','e','em','com','sem','por','ao','à','aos','às','tipo','grau','nivel','nível'];
+  const palavras = str.trim().split(/\s+/);
+  const termos = []; let atual = [];
+  for (let i = 0; i < palavras.length; i++) {
+    const p = palavras[i];
+    const pLow = p.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    const pClean = p.replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+    const eSigla = siglas.includes(pClean);
+    const eConector = conectores.includes(pLow);
+    if (atual.length > 0 && !eConector) {
+      const anteriorClean = atual[atual.length-1].replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+      if (eSigla) { termos.push(atual.join(' ')); atual = []; }
+    }
+    atual.push(p);
+  }
+  if (atual.length) termos.push(atual.join(' '));
+  return termos.map(t => formatarTexto(t.trim())).filter(Boolean).join(', ');
 }
 
 // Formatar campo nome/idade: "maria 80" → "Maria, 80"
@@ -2775,31 +2887,291 @@ function restaurarAnalise() {
   }
 }
 
-// ── INIT ──────────────────────────────────
-// Análise é a aba padrão — maleta carrega ao ser acessada pela primeira vez
-// Aplicar cor inicial na aba ativa
+// ── TABELA DE INTERAÇÕES (modal) ──────────
+function abrirTabelaInteracoes() {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
+  const renderLista = (filtro, termo) => {
+    const res = INTERACOES_MAP.filter(d => {
+      const mF = filtro === 'todos' || d.gravidade === filtro;
+      const mT = !termo || d.meds[0].toLowerCase().includes(termo) || d.meds[1].toLowerCase().includes(termo);
+      return mF && mT;
+    });
+    if (!res.length) return '<div style="text-align:center;color:#7A92B0;padding:24px;font-size:13px">Nenhuma interação encontrada.</div>';
+    return res.map(d => {
+      const cor = d.gravidade === 'grave' ? '#E8323C' : '#F5C842';
+      const bg  = d.gravidade === 'grave' ? 'rgba(232,50,60,0.08)' : 'rgba(245,200,66,0.08)';
+      const icon = d.gravidade === 'grave' ? '🚨' : '⚠️';
+      return '<div style="background:' + bg + ';border:0.5px solid ' + cor + ';border-left:3px solid ' + cor + ';border-radius:8px;padding:9px 12px;margin-bottom:6px">' +
+        '<div style="font-size:12px;font-weight:700;color:' + cor + ';margin-bottom:3px">' + icon + ' ' + d.meds[0] + ' + ' + d.meds[1] + '</div>' +
+        '<div style="font-size:11px;color:#E8EFF8;line-height:1.4;opacity:.85">' + d.efeito + '</div></div>';
+    }).join('');
+  };
+  overlay.innerHTML = '<div style="background:#111827;border-radius:16px 16px 0 0;padding:16px;max-width:480px;width:100%;max-height:88vh;display:flex;flex-direction:column">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">' +
+      '<div style="font-size:13px;font-weight:800;color:#E8323C">⚠️ Interações Medicamentosas</div>' +
+      '<button id="_btnFecharInter" style="background:transparent;border:none;color:#7A92B0;font-size:20px;cursor:pointer">✕</button></div>' +
+    '<input id="_interSearch" type="text" placeholder="Buscar medicamento..." style="width:100%;box-sizing:border-box;background:#1C2637;border:1px solid #2A3A52;border-radius:8px;padding:8px 11px;color:#E8EFF8;font-family:Inter,sans-serif;font-size:12px;outline:none;margin-bottom:10px">' +
+    '<div style="display:flex;gap:6px;margin-bottom:10px">' +
+      '<button data-f="todos" style="flex:1;padding:6px;border-radius:20px;border:1px solid #2A3A52;background:#1C2637;color:#E8EFF8;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif" class="_fBtn">Todos</button>' +
+      '<button data-f="grave" style="flex:1;padding:6px;border-radius:20px;border:1px solid rgba(232,50,60,0.4);background:rgba(232,50,60,0.1);color:#E8323C;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif" class="_fBtn">🚨 Graves</button>' +
+      '<button data-f="moderada" style="flex:1;padding:6px;border-radius:20px;border:1px solid rgba(245,200,66,0.4);background:rgba(245,200,66,0.1);color:#F5C842;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif" class="_fBtn">⚠️ Moderadas</button></div>' +
+    '<div id="_interLista" style="overflow-y:auto;flex:1">' + renderLista('todos','') + '</div></div>';
+  document.body.appendChild(overlay);
+  let filtroAtivo = 'todos';
+  overlay.querySelector('#_btnFecharInter').onclick = () => overlay.remove();
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+  overlay.querySelectorAll('._fBtn').forEach(btn => {
+    btn.onclick = () => {
+      filtroAtivo = btn.getAttribute('data-f');
+      const termo = overlay.querySelector('#_interSearch').value.toLowerCase();
+      overlay.querySelector('#_interLista').innerHTML = renderLista(filtroAtivo, termo);
+    };
+  });
+  overlay.querySelector('#_interSearch').oninput = function() {
+    overlay.querySelector('#_interLista').innerHTML = renderLista(filtroAtivo, this.value.toLowerCase());
+  };
+}
+
+// ── INTERAÇÕES MEDICAMENTOSAS ──────────────
+const INTERACOES_MAP = [
+  {meds:['Metoprolol','Amiodarona'],gravidade:'grave',efeito:'Bradicardia severa e bloqueio AV — risco de parada cardíaca'},
+  {meds:['Metoprolol','Adenosina'],gravidade:'grave',efeito:'Bloqueio AV aditivo — risco de assistolia'},
+  {meds:['Amiodarona','Adenosina'],gravidade:'moderada',efeito:'Potencialização do bloqueio AV — monitorar ritmo'},
+  {meds:['Amiodarona','Deslanosídeo'],gravidade:'grave',efeito:'Toxicidade digitálica aumentada — risco de arritmias graves'},
+  {meds:['Deslanosídeo','Furosemida'],gravidade:'grave',efeito:'Hipocalemia pela furosemida potencializa toxicidade digitálica'},
+  {meds:['Deslanosídeo','Cloreto de Potássio (KCL)'],gravidade:'moderada',efeito:'Potássio alto reduz eficácia do digital — monitorar ECG'},
+  {meds:['Dopamina','Metoprolol'],gravidade:'moderada',efeito:'Beta-bloqueador antagoniza efeitos cronotrópicos da dopamina'},
+  {meds:['Dopamina','Amiodarona'],gravidade:'moderada',efeito:'Risco de arritmias ventriculares — monitorar ECG'},
+  {meds:['Captopril','Cloreto de Potássio (KCL)'],gravidade:'grave',efeito:'IECA retém potássio — hipercalemia grave com KCL'},
+  {meds:['Sulfato de Magnésio','Metoprolol'],gravidade:'moderada',efeito:'Hipotensão e bradicardia aditivas'},
+  {meds:['Sulfato de Magnésio','Amiodarona'],gravidade:'grave',efeito:'Bloqueio neuromuscular e hipotensão severa'},
+  {meds:['Diazepam Injetável','Morfina'],gravidade:'grave',efeito:'Depressão respiratória grave — risco de apneia'},
+  {meds:['Diazepam Injetável','Fentanila'],gravidade:'grave',efeito:'Depressão respiratória grave — risco de apneia'},
+  {meds:['Diazepam Injetável','Tramadol'],gravidade:'moderada',efeito:'Sedação excessiva e depressão respiratória'},
+  {meds:['Clonazepam','Morfina'],gravidade:'grave',efeito:'Depressão respiratória grave — risco de apneia'},
+  {meds:['Clonazepam','Fentanila'],gravidade:'grave',efeito:'Depressão respiratória grave — risco de apneia'},
+  {meds:['Haloperidol','Prometazina'],gravidade:'moderada',efeito:'Prolongamento do QT — risco de Torsades de Pointes'},
+  {meds:['Haloperidol','Amiodarona'],gravidade:'grave',efeito:'Prolongamento do QT aditivo — risco de arritmia ventricular fatal'},
+  {meds:['Clorpromazina','Amiodarona'],gravidade:'grave',efeito:'Prolongamento do QT aditivo — risco de Torsades de Pointes'},
+  {meds:['Prometazina','Tramadol'],gravidade:'moderada',efeito:'Sedação excessiva — monitorar nível de consciência'},
+  {meds:['Fentanila','Morfina'],gravidade:'grave',efeito:'Depressão respiratória grave por duplo opioide'},
+  {meds:['Morfina','Tramadol'],gravidade:'moderada',efeito:'Dupla ação opioide — sedação e depressão respiratória excessivas'},
+  {meds:['Cetoprofeno IM','Cetoprofeno EV'],gravidade:'grave',efeito:'Dupla dose de AINE — toxicidade GI e renal grave'},
+  {meds:['Cetoprofeno IM','Toragesic'],gravidade:'grave',efeito:'Dois AINEs simultâneos — sangramento GI e renal grave'},
+  {meds:['Cetoprofeno EV','Toragesic'],gravidade:'grave',efeito:'Dois AINEs simultâneos — sangramento GI e renal grave'},
+  {meds:['Dipirona','Cetoprofeno IM'],gravidade:'moderada',efeito:'Risco de hipotensão aditiva — monitorar PA'},
+  {meds:['AAS','Cetoprofeno IM'],gravidade:'grave',efeito:'Dois antiagregantes/AINEs — sangramento grave'},
+  {meds:['AAS','Cetoprofeno EV'],gravidade:'grave',efeito:'Dois antiagregantes/AINEs — sangramento grave'},
+  {meds:['AAS','Toragesic'],gravidade:'grave',efeito:'AAS + cetorolaco — risco hemorrágico grave'},
+  {meds:['Salbutamol','Aminofilina'],gravidade:'moderada',efeito:'Taquicardia e tremores aditivos — monitorar FC'},
+  {meds:['Terbutalina','Aminofilina'],gravidade:'moderada',efeito:'Taquicardia e hipocalemia aditivas'},
+  {meds:['Salbutamol','Metoprolol'],gravidade:'grave',efeito:'Beta-bloqueador antagoniza broncodilatação — contraindicado em asma'},
+  {meds:['Terbutalina','Metoprolol'],gravidade:'grave',efeito:'Beta-bloqueador antagoniza broncodilatação — contraindicado'},
+  {meds:['Fenitoína','Diazepam Injetável'],gravidade:'moderada',efeito:'Depressão do SNC aditiva — monitorar consciência'},
+  {meds:['Fenitoína','Amiodarona'],gravidade:'grave',efeito:'Amiodarona aumenta níveis de fenitoína — toxicidade neurológica'},
+  {meds:['Adrenalina','Metoprolol'],gravidade:'grave',efeito:'Beta-bloqueador bloqueia efeito da adrenalina — hipertensão paradoxal'},
+  {meds:['Adrenalina','Amiodarona'],gravidade:'moderada',efeito:'Uso em PCR é protocolado — fora do PCR, risco de arritmias'},
+  {meds:['Gluconato de Cálcio','Cloreto de Potássio (KCL)'],gravidade:'grave',efeito:'Cálcio IV com potássio IV pode precipitar arritmias'},
+  {meds:['Bicarbonato de Sódio','Cloreto de Potássio (KCL)'],gravidade:'grave',efeito:'Precipitação — nunca misturar na mesma via'},
+  {meds:['Furosemida','Cloreto de Potássio (KCL)'],gravidade:'moderada',efeito:'Furosemida elimina potássio — monitorar níveis'},
+];
+
+function verificarInteracoes() {
+  const sels = [...selecionados];
+  const alertas = [];
+  for (let i = 0; i < sels.length; i++) {
+    for (let j = i + 1; j < sels.length; j++) {
+      const par = [sels[i], sels[j]];
+      const inter = INTERACOES_MAP.find(x =>
+        (x.meds[0] === par[0] && x.meds[1] === par[1]) ||
+        (x.meds[0] === par[1] && x.meds[1] === par[0])
+      );
+      if (inter) alertas.push(inter);
+    }
+  }
+  let box = document.getElementById('interacoesAlertBox');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'interacoesAlertBox';
+    box.style.cssText = 'position:fixed;bottom:70px;right:14px;left:14px;z-index:88;display:flex;flex-direction:column;gap:5px;max-width:452px;margin:0 auto';
+    document.body.appendChild(box);
+  }
+  if (!alertas.length) { box.innerHTML = ''; return; }
+  box.innerHTML = alertas.map(a => {
+    const cor = a.gravidade === 'grave' ? '#E8323C' : '#F5C842';
+    const bg  = a.gravidade === 'grave' ? 'rgba(232,50,60,0.12)' : 'rgba(245,200,66,0.12)';
+    const icon = a.gravidade === 'grave' ? '🚨' : '⚠️';
+    return '<div style="background:' + bg + ';border:1.5px solid ' + cor + ';border-radius:9px;padding:8px 11px">' +
+      '<div style="font-size:11px;font-weight:800;color:' + cor + ';margin-bottom:2px">' + icon + ' ' + a.meds[0] + ' + ' + a.meds[1] + '</div>' +
+      '<div style="font-size:11px;color:var(--text);line-height:1.4">' + a.efeito + '</div></div>';
+  }).join('');
+}
+
+// ── MODO ESTUDO ───────────────────────────
+function toggleModoEstudo() {
+  _modoEstudo = !_modoEstudo;
+  const btn = document.getElementById('btnModoEstudo');
+  if (!btn) return;
+  if (_modoEstudo) {
+    btn.textContent = '✅ Modo Estudo ativo';
+    btn.style.cssText += ';background:rgba(59,155,232,0.15);border-color:rgba(59,155,232,0.5);color:var(--blue)';
+    selecionados.clear(); _maletaExtras.clear(); _recsMarcaradas.clear();
+    document.querySelectorAll('.med-chip').forEach(c => c.classList.remove('selected'));
+    const box = document.getElementById('interacoesAlertBox'); if (box) box.innerHTML = '';
+    atualizarBar();
+    const dica = document.createElement('div');
+    dica.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--blue);color:white;border-radius:8px;padding:10px 16px;font-size:12px;font-weight:700;z-index:999;white-space:nowrap';
+    dica.textContent = '📚 Toque nos medicamentos para comparar interações';
+    document.body.appendChild(dica); setTimeout(() => dica.remove(), 2800);
+  } else {
+    btn.textContent = '📚 Modo Estudo';
+    btn.style.cssText = btn.style.cssText.replace(/background:[^;]+;border-color:[^;]+;color:[^;]+/, '');
+    btn.style.background = 'var(--surface2)'; btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--text-muted)';
+    selecionados.clear(); _maletaExtras.clear();
+    document.querySelectorAll('.med-chip').forEach(c => c.classList.remove('selected'));
+    const box = document.getElementById('interacoesAlertBox'); if (box) box.innerHTML = '';
+    atualizarBar();
+  }
+}
+
+// ── CONTADOR DE ATDs ─────────────────────
+function atualizarContadorAtd() {
+  const hoje = dataHoje();
+  const n = atendimentos.filter(a => a.data === hoje).length;
+  const badge = document.getElementById('atdCounter');
+  if (!badge) return;
+  if (n === 0) { badge.style.display = 'none'; return; }
+  badge.style.display = 'inline';
+  badge.textContent = n + ' ATD' + (n > 1 ? 's hoje' : ' hoje');
+}
+
+// ── COMPARTILHAR VIA WHATSAPP ──────────────
+function compartilharAtd(key) {
+  const a = atendimentos.find(x => (x._id || x.hora + x.nome) === key);
+  if (!a) return;
+  const partes = (a.queixa || '').split(' | ');
+  const sinais = partes[0] || ''; const comorb = partes[1] || ''; const queixa = partes[2] || '';
+  let txt = '\uD83D\uDE91 *ECCO SALVA \u2014 Atendimento APH*\n';
+  txt += '\uD83D\uDCCB ATD ' + String(a.num).padStart(2,'0') + ' | ' + a.data + ' ' + a.hora + '\n\n';
+  txt += '\uD83D\uDC64 *Paciente:* ' + a.nome + '\n';
+  if (sinais) txt += '\uD83D\uDCCA *Sinais:* ' + sinais + '\n';
+  if (comorb) txt += '\uD83C\uDFE5 *Comorbidades:* ' + comorb + '\n';
+  if (queixa) txt += '\uD83D\uDDE3 *Queixa:* ' + queixa + '\n';
+  if (a.meds) txt += '\uD83D\uDC8A *Medica\u00e7\u00f5es:* ' + a.meds + '\n';
+  if (a.analise && a.analise.hipotese) {
+    txt += '\n\uD83C\uDFAF *Hip\u00f3tese:*\n';
+    if (a.analise.hipotesePontos && a.analise.hipotesePontos.length)
+      a.analise.hipotesePontos.forEach((p,i) => { txt += (i+1) + '. ' + p + '\n'; });
+    else txt += a.analise.hipotese + '\n';
+  }
+  txt += '\n_Enviado pelo Ecco Salva Meds_';
+  window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
+}
+
+// ── BUSCA NO HISTÓRICO ─────────────────────
+function filtrarHistorico() {
+  const termo = (document.getElementById('buscaHistorico') ? document.getElementById('buscaHistorico').value : '').toLowerCase().trim();
+  const lista = document.getElementById('listaAtd');
+  const todos = termo
+    ? atendimentos.filter(a => (a.nome||'').toLowerCase().includes(termo)||(a.data||'').includes(termo)||(a.meds||'').toLowerCase().includes(termo)||(a.queixa||'').toLowerCase().includes(termo))
+    : atendimentos.filter(a => a.data === dataHoje());
+  if (!todos.length) {
+    lista.innerHTML = '<div class="empty-txt">' + (termo ? 'Nenhum resultado para "' + termo + '".' : 'Nenhum atendimento registrado hoje.') + '</div>';
+    return;
+  }
+  lista.innerHTML = todos.map(a => {
+    const chave = (a._id || a.hora + a.nome).replace(/"/g, '&quot;');
+    return '<div class="atd-card">' +
+      '<div class="atd-top" data-key="' + chave + '" data-action="ver" style="cursor:pointer">' +
+        '<span class="atd-num">ATD ' + String(a.num).padStart(2,'0') + ' \u2014 ' + a.hora + '</span>' +
+        '<span class="atd-time">' + a.data + '</span></div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' +
+        '<div data-key="' + chave + '" data-action="ver" style="flex:1;cursor:pointer">' +
+          '<div class="atd-name">' + a.nome + (a.idade ? ' \xb7 ' + a.idade + ' anos' : '') + '</div>' +
+          (a.queixa ? '<div class="atd-prev">' + a.queixa.replace(/ \| /g,' \xb7 ') + '</div>' : '') +
+          '<div class="atd-prev" style="color:var(--accent);margin-top:3px">' + a.meds + '</div></div>' +
+        '<div style="display:flex;gap:5px;flex-shrink:0">' +
+          '<button data-key="' + chave + '" data-action="editar" style="background:rgba(59,155,232,0.12);border:1px solid rgba(59,155,232,0.3);border-radius:6px;color:var(--blue);font-size:11px;font-weight:700;padding:5px 9px;cursor:pointer;font-family:Inter,sans-serif">\u270f\ufe0f</button>' +
+          '<button data-key="' + chave + '" data-action="deletar" style="background:rgba(232,50,60,0.12);border:1px solid rgba(232,50,60,0.3);border-radius:6px;color:var(--accent);font-size:11px;font-weight:700;padding:5px 9px;cursor:pointer;font-family:Inter,sans-serif">\U0001f5d1\ufe0f</button>' +
+        '</div></div></div>';
+  }).join('');
+  lista.onclick = function(e) {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const key = el.getAttribute('data-key'); const action = el.getAttribute('data-action');
+    if (action === 'ver') verAtdKey(key);
+    else if (action === 'editar') editarAtdKey(key);
+    else if (action === 'deletar') deletarAtdKey(key);
+  };
+}
+
+// ── TEMA CLARO/ESCURO ─────────────────────
+function toggleTema() {
+  const isLight = document.body.classList.toggle('light-mode');
+  document.getElementById('btnTema').textContent = isLight ? '\uD83C\uDF19' : '\u2600\uFE0F';
+  localStorage_safe_set('ecco_tema', isLight ? 'light' : 'dark');
+}
+
+// ── ONLINE / OFFLINE ─────────────────────
+function atualizarStatusOnline() {
+  const el = document.getElementById('onlineIndicator'); if (!el) return;
+  if (navigator.onLine) {
+    el.textContent = '\uD83D\uDFE2'; el.style.background = 'rgba(34,201,122,0.15)';
+    el.style.color = 'var(--green)'; el.style.borderColor = 'rgba(34,201,122,0.3)'; el.title = 'Online';
+  } else {
+    el.textContent = '\uD83D\uDD34'; el.style.background = 'rgba(232,50,60,0.15)';
+    el.style.color = 'var(--accent)'; el.style.borderColor = 'rgba(232,50,60,0.3)'; el.title = 'Offline';
+  }
+}
+window.addEventListener('online', atualizarStatusOnline);
+window.addEventListener('offline', atualizarStatusOnline);
+
+// ── CONFIRMAÇÃO DE SAÍDA ──────────────────
+function _temAnaliseEmAndamento() {
+  const temDados = !!(
+    (document.getElementById('anNome') && document.getElementById('anNome').value.trim()) ||
+    (document.getElementById('anSinais') && document.getElementById('anSinais').value.trim()) ||
+    (document.getElementById('anQueixa') && document.getElementById('anQueixa').value.trim())
+  );
+  const temResultado = !!(document.getElementById('anResult') && document.getElementById('anResult').innerHTML.trim());
+  return temDados || temResultado;
+}
+
+function switchTab(tab, el) {
+  const analiseAtiva = document.getElementById('panel-analise') && document.getElementById('panel-analise').classList.contains('active');
+  const abasDoFluxo = ['analise', 'maleta', 'sintoma'];
+  if (analiseAtiva && !abasDoFluxo.includes(tab) && _temAnaliseEmAndamento() && selecionados.size === 0) {
+    abrirModal('\u26a0\ufe0f An\u00e1lise em andamento', 'H\u00e1 dados n\u00e3o salvos. Deseja sair sem salvar?', [
+      { label: 'Cancelar', acao: () => fecharModal() },
+      { label: 'Sair sem salvar', cor: 'var(--accent)', acao: () => { fecharModal(); _switchTabCore(tab, el); } }
+    ]);
+    return;
+  }
+  _switchTabCore(tab, el);
+}
+
+// ── INIT ──────────────────────────────────────────
 (function() {
   document.querySelectorAll('.tab').forEach(t => {
     const cor = t.getAttribute('data-color') || '#fff';
     t.style.color = cor;
     if (t.classList.contains('active')) t.style.borderBottomColor = cor;
   });
-
-  // ── PERFIL POR URL ──────────────────────
+  if (localStorage_safe_get('ecco_tema') === 'light') {
+    document.body.classList.add('light-mode');
+    const btn = document.getElementById('btnTema'); if (btn) btn.textContent = '🌙';
+  }
   const urlParams = new URLSearchParams(window.location.search);
-  const perfil = urlParams.get('perfil');
-  if (perfil === 'motorista') {
-    // Ocultar abas Análise e Pacientes
+  if (urlParams.get('perfil') === 'motorista') {
     document.querySelectorAll('.tab').forEach(t => {
       const oc = t.getAttribute('onclick') || '';
       if (oc.includes('analise') || oc.includes('historico')) t.style.display = 'none';
     });
-    // Ativar maleta como aba inicial
-    setTimeout(() => {
-      const tabMaleta = document.querySelector('.tab[onclick*="maleta"]');
-      if (tabMaleta) switchTab('maleta', tabMaleta);
-    }, 150);
+    setTimeout(() => { const tm = document.querySelector('.tab[onclick*="maleta"]'); if (tm) _switchTabCore('maleta', tm); }, 150);
   }
+  setTimeout(atualizarStatusOnline, 100);
+  setTimeout(atualizarContadorAtd, 300);
 })();
 // Limpar atendimentos sem _id (dados antigos pre-Firebase) do localStorage
 atendimentos = atendimentos.filter(a => a._id !== undefined || false);
