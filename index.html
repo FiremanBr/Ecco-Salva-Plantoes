@@ -2229,10 +2229,34 @@ FORMATO OBRIGATÓRIO:
   "alerta_rotina": "Se algum medicamento de rotina pode estar causando ou agravando o problema atual, explique em 1-2 linhas. Ex: Metoprolol pode estar causando a bradicardia. Se não há relação, retorne null."
 }
 
-ÍCONES DE CLASSE (use exatamente):
-❤️ Cardiovascular/Pressão | 💧 Diurético | 🧠 Neurológico/Psiquiátrico | 🫁 Respiratório/Pulmonar
-🩸 Diabetes/Metabólico | 🦠 Antibiótico/Infecção | 🦴 Músculo/Ortopédico | 🫀 Cardíaco/Arritmia
-👁️ Oftalmológico | 🚽 Urinário/Próstata | 💊 Outros
+ÍCONES E CLASSES FARMACOLÓGICAS (use exatamente este mapeamento):
+
+❤️ Cardiovascular/Pressão — Anti-hipertensivos: Captopril, Enalapril, Losartana, Valsartana, Anlodipino, Nifedipino, Hidralazina, Clonidina, Metildopa, Prazosina
+💧 Diurético — Furosemida, Hidroclorotiazida, Espironolactona, Acetazolamida, Indapamida
+🫀 Cardíaco/Arritmia — Metoprolol, Atenolol, Propranolol, Carvedilol, Amiodarona, Digoxina, Deslanosídeo, Diltiazem, Verapamil
+🩸 Anticoagulante/Antiagregante — AAS, Clopidogrel, Warfarina, Rivaroxabana, Apixabana, Heparina, Enoxaparina
+🧠 Neurológico/Psiquiátrico — Haloperidol, Risperidona, Quetiapina, Olanzapina, Clorpromazina, Lítio, Fenitoína, Carbamazepina, Levetiracetam, Valproato
+😴 Sedativo/Ansiolítico/Hipnótico — Diazepam, Clonazepam, Lorazepam, Midazolam, Alprazolam, Zolpidem, Fenobarbital
+🧬 Antidepressivo — Sertralina, Fluoxetina, Escitalopram, Venlafaxina, Amitriptilina, Nortriptilina, Bupropiona, Mirtazapina
+🩸 Diabetes/Metabólico — Metformina, Glifage, Glibenclamida, Glipizida, Insulina, Sitagliptina, Dapagliflozina, Forxiga, Liraglutida, Empagliflozina
+🫁 Respiratório/Pulmonar — Salbutamol, Terbutalina, Fenoterol, Ipratrópio, Budesonida, Fluticasona, Aminofilina, Teofilina, Montelucaste
+🤢 Antiemético/Náusea — Dramin, Dimenidrinato, Ondansetrona, Metoclopramida, Domperidona, Prometazina, Bromoprida
+🩺 Analgésico — Dipirona, Paracetamol, Tramadol, Codeína, Morfina, Fentanila, Meperidina
+🔥 Anti-inflamatório/AINE — Ibuprofeno, Cetoprofeno, Naproxeno, Diclofenaco, Piroxicam, Meloxicam, Cetorolaco, Toragesic, AAS
+🦠 Antibiótico/Antimicrobiano — Amoxicilina, Azitromicina, Ciprofloxacino, Metronidazol, Cefalexina, Ceftriaxona, Clindamicina, SMX-TMP
+🧫 Antifúngico/Antiparasitário — Fluconazol, Nistatina, Ivermectina, Albendazol, Metronidazol
+💉 Corticoide — Prednisona, Prednisolona, Dexametasona, Hidrocortisona, Betametasona, Metilprednisolona
+🧬 Hormonal/Endócrino — Levotiroxina, Propiltiouracil, Estrogênio, Progesterona, Testosterona, Anticoncepcional
+🦴 Músculo/Ortopédico — Ciclobenzaprina, Carisoprodol, Baclofeno, Orfenadrina, Tizanidina
+🚽 Urinário/Próstata — Tansulosina, Finasterida, Dutasterida, Oxibutinina, Solifenacina, Doxazosina
+👁️ Oftalmológico — Colírio, Timolol, Latanoprosta, Prednisolona oftálmica, Tobramicina
+🩺 Gastroprotetor/Digestivo — Omeprazol, Pantoprazol, Ranitidina, Sucralfato, Domperidona, Lactulose, Bisacodil
+🧪 Suplemento/Vitamina — Cloreto de Potássio, Sulfato de Magnésio, Gluconato de Cálcio, Vitamina D, Vitamina B12, Ácido Fólico, Ferro
+💉 Vasoativo/Inotrópico — Dopamina, Dobutamina, Noradrenalina, Adrenalina, Vasopressina
+🩸 Hipolipemiante — Sinvastatina, Atorvastatina, Rosuvastatina, Ezetimiba, Bezafibrato
+💊 Outros — Qualquer medicamento que não se encaixe nas categorias acima
+
+REGRA: Sempre escolha a categoria mais específica. Use 💊 Outros apenas se realmente não houver categoria adequada.
 
 REGRAS CRÍTICAS:
 - classes_medicamentos: agrupar SOMENTE os medicamentos que o paciente já usa (informados no campo 'Medicamentos de uso contínuo' ou identificados na foto) por classe farmacológica. NUNCA inclua medicamentos que você está recomendando — apenas os que o paciente já toma. Se não houver medicamentos de uso contínuo informados, retorne []
@@ -2332,9 +2356,10 @@ function formatarSinais(str) {
 let _ultimaAnalise = null;
 
 function abrirCamera() {
-  // Reseta o input para permitir selecionar o mesmo arquivo novamente
   const input = document.getElementById('anFotoInput');
   input.value = '';
+  // Forçar câmera traseira via atributo capture
+  input.setAttribute('capture', 'environment');
   input.click();
 }
 
