@@ -2380,9 +2380,32 @@ async function extrairTextoVision(base64) {
       })
     });
     const data = await resp.json();
+    // Verificar erros da API
+    if (data?.error) {
+      console.error('Vision API error:', data.error);
+      mostrarErroOCR('Erro Vision API: ' + data.error.message);
+      return '';
+    }
+    if (data?.responses?.[0]?.error) {
+      console.error('Vision response error:', data.responses[0].error);
+      mostrarErroOCR('Erro: ' + data.responses[0].error.message);
+      return '';
+    }
     const texto = data?.responses?.[0]?.fullTextAnnotation?.text || '';
     return texto.trim();
-  } catch(e) { return ''; }
+  } catch(e) {
+    console.error('Vision fetch error:', e);
+    mostrarErroOCR('Erro de conexão com Vision API');
+    return '';
+  }
+}
+
+function mostrarErroOCR(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#E8323C;color:white;border-radius:8px;padding:8px 14px;font-size:11px;font-weight:700;z-index:999;max-width:300px;text-align:center';
+  t.textContent = '📷 ' + msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
 }
 
 function anFotoSelecionada(input) {
