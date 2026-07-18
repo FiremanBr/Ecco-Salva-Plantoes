@@ -2348,14 +2348,25 @@ async function rodarAnalise() {
     if (!_anFotos.length && !medsCont) textPrompt += `(Sem medicamentos de uso contínuo informados)`;
     userContent.push({ type: 'text', text: textPrompt });
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    // Montar conteúdo para Gemini
+    const GEMINI_KEY = 'AIzaSyAb8RN6I9bkfkgYsxLXSRuTFXs6IynlGSehLEMIwbWYLVD1FJnA';
+    const geminiParts = [];
+    // Adicionar imagens se houver
+    for (const part of userContent) {
+      if (part.type === 'image') {
+        geminiParts.push({ inline_data: { mime_type: part.source.media_type, data: part.source.data } });
+      } else if (part.type === 'text') {
+        geminiParts.push({ text: part.text });
+      }
+    }
+
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': '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', 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 4000,
-        system: SYSTEM_ANALISE,
-        messages: [{ role: 'user', content: userContent }]
+        system_instruction: { parts: [{ text: SYSTEM_ANALISE }] },
+        contents: [{ role: 'user', parts: geminiParts }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 4000 }
       })
     });
 
@@ -2365,12 +2376,8 @@ async function rodarAnalise() {
     }
 
     const data = await resp.json();
-    if (!data || !data.content || !data.content.length) {
-      throw new Error('A API não retornou conteúdo. Tente novamente.');
-    }
-
-    const raw = data.content.map(b => b.text || '').join('').trim();
-    if (!raw) throw new Error('Resposta vazia da API. Tente novamente.');
+    const raw = (data?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+    if (!raw) throw new Error('A IA não retornou conteúdo. Tente novamente.');
 
     // Extração robusta do JSON — remove qualquer markdown e isola o objeto
     let cleanJson = raw;
@@ -2387,11 +2394,7 @@ async function rodarAnalise() {
     try {
       d = JSON.parse(cleanJson.slice(fb, lb + 1));
     } catch(parseErr) {
-      const stopReason = data.stop_reason || '';
-      const msg = stopReason === 'max_tokens'
-        ? '❌ Resposta muito longa foi cortada. Tente novamente.'
-        : '❌ Erro ao interpretar resposta da IA. Tente novamente.';
-      res.innerHTML = `<div class="error-box">${msg}</div>`;
+      res.innerHTML = `<div class="error-box">❌ Erro ao interpretar resposta da IA. Tente novamente.</div>`;
       btn.disabled = false;
       return;
     }
