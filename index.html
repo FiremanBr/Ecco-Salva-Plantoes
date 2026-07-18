@@ -2407,22 +2407,45 @@ function anFotoSelecionada(input) {
       _anFotos.push({ base64, mime });
       renderThumbs();
 
-      // OCR — extrair texto da foto e preencher campo de medicamentos
+      // OCR — extrair texto da foto e filtrar apenas nome do medicamento
       const campoMeds = document.getElementById('anMedsContinuos');
       if (campoMeds) {
         const fotoTxt = document.getElementById('anFotoTxt');
         if (fotoTxt) fotoTxt.textContent = 'Lendo medicamentos...';
-        const textoExtraido = await extrairTextoVision(base64);
-        if (textoExtraido) {
-          // Adicionar ao campo sem sobrescrever o que já está digitado
-          const atual = campoMeds.value.trim();
-          campoMeds.value = atual ? atual + ', ' + textoExtraido : textoExtraido;
-          _campoPaciente.medsContinuos = campoMeds.value;
+        const textoOCR = await extrairTextoVision(base64);
+        if (textoOCR) {
+          // Usar Groq para extrair apenas o nome comercial/genérico do medicamento
+          try {
+            const GROQ_KEY = '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';
+            const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
+              body: JSON.stringify({
+                model: 'llama-3.3-70b-versatile', max_tokens: 100, temperature: 0,
+                messages: [
+                  { role: 'system', content: 'Você é um assistente farmacêutico. Dado o texto OCR de uma embalagem de medicamento, extraia APENAS o nome comercial ou genérico principal do medicamento (ex: "Dramin", "Captopril", "Losartana"). Ignore composição química, princípios ativos secundários, números de lote, datas, fabricante e texto de bula. Responda SOMENTE com o nome do medicamento, sem explicações.' },
+                  { role: 'user', content: 'Texto OCR da embalagem: ' + textoOCR }
+                ]
+              })
+            });
+            const groqData = await groqResp.json();
+            const nomeMed = (groqData?.choices?.[0]?.message?.content || '').trim().replace(/['"]/g, '');
+            if (nomeMed) {
+              const atual = campoMeds.value.trim();
+              campoMeds.value = atual ? atual + ', ' + nomeMed : nomeMed;
+              _campoPaciente.medsContinuos = campoMeds.value;
+            }
+          } catch(e) {
+            // Fallback: usar texto OCR bruto
+            const atual = campoMeds.value.trim();
+            const primeiraLinha = textoOCR.split('\n')[0];
+            campoMeds.value = atual ? atual + ', ' + primeiraLinha : primeiraLinha;
+            _campoPaciente.medsContinuos = campoMeds.value;
+          }
           if (fotoTxt) fotoTxt.textContent = '+ Adicionar mais foto';
-          // Toast de confirmação
           const t = document.createElement('div');
           t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#22C97A;color:white;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;z-index:999;white-space:nowrap';
-          t.textContent = '✅ Medicamentos lidos da foto!';
+          t.textContent = '✅ Medicamento identificado!';
           document.body.appendChild(t);
           setTimeout(() => t.remove(), 2500);
         } else {
