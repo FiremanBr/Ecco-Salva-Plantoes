@@ -2782,6 +2782,22 @@ function restaurarAnalise() {
     t.style.color = cor;
     if (t.classList.contains('active')) t.style.borderBottomColor = cor;
   });
+
+  // ── PERFIL POR URL ──────────────────────
+  const urlParams = new URLSearchParams(window.location.search);
+  const perfil = urlParams.get('perfil');
+  if (perfil === 'motorista') {
+    // Ocultar abas Análise e Pacientes
+    document.querySelectorAll('.tab').forEach(t => {
+      const oc = t.getAttribute('onclick') || '';
+      if (oc.includes('analise') || oc.includes('historico')) t.style.display = 'none';
+    });
+    // Ativar maleta como aba inicial
+    setTimeout(() => {
+      const tabMaleta = document.querySelector('.tab[onclick*="maleta"]');
+      if (tabMaleta) switchTab('maleta', tabMaleta);
+    }, 150);
+  }
 })();
 // Limpar atendimentos sem _id (dados antigos pre-Firebase) do localStorage
 atendimentos = atendimentos.filter(a => a._id !== undefined || false);
