@@ -302,7 +302,7 @@
             </button>
             <span style="font-size:10px;color:var(--text-dim)">cada toque adiciona uma imagem</span>
           </div>
-          <input type="file" id="anFotoInput" accept="image/*" style="display:none" onchange="anFotoSelecionada(this)">
+          <input type="file" id="anFotoInput" accept="image/*" capture="environment" style="display:none" onchange="anFotoSelecionada(this)">
         </div>
       </div>
       <div id="anPreviewGrid" style="display:none;margin-top:8px">
@@ -1404,7 +1404,7 @@ function buildFormularioAnalise() {
           </button>
           <span style="font-size:10px;color:var(--text-dim)">cada toque adiciona uma imagem</span>
         </div>
-        <input type="file" id="anFotoInput" accept="image/*" style="display:none" onchange="anFotoSelecionada(this)">
+        <input type="file" id="anFotoInput" accept="image/*" capture="environment" style="display:none" onchange="anFotoSelecionada(this)">
       </div></div>
       <div id="anPreviewGrid" style="display:none;margin-top:8px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
@@ -1514,7 +1514,7 @@ async function salvarAtd() {
                 <div style="font-size:10px;margin-top:2px;color:var(--text-dim)">cada toque adiciona uma imagem</div>
               </div>
             </button>
-            <input type="file" id="anFotoInput" accept="image/*" style="display:none" onchange="anFotoSelecionada(this)">
+            <input type="file" id="anFotoInput" accept="image/*" capture="environment" style="display:none" onchange="anFotoSelecionada(this)">
           </div>
         </div>
         <div id="anPreviewGrid" style="display:none;margin-top:8px">
