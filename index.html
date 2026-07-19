@@ -3202,28 +3202,40 @@ function iniciarVoz() {
     return;
   }
 
-  _vozReconhecimento = new SpeechRecognition();
-  _vozReconhecimento.lang = 'pt-BR';
-  _vozReconhecimento.continuous = true;
-  _vozReconhecimento.interimResults = true;
+  let _vozTextoAcumulado = '';
+  let _vozParando = false;
 
-  _vozReconhecimento.onstart = () => {
-    _vozAtiva = true;
-    if (btn) { btn.textContent = '⏹️'; btn.style.background = 'rgba(232,50,60,0.2)'; btn.style.borderColor = 'var(--accent)'; }
-    if (status) status.style.display = 'block';
-    if (campo) campo.placeholder = 'Falando...';
-  };
+  const iniciarReconhecimento = () => {
+    _vozReconhecimento = new SpeechRecognition();
+    _vozReconhecimento.lang = 'pt-BR';
+    _vozReconhecimento.continuous = true;
+    _vozReconhecimento.interimResults = true;
 
-  _vozReconhecimento.onresult = (e) => {
-    let texto = '';
-    for (let i = 0; i < e.results.length; i++) {
-      texto += e.results[i][0].transcript;
-    }
-    if (campo) campo.value = texto;
-    _campoPaciente.voz = texto;
-  };
+    _vozReconhecimento.onstart = () => {
+      _vozAtiva = true;
+      if (btn) { btn.textContent = '⏹️'; btn.style.background = 'rgba(232,50,60,0.2)'; btn.style.borderColor = 'var(--accent)'; }
+      if (status) status.style.display = 'block';
+      if (campo) campo.placeholder = 'Falando... (toque ⏹️ para parar)';
+    };
 
-  _vozReconhecimento.onend = async () => {
+    _vozReconhecimento.onresult = (e) => {
+      let texto = _vozTextoAcumulado;
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          _vozTextoAcumulado += e.results[i][0].transcript + ' ';
+          texto = _vozTextoAcumulado;
+        } else {
+          texto = _vozTextoAcumulado + e.results[i][0].transcript;
+        }
+      }
+      if (campo) campo.value = texto.trim();
+    };
+
+    _vozReconhecimento.onend = async () => {
+      // Se não está parando manualmente, reiniciar automaticamente (pausa detectada)
+      if (_vozAtiva && !_vozParando) {
+        try { _vozReconhecimento.start(); return; } catch(e) {}
+      }
     _vozAtiva = false;
     if (btn) { btn.textContent = '🎙️'; btn.style.background = 'var(--surface2)'; btn.style.borderColor = 'var(--border)'; }
     if (status) status.style.display = 'none';
@@ -3268,19 +3280,33 @@ function iniciarVoz() {
     }
   };
 
-  _vozReconhecimento.onerror = (e) => {
-    _vozAtiva = false;
-    if (btn) { btn.textContent = '🎙️'; btn.style.background = 'var(--surface2)'; }
-    if (status) status.style.display = 'none';
-    if (e.error === 'not-allowed') {
-      const t = document.createElement('div');
-      t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#E8323C;color:white;border-radius:8px;padding:8px 14px;font-size:11px;font-weight:700;z-index:999;max-width:280px;text-align:center';
-      t.textContent = '❌ Permita o acesso ao microfone nas configurações do navegador';
-      document.body.appendChild(t); setTimeout(() => t.remove(), 4000);
-    }
-  };
+    _vozReconhecimento.onerror = (e) => {
+      if (e.error === 'not-allowed') {
+        _vozAtiva = false; _vozParando = false;
+        if (btn) { btn.textContent = '🎙️'; btn.style.background = 'var(--surface2)'; }
+        if (status) status.style.display = 'none';
+        const t = document.createElement('div');
+        t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#E8323C;color:white;border-radius:8px;padding:8px 14px;font-size:11px;font-weight:700;z-index:999;max-width:280px;text-align:center';
+        t.textContent = '❌ Permita o acesso ao microfone nas configurações do navegador';
+        document.body.appendChild(t); setTimeout(() => t.remove(), 4000);
+      }
+    };
 
-  _vozReconhecimento.start();
+    _vozReconhecimento.start();
+  }; // fim iniciarReconhecimento
+
+  // Botão de parar: sinaliza parada manual
+  if (_vozAtiva && _vozReconhecimento) {
+    _vozParando = true;
+    _vozAtiva = false;
+    _vozReconhecimento.stop();
+    return;
+  }
+
+  // Iniciar nova sessão de voz
+  _vozTextoAcumulado = '';
+  _vozParando = false;
+  iniciarReconhecimento();
 }
 
 // ── CONTADOR DE ATDs ─────────────────────
