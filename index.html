@@ -3187,8 +3187,8 @@ function iniciarVoz() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     const t = document.createElement('div');
-    t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#E8323C;color:white;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;z-index:999;white-space:nowrap';
-    t.textContent = '❌ Seu navegador não suporta reconhecimento de voz';
+    t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#E8323C;color:white;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;z-index:999';
+    t.textContent = '❌ Navegador sem suporte a voz';
     document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
     return;
   }
@@ -3197,117 +3197,104 @@ function iniciarVoz() {
   const status = document.getElementById('vozStatus');
   const campo = document.getElementById('anVoz');
 
-  if (_vozAtiva && _vozReconhecimento) {
-    _vozReconhecimento.stop();
+  // PARAR: se estiver ativo, para e processa
+  if (_vozAtiva) {
+    _vozAtiva = false;
+    if (_vozReconhecimento) { try { _vozReconhecimento.stop(); } catch(e) {} }
+    if (btn) { btn.textContent = '🎙️'; btn.style.background = 'var(--surface2)'; btn.style.borderColor = 'var(--border)'; }
+    if (status) status.style.display = 'none';
+    processarTextoVoz(campo ? campo.value.trim() : '');
     return;
   }
 
-  let _vozTextoAcumulado = '';
-  let _vozParando = false;
+  // INICIAR
+  _vozAtiva = true;
+  if (btn) { btn.textContent = '⏹️'; btn.style.background = 'rgba(232,50,60,0.2)'; btn.style.borderColor = 'var(--accent)'; }
+  if (status) status.style.display = 'block';
+  if (campo) { campo.value = ''; campo.placeholder = 'Falando... toque ⏹️ para parar'; }
 
-  const iniciarReconhecimento = () => {
-    _vozReconhecimento = new SpeechRecognition();
-    _vozReconhecimento.lang = 'pt-BR';
-    _vozReconhecimento.continuous = true;
-    _vozReconhecimento.interimResults = true;
+  let finalTexto = '';
 
-    _vozReconhecimento.onstart = () => {
-      _vozAtiva = true;
-      if (btn) { btn.textContent = '⏹️'; btn.style.background = 'rgba(232,50,60,0.2)'; btn.style.borderColor = 'var(--accent)'; }
-      if (status) status.style.display = 'block';
-      if (campo) campo.placeholder = 'Falando... (toque ⏹️ para parar)';
+  function criarReconhecimento() {
+    const rec = new SpeechRecognition();
+    rec.lang = 'pt-BR';
+    rec.continuous = false;
+    rec.interimResults = true;
+
+    rec.onresult = (e) => {
+      let interim = '';
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalTexto += e.results[i][0].transcript + ' ';
+        else interim = e.results[i][0].transcript;
+      }
+      if (campo) campo.value = (finalTexto + interim).trim();
     };
 
-    _vozReconhecimento.onresult = (e) => {
-      let texto = _vozTextoAcumulado;
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) {
-          _vozTextoAcumulado += e.results[i][0].transcript + ' ';
-          texto = _vozTextoAcumulado;
-        } else {
-          texto = _vozTextoAcumulado + e.results[i][0].transcript;
-        }
+    rec.onend = () => {
+      if (_vozAtiva) {
+        // Pausa detectada pelo Android — reiniciar automaticamente
+        try { setTimeout(() => { if (_vozAtiva) criarReconhecimento().start(); }, 200); } catch(e) {}
       }
-      if (campo) campo.value = texto.trim();
     };
 
-    _vozReconhecimento.onend = async () => {
-      // Se não está parando manualmente, reiniciar automaticamente (pausa detectada)
-      if (_vozAtiva && !_vozParando) {
-        try { _vozReconhecimento.start(); return; } catch(e) {}
-      }
-    _vozAtiva = false;
-    if (btn) { btn.textContent = '🎙️'; btn.style.background = 'var(--surface2)'; btn.style.borderColor = 'var(--border)'; }
-    if (status) status.style.display = 'none';
-    const textoFalado = campo ? campo.value.trim() : '';
-    if (!textoFalado) { if (campo) campo.placeholder = 'Toque no microfone e fale...'; return; }
-    // Processar voz com Groq — distribuir nos campos corretos
-    if (campo) { campo.placeholder = 'Processando...'; campo.value = ''; }
-    try {
-      const GROQ_KEY = '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';
-      const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile', max_tokens: 300, temperature: 0,
-          messages: [
-            { role: 'system', content: 'Você é um assistente APH. Extraia dados do paciente do texto falado e retorne APENAS JSON: {"nome":"","sinais":"","comorb":"","queixa":"","meds":""}. nome=nome+idade, sinais=sinais vitais alterados, comorb=doenças prévias, queixa=queixa principal, meds=medicamentos de uso contínuo. Retorne só o JSON.' },
-            { role: 'user', content: textoFalado }
-          ]
-        })
-      });
-      const data = await resp.json();
-      const raw = (data?.choices?.[0]?.message?.content || '').trim();
-      let clean = raw.replace(/```[a-z]*\s*/gi,'').replace(/```/g,'').trim();
-      const fb = clean.indexOf('{'), lb = clean.lastIndexOf('}');
-      if (fb >= 0 && lb > fb) {
-        const d = JSON.parse(clean.slice(fb, lb+1));
-        if (d.nome)   { const el = document.getElementById('anNome');         if (el) { el.value = d.nome;   _campoPaciente.nome   = d.nome; } }
-        if (d.sinais) { const el = document.getElementById('anSinais');       if (el) { el.value = d.sinais; _campoPaciente.sinais = d.sinais; } }
-        if (d.comorb) { const el = document.getElementById('anComorbidades'); if (el) { el.value = d.comorb; _campoPaciente.comorb = d.comorb; } }
-        if (d.queixa) { const el = document.getElementById('anQueixa');       if (el) { el.value = d.queixa; _campoPaciente.queixa = d.queixa; } }
-        if (d.meds)   { const el = document.getElementById('anMedsContinuos');if (el) { el.value = d.meds;   _campoPaciente.medsContinuos = d.meds; } }
-        if (campo) campo.placeholder = '✅ Campos preenchidos! Toque para usar de novo.';
-        // Toast confirmação
-        const t = document.createElement('div');
-        t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#22C97A;color:white;border-radius:8px;padding:10px 16px;font-size:12px;font-weight:700;z-index:999;text-align:center;max-width:280px';
-        t.textContent = '✅ Dados preenchidos por voz!';
-        document.body.appendChild(t); setTimeout(() => t.remove(), 2500);
-      }
-    } catch(e) {
-      if (campo) { campo.value = textoFalado; campo.placeholder = 'Toque no microfone e fale...'; }
-      _campoPaciente.voz = textoFalado;
-    }
-  };
-
-    _vozReconhecimento.onerror = (e) => {
-      if (e.error === 'not-allowed') {
-        _vozAtiva = false; _vozParando = false;
+    rec.onerror = (ev) => {
+      if (ev.error === 'not-allowed') {
+        _vozAtiva = false;
         if (btn) { btn.textContent = '🎙️'; btn.style.background = 'var(--surface2)'; }
         if (status) status.style.display = 'none';
         const t = document.createElement('div');
         t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#E8323C;color:white;border-radius:8px;padding:8px 14px;font-size:11px;font-weight:700;z-index:999;max-width:280px;text-align:center';
-        t.textContent = '❌ Permita o acesso ao microfone nas configurações do navegador';
+        t.textContent = '❌ Permita o microfone nas configurações do navegador';
         document.body.appendChild(t); setTimeout(() => t.remove(), 4000);
       }
     };
 
-    _vozReconhecimento.start();
-  }; // fim iniciarReconhecimento
-
-  // Botão de parar: sinaliza parada manual
-  if (_vozAtiva && _vozReconhecimento) {
-    _vozParando = true;
-    _vozAtiva = false;
-    _vozReconhecimento.stop();
-    return;
+    _vozReconhecimento = rec;
+    return rec;
   }
 
-  // Iniciar nova sessão de voz
-  _vozTextoAcumulado = '';
-  _vozParando = false;
-  iniciarReconhecimento();
+  criarReconhecimento().start();
 }
+
+async function processarTextoVoz(textoFalado) {
+  const campo = document.getElementById('anVoz');
+  if (!textoFalado) { if (campo) campo.placeholder = 'Toque no microfone e fale...'; return; }
+  if (campo) { campo.placeholder = 'Processando...'; campo.value = ''; }
+  try {
+    const GROQ_KEY = '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';
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile', max_tokens: 300, temperature: 0,
+        messages: [
+          { role: 'system', content: 'Você é um assistente APH. Extraia dados do paciente do texto falado e retorne APENAS JSON: {"nome":"","sinais":"","comorb":"","queixa":"","meds":""}. nome=nome+idade, sinais=sinais vitais alterados, comorb=doenças prévias, queixa=queixa principal, meds=medicamentos de uso contínuo. Retorne só o JSON.' },
+          { role: 'user', content: textoFalado }
+        ]
+      })
+    });
+    const data = await resp.json();
+    const raw = (data?.choices?.[0]?.message?.content || '').trim();
+    let clean = raw.replace(/```[a-z]*\s*/gi,'').replace(/```/g,'').trim();
+    const fb = clean.indexOf('{'), lb = clean.lastIndexOf('}');
+    if (fb >= 0 && lb > fb) {
+      const d = JSON.parse(clean.slice(fb, lb+1));
+      if (d.nome)   { const el = document.getElementById('anNome');          if (el) { el.value = d.nome;   _campoPaciente.nome   = d.nome; } }
+      if (d.sinais) { const el = document.getElementById('anSinais');        if (el) { el.value = d.sinais; _campoPaciente.sinais = d.sinais; } }
+      if (d.comorb) { const el = document.getElementById('anComorbidades');  if (el) { el.value = d.comorb; _campoPaciente.comorb = d.comorb; } }
+      if (d.queixa) { const el = document.getElementById('anQueixa');        if (el) { el.value = d.queixa; _campoPaciente.queixa = d.queixa; } }
+      if (d.meds)   { const el = document.getElementById('anMedsContinuos'); if (el) { el.value = d.meds;   _campoPaciente.medsContinuos = d.meds; } }
+      if (campo) campo.placeholder = '✅ Preenchido! Toque para usar de novo.';
+      const t = document.createElement('div');
+      t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#22C97A;color:white;border-radius:8px;padding:10px 16px;font-size:12px;font-weight:700;z-index:999;text-align:center;max-width:280px';
+      t.textContent = '✅ Dados preenchidos por voz!';
+      document.body.appendChild(t); setTimeout(() => t.remove(), 2500);
+    }
+  } catch(e) {
+    if (campo) { campo.value = textoFalado; campo.placeholder = 'Toque no microfone e fale...'; }
+  }
+}
+
 
 // ── CONTADOR DE ATDs ─────────────────────
 function atualizarContadorAtd() {
