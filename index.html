@@ -3268,7 +3268,7 @@ async function processarTextoVoz(textoFalado) {
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile', max_tokens: 300, temperature: 0,
         messages: [
-          { role: 'system', content: 'Você é um assistente APH. Extraia dados do paciente do texto falado e retorne APENAS JSON: {"nome":"","sinais":"","comorb":"","queixa":"","meds":""}. nome=nome+idade, sinais=sinais vitais alterados, comorb=doenças prévias, queixa=queixa principal, meds=medicamentos de uso contínuo. Retorne só o JSON.' },
+          { role: 'system', content: 'Você é assistente de triagem APH. Extraia dados do texto falado e retorne APENAS JSON: {"nome":"","sinais":"","comorb":"","queixa":"","meds":""}. REGRAS: nome=primeiro nome + vírgula + idade em número (ex: Maria, 80). sinais=APENAS sinais vitais com valores numéricos (ex: PA 200x120, SpO2 88%, FC 130). NUNCA coloque idade em sinais. comorb=doenças prévias separadas por vírgula, use siglas: hipertensão=HAS, diabetes=DM, insuficiência cardíaca=ICC, DPOC=DPOC. queixa=queixa principal (ex: Dor no peito). meds=medicamentos de uso contínuo separados por vírgula. Se um campo não foi mencionado deixe vazio. Retorne APENAS o JSON.' },
           { role: 'user', content: textoFalado }
         ]
       })
