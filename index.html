@@ -3215,45 +3215,43 @@ function iniciarVoz() {
 
   let finalTexto = '';
 
-  function criarReconhecimento() {
-    const rec = new SpeechRecognition();
-    rec.lang = 'pt-BR';
-    rec.continuous = false;
-    rec.interimResults = true;
+  const rec = new SpeechRecognition();
+  rec.lang = 'pt-BR';
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.maxAlternatives = 1;
+  _vozReconhecimento = rec;
 
-    rec.onresult = (e) => {
-      let interim = '';
-      for (let i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) finalTexto += e.results[i][0].transcript + ' ';
-        else interim = e.results[i][0].transcript;
-      }
-      if (campo) campo.value = (finalTexto + interim).trim();
-    };
+  rec.onresult = (e) => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalTexto += e.results[i][0].transcript + ' ';
+      else interim = e.results[i][0].transcript;
+    }
+    if (campo) campo.value = (finalTexto + interim).trim();
+  };
 
-    rec.onend = () => {
-      if (_vozAtiva) {
-        // Pausa detectada pelo Android — reiniciar automaticamente
-        try { setTimeout(() => { if (_vozAtiva) criarReconhecimento().start(); }, 200); } catch(e) {}
-      }
-    };
+  rec.onerror = (ev) => {
+    if (ev.error === 'network' || ev.error === 'aborted') return; // ignorar erros temporários
+    if (ev.error === 'not-allowed') {
+      _vozAtiva = false;
+      if (btn) { btn.textContent = '🎙️'; btn.style.background = 'var(--surface2)'; }
+      if (status) status.style.display = 'none';
+      const t = document.createElement('div');
+      t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#E8323C;color:white;border-radius:8px;padding:8px 14px;font-size:11px;font-weight:700;z-index:999;max-width:280px;text-align:center';
+      t.textContent = '❌ Permita o microfone nas configurações do navegador';
+      document.body.appendChild(t); setTimeout(() => t.remove(), 4000);
+    }
+  };
 
-    rec.onerror = (ev) => {
-      if (ev.error === 'not-allowed') {
-        _vozAtiva = false;
-        if (btn) { btn.textContent = '🎙️'; btn.style.background = 'var(--surface2)'; }
-        if (status) status.style.display = 'none';
-        const t = document.createElement('div');
-        t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#E8323C;color:white;border-radius:8px;padding:8px 14px;font-size:11px;font-weight:700;z-index:999;max-width:280px;text-align:center';
-        t.textContent = '❌ Permita o microfone nas configurações do navegador';
-        document.body.appendChild(t); setTimeout(() => t.remove(), 4000);
-      }
-    };
+  rec.onend = () => {
+    // Se ainda ativo e não foi parado manualmente, reiniciar
+    if (_vozAtiva) {
+      try { setTimeout(() => { if (_vozAtiva) rec.start(); }, 100); } catch(e) {}
+    }
+  };
 
-    _vozReconhecimento = rec;
-    return rec;
-  }
-
-  criarReconhecimento().start();
+  rec.start();
 }
 
 async function processarTextoVoz(textoFalado) {
@@ -3268,8 +3266,7 @@ async function processarTextoVoz(textoFalado) {
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile', max_tokens: 300, temperature: 0,
         messages: [
-          { role: 'system', content: 'Você é assistente de triagem APH. Extraia dados do texto falado e retorne APENAS JSON: {"nome":"","sinais":"","comorb":"","queixa":"","meds":""}. REGRAS: nome=primeiro nome + vírgula + idade em número (ex: Maria, 80). sinais=APENAS sinais vitais com valores numéricos (ex: PA 200x120, SpO2 88%, FC 130). NUNCA coloque idade em sinais. comorb=doenças prévias separadas por vírgula, use siglas: hipertensão=HAS, diabetes=DM, insuficiência cardíaca=ICC, DPOC=DPOC. queixa=queixa principal (ex: Dor no peito). meds=medicamentos de uso contínuo separados por vírgula. Se um campo não foi mencionado deixe vazio. Retorne APENAS o JSON.' },
-          { role: 'user', content: textoFalado }
+                    { role: 'system', content: 'Assistente APH brasileiro. Extraia dados e retorne APENAS JSON: {"nome":"","sinais":"","comorb":"","queixa":"","meds":""}. REGRAS: (1)nome: nome+virgula+idade ex: Maria, 80. (2)sinais: APENAS sinais vitais numericos ex: PA 200x120, SpO2 88%. NUNCA sintomas aqui. (3)comorb: doencas como SIGLA (Nome). Banco: hipertensao=HAS (Hipertensao Arterial Sistemica); insuf cardiaca=ICC (Insuficiencia Cardiaca Congestiva); infarto=IAM; fibrilacao atrial=FA; DPOC/bronquite=DPOC; AVC/derrame=AVC; diabetes=DM (Diabetes Mellitus); insuf renal=IRC; epilepsia=Epilepsia; asma=Asma; depressao=Depressao; cancer=Cancer; hipotireoidismo=Hipotireoidismo; obesidade=Obesidade; colesterol alto=Dislipidemia; hemofilia=Hemofilia; artrite=Artrite; HIV=HIV. (4)queixa: queixa principal maiuscula. (5)meds: medicamentos maiusculos separados por virgula. Se sigla: HCT=HCT (Hidroclorotiazida); AAS=AAS; NPH=Insulina NPH. Retorne APENAS JSON valido.' },
         ]
       })
     });
