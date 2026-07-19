@@ -283,19 +283,15 @@
             Nome/Idade &nbsp;—&nbsp; Sinal Vital Alterado<br>
             Doenças Prévias &nbsp;—&nbsp; Queixa Principal
           </span>
-          <div style="display:flex;align-items:flex-start;gap:6px">
-            <textarea id="anVoz" rows="3" placeholder="Ex: Nome/Idade: Maria, 80 — Sinais: PA 200x120 — Doenças: HAS, DM — Queixa: Dor no peito&#10;&#10;Ou toque no 🎙️ e fale os dados" oninput="_campoPaciente.voz=this.value" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:Inter,sans-serif;font-size:12px;outline:none;resize:none;line-height:1.6;margin-bottom:0"></textarea>
-            <button onclick="iniciarVoz()" id="btnMicrofone" title="Iniciar ditado por voz" style="flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;cursor:pointer;font-size:20px;line-height:1;margin-top:0">🎙️</button>
-          </div>
-          <div id="vozStatus" style="font-size:10px;color:var(--accent);margin-top:3px;display:none">🔴 Gravando... toque ⏹️ para parar</div>
+          <textarea id="anVoz" rows="3" placeholder="Ex: Nome/Idade: Maria, 80 — Sinais: PA 200x120 — Doenças: HAS, DM — Queixa: Dor no peito" oninput="_campoPaciente.voz=this.value" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:Inter,sans-serif;font-size:12px;outline:none;resize:none;line-height:1.6"></textarea>
         </div>
       </div>
       <div class="pac-row">
         <div class="pac-field">
           <span class="pac-lbl">💊 Medicamentos de Uso Contínuo</span>
-          <div style="display:flex;align-items:center;gap:6px">
-            <input class="pac-input" id="anMedsContinuos" type="text" placeholder="Ex: Losartana, Metformina, AAS..." oninput="_campoPaciente.medsContinuos=this.value" style="flex:1;margin-bottom:0">
-            <button onclick="abrirCamera()" title="Fotografar receita ou tela" style="flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px;line-height:1">📸</button>
+          <div style="position:relative">
+            <textarea id="anMedsContinuos" rows="3" placeholder="Ex: Losartana, Metformina, AAS, Hidroclorotiazida..." oninput="_campoPaciente.medsContinuos=this.value" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 46px 10px 12px;color:var(--text);font-family:Inter,sans-serif;font-size:12px;outline:none;resize:none;line-height:1.6"></textarea>
+            <button onclick="abrirCamera()" title="Fotografar receita ou tela" style="position:absolute;bottom:8px;right:8px;background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:6px 8px;cursor:pointer;font-size:18px;line-height:1">📸</button>
             <input type="file" id="anFotoInput" accept="image/*" capture="camera" style="display:none" onchange="anFotoSelecionada(this)">
           </div>
           <div id="anPreviewGrid" style="display:none;margin-top:6px">
@@ -307,7 +303,6 @@
           </div>
         </div>
       </div>
-      <!-- Campos ocultos mantidos para compatibilidade com o resto do código -->
       <input type="hidden" id="anNome">
       <input type="hidden" id="anSinais">
       <input type="hidden" id="anComorbidades">
@@ -1390,17 +1385,13 @@ function buildFormularioAnalise() {
           Nome/Idade &nbsp;—&nbsp; Sinal Vital Alterado<br>
           Doenças Prévias &nbsp;—&nbsp; Queixa Principal
         </span>
-        <div style="display:flex;align-items:flex-start;gap:6px">
-          <textarea id="anVoz" rows="3" placeholder="Ex: Nome/Idade: Maria, 80 — Sinais: PA 200x120 — Doenças: HAS, DM — Queixa: Dor no peito" oninput="_campoPaciente.voz=this.value" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:Inter,sans-serif;font-size:12px;outline:none;resize:none;line-height:1.6;margin-bottom:0"></textarea>
-          <button onclick="iniciarVoz()" id="btnMicrofone" title="Iniciar ditado por voz" style="flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;cursor:pointer;font-size:20px;line-height:1">🎙️</button>
-        </div>
-        <div id="vozStatus" style="font-size:10px;color:var(--accent);margin-top:3px;display:none">🔴 Gravando... toque ⏹️ para parar</div>
+        <textarea id="anVoz" rows="3" placeholder="Ex: Nome/Idade: Maria, 80 — Sinais: PA 200x120 — Doenças: HAS, DM — Queixa: Dor no peito" oninput="_campoPaciente.voz=this.value" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:Inter,sans-serif;font-size:12px;outline:none;resize:none;line-height:1.6"></textarea>
       </div></div>
       <div class="pac-row"><div class="pac-field">
         <span class="pac-lbl">💊 Medicamentos de Uso Contínuo</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <input class="pac-input" id="anMedsContinuos" type="text" placeholder="Ex: Losartana, Metformina, AAS..." oninput="_campoPaciente.medsContinuos=this.value" style="flex:1;margin-bottom:0">
-          <button onclick="abrirCamera()" title="Fotografar receita ou tela" style="flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px;line-height:1">📸</button>
+        <div style="position:relative">
+          <textarea id="anMedsContinuos" rows="3" placeholder="Ex: Losartana, Metformina, AAS, Hidroclorotiazida..." oninput="_campoPaciente.medsContinuos=this.value" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 46px 10px 12px;color:var(--text);font-family:Inter,sans-serif;font-size:12px;outline:none;resize:none;line-height:1.6"></textarea>
+          <button onclick="abrirCamera()" title="Fotografar receita ou tela" style="position:absolute;bottom:8px;right:8px;background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:6px 8px;cursor:pointer;font-size:18px;line-height:1">📸</button>
           <input type="file" id="anFotoInput" accept="image/*" capture="camera" style="display:none" onchange="anFotoSelecionada(this)">
         </div>
         <div id="anPreviewGrid" style="display:none;margin-top:6px">
@@ -2637,30 +2628,54 @@ async function rodarAnalise() {
       return;
     }
 
-    const pacLabel = nomeRaw || '';
+    // Extrair dados do texto livre para exibição organizada
+    const vozTextoResult = vozTexto || '';
+    const extrairCampo = (texto, ...keys) => {
+      for (const k of keys) {
+        const m = texto.match(new RegExp(k + '[:\\s]+([^\\n;—\\-]+)', 'i'));
+        if (m) return m[1].trim();
+      }
+      return '';
+    };
+    const pacNomeExib   = extrairCampo(vozTextoResult, 'Nome/Idade', 'Nome', 'Paciente') || nomeRaw || '';
+    const pacSinaisExib = extrairCampo(vozTextoResult, 'Sinais? [Vv]itais?', 'Sinais?', 'PA') || sinaisVal || '';
+    const pacDoencaExib = extrairCampo(vozTextoResult, 'Doen[çc]as? Pr[eé]vias?', 'Doen[çc]as?', 'Hist[oó]rico') || comorbVal || '';
+    const pacQueixaExib = extrairCampo(vozTextoResult, 'Queixa [Pp]rincipal', 'Queixa', 'Sintoma') || queixaVal || '';
 
-    // Filtro de segurança: remover de classes_medicamentos qualquer med que não está no campo digitado
+    // Filtro de segurança: manter apenas meds que aparecem no campo digitado
     const medsCont2 = (document.getElementById('anMedsContinuos') || {value:''}).value.trim().toLowerCase();
     if (d.classes_medicamentos && d.classes_medicamentos.length && medsCont2) {
-      // Manter apenas classes que têm pelo menos um item correspondente ao que foi digitado
+      // Extrair palavras significativas do campo de meds (min 3 letras, sem stopwords)
+      const stopwords = ['com', 'para', 'que', 'uso', 'por', 'via', 'oral', 'comprimido'];
+      const palavrasMeds = medsCont2.split(/[,\s\/]+/)
+        .map(p => p.replace(/[^a-z]/g,''))
+        .filter(p => p.length >= 3 && !stopwords.includes(p));
       d.classes_medicamentos = d.classes_medicamentos.map(c => {
         const itensFiltrados = c.itens.filter(item => {
-          const itemLower = item.toLowerCase();
-          // Verificar se alguma palavra do campo digitado aparece no item
-          const palavrasMeds = medsCont2.split(/[,\s]+/).filter(p => p.length > 2);
-          return palavrasMeds.some(p => itemLower.includes(p));
+          const itemNorm = item.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+          return palavrasMeds.some(p => {
+            const pNorm = p.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+            // Match parcial: "losartan" encontra "Losartana"
+            return itemNorm.includes(pNorm) || pNorm.includes(itemNorm.split(' ')[0].substring(0,5));
+          });
         });
         return { ...c, itens: itensFiltrados };
       }).filter(c => c.itens.length > 0);
     } else if (!medsCont2) {
-      // Se não tem nada digitado, não mostrar medicamentos identificados
       d.classes_medicamentos = [];
     }
 
     let html = '';
 
-    if (pacLabel) {
-      html += `<div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">👤 ${pacLabel}</div>`;
+    // Cabeçalho do paciente organizado
+    if (pacNomeExib || pacSinaisExib || pacDoencaExib || pacQueixaExib) {
+      let pacHtml = '<div style="display:flex;flex-direction:column;gap:2px;margin-bottom:12px;padding:10px 12px;background:var(--surface2);border-radius:10px;border-left:3px solid var(--blue)">';
+      if (pacNomeExib)   pacHtml += `<div style="font-size:13px;font-weight:800;color:var(--text)">👤 ${pacNomeExib}</div>`;
+      if (pacSinaisExib) pacHtml += `<div style="font-size:11px;color:var(--text-muted);margin-top:2px"><span style="color:var(--yellow);font-weight:700">Sinal Vital Alterado:</span> ${pacSinaisExib}</div>`;
+      if (pacDoencaExib) pacHtml += `<div style="font-size:11px;color:var(--text-muted)"><span style="color:var(--text);font-weight:700">Doenças Prévias:</span> ${pacDoencaExib}</div>`;
+      if (pacQueixaExib) pacHtml += `<div style="font-size:11px;color:var(--text-muted)"><span style="color:var(--text);font-weight:700">Queixa Principal:</span> ${pacQueixaExib}</div>`;
+      pacHtml += '</div>';
+      html += pacHtml;
     }
 
     // 1. Medicamentos por classe (da foto)
