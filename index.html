@@ -294,23 +294,29 @@
       <div class="pac-row">
         <div class="pac-field">
           <span class="pac-lbl">💊 Medicamentos de Uso Contínuo</span>
-          <input class="pac-input" id="anMedsContinuos" type="text" placeholder="Ex: Losartana, Metformina, AAS..." oninput="_campoPaciente.medsContinuos=this.value">
-          <div style="margin-top:6px;display:flex;align-items:center;gap:8px">
-            <button onclick="abrirCamera()" style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px dashed var(--border);border-radius:7px;padding:8px 12px;cursor:pointer;font-size:11px;color:var(--text-muted);font-family:Inter,sans-serif">
-              <span>📸</span>
-              <span id="anFotoTxt">Adicionar foto</span>
-            </button>
-            <span style="font-size:10px;color:var(--text-dim)">cada toque adiciona uma imagem</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input class="pac-input" id="anMedsContinuos" type="text" placeholder="Ex: Losartana, Metformina, AAS..." oninput="_campoPaciente.medsContinuos=this.value" style="flex:1;margin-bottom:0">
+            <button onclick="abrirCamera()" title="Fotografar receita ou tela" style="flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px;line-height:1">📸</button>
+            <input type="file" id="anFotoInput" accept="image/*" capture="camera" style="display:none" onchange="anFotoSelecionada(this)">
           </div>
-          <input type="file" id="anFotoInput" accept="image/*" capture="camera" style="display:none" onchange="anFotoSelecionada(this)">
+          <div id="anPreviewGrid" style="display:none;margin-top:6px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <span id="anFotoCount" style="font-size:11px;font-weight:700;color:var(--green)"></span>
+              <button onclick="limparFotos()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text-dim);font-size:11px;padding:3px 8px;cursor:pointer;font-family:Inter,sans-serif">✕</button>
+            </div>
+            <div id="anImgGrid" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+          </div>
         </div>
       </div>
-      <div id="anPreviewGrid" style="display:none;margin-top:8px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-          <span id="anFotoCount" style="font-size:11px;font-weight:700;color:var(--green)"></span>
-          <button onclick="limparFotos()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text-dim);font-size:11px;padding:3px 8px;cursor:pointer;font-family:Inter,sans-serif">✕ Limpar tudo</button>
+      <div class="pac-row">
+        <div class="pac-field">
+          <span class="pac-lbl">🎙️ Observações por Voz</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input class="pac-input" id="anVoz" type="text" placeholder="Toque no microfone e fale..." readonly style="flex:1;margin-bottom:0;cursor:pointer" onclick="iniciarVoz()">
+            <button onclick="iniciarVoz()" id="btnMicrofone" title="Falar observações" style="flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px;line-height:1">🎙️</button>
+          </div>
+          <div id="vozStatus" style="font-size:10px;color:var(--accent);margin-top:3px;display:none">🔴 Gravando... toque novamente para parar</div>
         </div>
-        <div id="anImgGrid" style="display:flex;flex-wrap:wrap;gap:6px"></div>
       </div>
     </div>
     <button id="anBtn" onclick="rodarAnalise()" style="width:100%;padding:12px;border-radius:9px;border:none;background:var(--accent);color:white;font-family:Inter,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px">🔬 Analisar Paciente</button>
@@ -1397,22 +1403,27 @@ function buildFormularioAnalise() {
       </div></div>
       <div class="pac-row"><div class="pac-field">
         <span class="pac-lbl">💊 Medicamentos de Uso Contínuo</span>
-        <input class="pac-input" id="anMedsContinuos" type="text" placeholder="Ex: Losartana, Metformina, AAS..." oninput="_campoPaciente.medsContinuos=this.value">
-        <div style="margin-top:6px;display:flex;align-items:center;gap:8px">
-          <button onclick="abrirCamera()" style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px dashed var(--border);border-radius:7px;padding:8px 12px;cursor:pointer;font-size:11px;color:var(--text-muted);font-family:Inter,sans-serif">
-            <span>📸</span><span id="anFotoTxt">Adicionar foto</span>
-          </button>
-          <span style="font-size:10px;color:var(--text-dim)">cada toque adiciona uma imagem</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input class="pac-input" id="anMedsContinuos" type="text" placeholder="Ex: Losartana, Metformina, AAS..." oninput="_campoPaciente.medsContinuos=this.value" style="flex:1;margin-bottom:0">
+          <button onclick="abrirCamera()" id="btnFotoInline" title="Fotografar receita ou tela de medicamentos" style="flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px;line-height:1">📸</button>
+          <input type="file" id="anFotoInput" accept="image/*" capture="camera" style="display:none" onchange="anFotoSelecionada(this)">
         </div>
-        <input type="file" id="anFotoInput" accept="image/*" capture="camera" style="display:none" onchange="anFotoSelecionada(this)">
+        <div id="anPreviewGrid" style="display:none;margin-top:6px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <span id="anFotoCount" style="font-size:11px;font-weight:700;color:var(--green)"></span>
+            <button onclick="limparFotos()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text-dim);font-size:11px;padding:3px 8px;cursor:pointer;font-family:Inter,sans-serif">✕</button>
+          </div>
+          <div id="anImgGrid" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
       </div></div>
-      <div id="anPreviewGrid" style="display:none;margin-top:8px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-          <span id="anFotoCount" style="font-size:11px;font-weight:700;color:var(--green)"></span>
-          <button onclick="limparFotos()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text-dim);font-size:11px;padding:3px 8px;cursor:pointer;font-family:Inter,sans-serif">✕ Limpar tudo</button>
+      <div class="pac-row"><div class="pac-field">
+        <span class="pac-lbl">🎙️ Observações por Voz</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input class="pac-input" id="anVoz" type="text" placeholder="Toque no microfone e fale..." readonly style="flex:1;margin-bottom:0;cursor:pointer" onclick="iniciarVoz()">
+          <button onclick="iniciarVoz()" id="btnMicrofone" title="Falar observações" style="flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px;line-height:1">🎙️</button>
         </div>
-        <div id="anImgGrid" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-      </div>
+        <div id="vozStatus" style="font-size:10px;color:var(--text-dim);margin-top:3px;display:none">🔴 Gravando... toque novamente para parar</div>
+      </div></div>
     </div>
     <button id="anBtn" onclick="rodarAnalise()" style="width:100%;padding:12px;border-radius:9px;border:none;background:var(--accent);color:white;font-family:Inter,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px">🔬 Analisar Paciente</button>
     <div id="anResult"></div>`;
@@ -2223,10 +2234,10 @@ FORMATO OBRIGATÓRIO:
   ],
   "hipotese_pontos": ["Ponto 1 curto e direto", "Ponto 2 curto e direto", "Ponto 3 se necessário"],
   "hipotese_detalhada": "Explicação clínica objetiva: mecanismo e atenções especiais — máximo 3 linhas.",
-  "medicacoes_recomendadas": [
-    { "nome": "Nome EXATO da maleta", "motivo": "Indicação objetiva em 1 linha" }
+  "alertas_clinicos": [
+    { "medicamento": "Nome do medicamento ou classe", "motivo": "Por que evitar ou ter cautela neste paciente específico", "gravidade": "grave" }
   ],
-  "alerta_rotina": "Se algum medicamento de rotina pode estar causando ou agravando o problema atual, explique em 1-2 linhas. Ex: Metoprolol pode estar causando a bradicardia. Se não há relação, retorne null."
+  "alerta_rotina": "Se algum medicamento de uso contínuo do paciente pode estar causando ou agravando o problema atual, explique em 1-2 linhas. Se não há relação, retorne null."
 }
 
 ÍCONES E CLASSES FARMACOLÓGICAS (use exatamente este mapeamento):
@@ -2263,18 +2274,17 @@ REGRAS CRÍTICAS:
 - cada item: "Nome — Ação principal" em uma linha curta
 - hipotese_pontos: SEMPRE 2-3 pontos diagnósticos baseados no que foi informado. NUNCA diga "dados insuficientes". Com queixa "pressão alta" → ["Crise hipertensiva", "Avaliar urgência vs emergência hipertensiva"]. Máximo 1 linha por ponto.
 - hipotese_detalhada: explicação completa para aprofundar
-- CRÍTICO: hipotese_pontos e medicacoes_recomendadas NUNCA podem estar vazios. Sempre gere com base no que foi informado.
-  * Compare caractere por caractere
-  * Se o medicamento NÃO estiver na lista, NÃO inclua — nunca invente nomes
-  * Máximo 5 medicações; ordem de prioridade clínica
-  * Para hipertensão: verifique Captopril, Clonidina, Metoprolol na lista
-  * Para náuseas: verifique Ondansetrona, Metoclopramida, Prometazina na lista
-  * Para dor: verifique Dipirona, Paracetamol, Tramadol na lista
+- CRÍTICO: hipotese_pontos NUNCA pode estar vazio. Sempre gere com base no que foi informado.
+- alertas_clinicos: liste medicamentos ou classes que devem ser EVITADOS ou usados com CAUTELA para este paciente específico, considerando suas comorbidades, medicamentos de uso contínuo e quadro atual. Exemplos:
+  * Paciente hemofílico ou com AAS/Clopidogrel → alertar sobre AINEs (Cetoprofeno, Ibuprofeno, Toragesic): risco de sangramento grave
+  * Paciente asmático ou com DPOC → alertar sobre Beta-bloqueadores (Metoprolol, Propranolol): broncoespasmo
+  * Paciente com insuficiência renal ou idoso → alertar sobre AINEs: nefrotoxicidade
+  * Paciente com Morfina/Opioide em uso → alertar sobre dupla opioidação
+  * Paciente com Digoxina/Deslanosídeo → alertar sobre Furosemida: hipocalemia potencializa toxicidade digitálica
+  * Paciente com HAS descontrolada → alertar sobre Vasoconstritores (Adrenalina com epinefrina): crise hipertensiva
+  * Se não há contraindicações relevantes, retorne alertas_clinicos como array vazio []
+  * gravidade: "grave" (risco de vida) ou "moderada" (cautela)
 - Baseie-se em: Protocolo Einstein, ANVISA, COFEN, AHA/ILCOR, Micromedex
-
-REGRA CLÍNICA ESSENCIAL — MEDICAMENTOS DE USO CONTÍNUO:
-Se o paciente já usa cronicamente um medicamento, NÃO recomende esse mesmo nas medicacoes_recomendadas. Priorize alternativas de mecanismo diferente. Use alerta_rotina para explicar.
-Exemplos: Captopril em uso → prefira Clonidina. Furosemida em uso → avaliar outra abordagem. Metoprolol em uso → avaliar Amiodarona se arritmia.
 
 RECONHECIMENTO DE MEDICAMENTOS:
 Interprete variações fonéticas: "forchiga"/"forsiga" → Forxiga (dapagliflozina); "glifage"/"glifagem" → Glifage (metformina); "clopidroguel" → Clopidogrel; "lozartana" → Losartana; "criptopril" → Captopril.`
@@ -2367,7 +2377,7 @@ function limparFotos() {
   _anFotos = [];
   document.getElementById('anImgGrid').innerHTML = '';
   document.getElementById('anPreviewGrid').style.display = 'none';
-  document.getElementById('anFotoTxt').textContent = 'Tocar para adicionar foto';
+  const _ft1 = document.getElementById('anFotoTxt'); if (_ft1) _ft1.textContent = 'Tocar para adicionar foto';
 }
 
 function removerFoto(idx) {
@@ -2379,13 +2389,13 @@ function renderThumbs() {
   const grid = document.getElementById('anImgGrid');
   if (!_anFotos.length) {
     document.getElementById('anPreviewGrid').style.display = 'none';
-    document.getElementById('anFotoTxt').textContent = 'Tocar para adicionar foto';
+    const _ft1 = document.getElementById('anFotoTxt'); if (_ft1) _ft1.textContent = 'Tocar para adicionar foto';
     return;
   }
   document.getElementById('anPreviewGrid').style.display = 'block';
   const n = _anFotos.length;
   document.getElementById('anFotoCount').textContent = `${n} foto${n > 1 ? 's' : ''} adicionada${n > 1 ? 's' : ''}`;
-  document.getElementById('anFotoTxt').textContent = `+ Adicionar mais foto`;
+  const _ft2 = document.getElementById('anFotoTxt'); if (_ft2) _ft2.textContent = '+ Adicionar mais foto';
   grid.innerHTML = _anFotos.map((f, i) => `
     <div style="position:relative;width:calc(33% - 4px)">
       <img src="data:${f.mime};base64,${f.base64}" style="width:100%;height:70px;object-fit:cover;border-radius:6px;border:1px solid var(--border)">
@@ -2579,6 +2589,8 @@ async function rodarAnalise() {
     const medsCont = (document.getElementById('anMedsContinuos') || {value:''}).value.trim();
     if (medsCont) textPrompt += `Medicamentos de uso contínuo do paciente: ${medsCont}\nIMPORTANTE: analise se algum desses medicamentos de rotina pode estar causando, agravando ou interagindo com o problema atual.\nATENÇÃO CRÍTICA: O campo classes_medicamentos deve conter EXATAMENTE estes medicamentos listados acima e NENHUM OUTRO. Não invente, não adicione, não sugira outros medicamentos nesse campo.\n`;
     if (!_anFotos.length && !medsCont) textPrompt += `(Sem medicamentos de uso contínuo informados. Retorne classes_medicamentos como array vazio [])`;
+    const vozObs = (document.getElementById('anVoz') || {value:''}).value.trim() || _campoPaciente.voz || '';
+    if (vozObs) textPrompt += `\nObservações adicionais do socorrista (por voz): ${vozObs}`;
     userContent.push({ type: 'text', text: textPrompt });
 
     // Montar conteúdo para Groq (texto apenas — imagens via OCR separado)
@@ -2688,33 +2700,26 @@ async function rodarAnalise() {
       </div>`;
     }
 
-    // 4. Medicações recomendadas da maleta
-    if (d.medicacoes_recomendadas && d.medicacoes_recomendadas.length) {
-      // Guardar lista de recomendadas para uso no botão
-      window._recsParaVerDetalhe = d.medicacoes_recomendadas;
-      const itens = d.medicacoes_recomendadas.map((m, i) => {
-        const nome_med = m.nome || m;
-        const motivo = m.motivo || '';
-        const alerta = checarContraindicacoes(nome_med);
-        const nomeSafe = nome_med.replace(/'/g, "\\'");
-        return `<div style="padding:8px 0;border-bottom:1px solid rgba(34,201,122,0.15);${i===d.medicacoes_recomendadas.length-1?'border-bottom:none':''}">
-          <div style="display:flex;align-items:center;gap:8px">
-            <input type="checkbox" id="rec_${i}" data-nome="${nome_med}" style="margin-top:0;accent-color:var(--green);width:18px;height:18px;flex-shrink:0" onchange="atualizarBtnRecs()">
-            <div style="flex:1">
-              <div style="font-weight:700;color:var(--blue);font-size:13px">${nome_med}</div>
-              ${motivo ? `<div style="font-size:12px;color:var(--text);margin-top:2px">${motivo}</div>` : ''}
-              ${alerta ? `<div style="font-size:11px;color:#F5C842;margin-top:4px;background:rgba(245,200,66,0.08);border:1px solid rgba(245,200,66,0.3);border-radius:5px;padding:4px 7px">${alerta}</div>` : ''}
-            </div>
-            <button onclick="verUmaMedicacao('${nomeSafe}')" style="background:rgba(59,155,232,0.15);border:1px solid rgba(59,155,232,0.4);border-radius:6px;color:var(--blue);font-size:11px;font-weight:700;padding:5px 9px;cursor:pointer;flex-shrink:0;font-family:Inter,sans-serif">Ver</button>
-          </div>
-        </div>`;
+    // 4. Alertas clínicos — medicamentos a evitar neste paciente
+    if (d.alertas_clinicos && d.alertas_clinicos.length) {
+      const itensAlertas = d.alertas_clinicos.map(a => {
+        const isGrave = (a.gravidade || '').toLowerCase() === 'grave';
+        const cor = isGrave ? '#E8323C' : '#F5C842';
+        const bg  = isGrave ? 'rgba(232,50,60,0.08)' : 'rgba(245,200,66,0.08)';
+        const bord = isGrave ? 'rgba(232,50,60,0.35)' : 'rgba(245,200,66,0.35)';
+        const icon = isGrave ? '🚫' : '⚠️';
+        return `<div style="padding:8px 10px;border-radius:7px;background:${bg};border:1px solid ${bord};margin-bottom:6px">`
+          + `<div style="font-size:12px;font-weight:800;color:${cor};margin-bottom:3px">${icon} ${a.medicamento}</div>`
+          + `<div style="font-size:11px;color:var(--text);line-height:1.4;opacity:.9">${a.motivo}</div>`
+          + `</div>`;
       }).join('');
-      html += `<div class="an-conduta">
-        <div class="an-conduta-header">💉 Medicações recomendadas (maleta)</div>
-        <div class="an-conduta-body" style="padding:4px 13px" id="recsBody">${itens}</div>
-      </div>
-      <div id="btnRecsWrap" style="display:none"></div>`;
+      html += `<div class="an-conduta" style="border-color:rgba(232,50,60,0.3)">`
+        + `<div class="an-conduta-header" style="color:#E8323C">⚠️ Alertas Clínicos — Cautela ao Medicar</div>`
+        + `<div class="an-conduta-body" style="padding:8px 13px">${itensAlertas}</div>`
+        + `</div>`;
     }
+    // Sem recomendações de maleta
+    window._recsParaVerDetalhe = [];
 
     html += `<div class="an-disclaimer">⚠️ Suporte de decisão — não substitui avaliação médica. Confirme com regulação médica.</div>`;
 
@@ -2732,7 +2737,7 @@ async function rodarAnalise() {
       hipotese: (d.hipotese_pontos || [d.hipotese_curta || d.hipotese_diagnostica || '']).join(' · '),
       hipotesePontos: d.hipotese_pontos || [],
       hipoteseDetalhe: d.hipotese_detalhada || '',
-      recomendadas: d.medicacoes_recomendadas || []
+      alertas: d.alertas_clinicos || []
     };
 
     res.innerHTML = html;
@@ -3172,6 +3177,110 @@ function toggleModoEstudo() {
     const box = document.getElementById('interacoesAlertBox'); if (box) box.innerHTML = '';
     atualizarBar();
   }
+}
+
+// ── VOZ / RECONHECIMENTO DE FALA ─────────
+let _vozReconhecimento = null;
+let _vozAtiva = false;
+
+function iniciarVoz() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    const t = document.createElement('div');
+    t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#E8323C;color:white;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;z-index:999;white-space:nowrap';
+    t.textContent = '❌ Seu navegador não suporta reconhecimento de voz';
+    document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
+    return;
+  }
+
+  const btn = document.getElementById('btnMicrofone');
+  const status = document.getElementById('vozStatus');
+  const campo = document.getElementById('anVoz');
+
+  if (_vozAtiva && _vozReconhecimento) {
+    _vozReconhecimento.stop();
+    return;
+  }
+
+  _vozReconhecimento = new SpeechRecognition();
+  _vozReconhecimento.lang = 'pt-BR';
+  _vozReconhecimento.continuous = true;
+  _vozReconhecimento.interimResults = true;
+
+  _vozReconhecimento.onstart = () => {
+    _vozAtiva = true;
+    if (btn) { btn.textContent = '⏹️'; btn.style.background = 'rgba(232,50,60,0.2)'; btn.style.borderColor = 'var(--accent)'; }
+    if (status) status.style.display = 'block';
+    if (campo) campo.placeholder = 'Falando...';
+  };
+
+  _vozReconhecimento.onresult = (e) => {
+    let texto = '';
+    for (let i = 0; i < e.results.length; i++) {
+      texto += e.results[i][0].transcript;
+    }
+    if (campo) campo.value = texto;
+    _campoPaciente.voz = texto;
+  };
+
+  _vozReconhecimento.onend = async () => {
+    _vozAtiva = false;
+    if (btn) { btn.textContent = '🎙️'; btn.style.background = 'var(--surface2)'; btn.style.borderColor = 'var(--border)'; }
+    if (status) status.style.display = 'none';
+    const textoFalado = campo ? campo.value.trim() : '';
+    if (!textoFalado) { if (campo) campo.placeholder = 'Toque no microfone e fale...'; return; }
+    // Processar voz com Groq — distribuir nos campos corretos
+    if (campo) { campo.placeholder = 'Processando...'; campo.value = ''; }
+    try {
+      const GROQ_KEY = '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';
+      const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile', max_tokens: 300, temperature: 0,
+          messages: [
+            { role: 'system', content: 'Você é um assistente APH. Extraia dados do paciente do texto falado e retorne APENAS JSON: {"nome":"","sinais":"","comorb":"","queixa":"","meds":""}. nome=nome+idade, sinais=sinais vitais alterados, comorb=doenças prévias, queixa=queixa principal, meds=medicamentos de uso contínuo. Retorne só o JSON.' },
+            { role: 'user', content: textoFalado }
+          ]
+        })
+      });
+      const data = await resp.json();
+      const raw = (data?.choices?.[0]?.message?.content || '').trim();
+      let clean = raw.replace(/```[a-z]*\s*/gi,'').replace(/```/g,'').trim();
+      const fb = clean.indexOf('{'), lb = clean.lastIndexOf('}');
+      if (fb >= 0 && lb > fb) {
+        const d = JSON.parse(clean.slice(fb, lb+1));
+        if (d.nome)   { const el = document.getElementById('anNome');         if (el) { el.value = d.nome;   _campoPaciente.nome   = d.nome; } }
+        if (d.sinais) { const el = document.getElementById('anSinais');       if (el) { el.value = d.sinais; _campoPaciente.sinais = d.sinais; } }
+        if (d.comorb) { const el = document.getElementById('anComorbidades'); if (el) { el.value = d.comorb; _campoPaciente.comorb = d.comorb; } }
+        if (d.queixa) { const el = document.getElementById('anQueixa');       if (el) { el.value = d.queixa; _campoPaciente.queixa = d.queixa; } }
+        if (d.meds)   { const el = document.getElementById('anMedsContinuos');if (el) { el.value = d.meds;   _campoPaciente.medsContinuos = d.meds; } }
+        if (campo) campo.placeholder = '✅ Campos preenchidos! Toque para usar de novo.';
+        // Toast confirmação
+        const t = document.createElement('div');
+        t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#22C97A;color:white;border-radius:8px;padding:10px 16px;font-size:12px;font-weight:700;z-index:999;text-align:center;max-width:280px';
+        t.textContent = '✅ Dados preenchidos por voz!';
+        document.body.appendChild(t); setTimeout(() => t.remove(), 2500);
+      }
+    } catch(e) {
+      if (campo) { campo.value = textoFalado; campo.placeholder = 'Toque no microfone e fale...'; }
+      _campoPaciente.voz = textoFalado;
+    }
+  };
+
+  _vozReconhecimento.onerror = (e) => {
+    _vozAtiva = false;
+    if (btn) { btn.textContent = '🎙️'; btn.style.background = 'var(--surface2)'; }
+    if (status) status.style.display = 'none';
+    if (e.error === 'not-allowed') {
+      const t = document.createElement('div');
+      t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#E8323C;color:white;border-radius:8px;padding:8px 14px;font-size:11px;font-weight:700;z-index:999;max-width:280px;text-align:center';
+      t.textContent = '❌ Permita o acesso ao microfone nas configurações do navegador';
+      document.body.appendChild(t); setTimeout(() => t.remove(), 4000);
+    }
+  };
+
+  _vozReconhecimento.start();
 }
 
 // ── CONTADOR DE ATDs ─────────────────────
