@@ -2539,6 +2539,35 @@ function tempoAtendimento() {
 }
 
 async function rodarAnalise() {
+  // Auto-organizar o texto livre antes de analisar
+  const campoVoz = document.getElementById('anVoz');
+  const vozRaw = (campoVoz || {value:''}).value.trim() || _campoPaciente.voz || '';
+
+  // Se o texto não está no formato organizado, organizar automaticamente via Groq
+  const estaOrganizado = vozRaw.includes('Nome/Idade:') || vozRaw.includes('Sinal Vital') || vozRaw.includes('Doencas') || vozRaw.includes('Doenças');
+  if (vozRaw && !estaOrganizado) {
+    try {
+      const GROQ_KEY = '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';
+      const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile', max_tokens: 150, temperature: 0,
+          messages: [
+            { role: 'system', content: 'You are an APH triage assistant. Organize the Portuguese medical text into this exact format. Return ONLY the organized text:\nNome/Idade: [name, age]\nSinal Vital Alterado: [vitals with values]\nDoencas Previas: [diseases, use HAS/DM/ICC/AVC/DPOC abbreviations]\nQueixa Principal: [complaint]\nOmit lines not mentioned. number after name=age; PA/pressao=vital sign; hipertensao=HAS; diabetes=DM; dor/dispneia=complaint. Example: "Maria 80 pa 200 por 100 hipertensao dor no peito" becomes:\nNome/Idade: Maria, 80\nSinal Vital Alterado: PA 200x100\nDoencas Previas: HAS\nQueixa Principal: Dor no peito' },
+            { role: 'user', content: vozRaw }
+          ]
+        })
+      });
+      const data = await resp.json();
+      const organizado = (data?.choices?.[0]?.message?.content || '').trim();
+      if (organizado && campoVoz) {
+        campoVoz.value = organizado;
+        _campoPaciente.voz = organizado;
+      }
+    } catch(e) {}
+  }
+
   const vozTexto  = (document.getElementById('anVoz')          || {value:''}).value.trim() || _campoPaciente.voz || '';
   const nomeRaw   = _campoPaciente.nome   || '';
   const sinaisVal = _campoPaciente.sinais || '';
