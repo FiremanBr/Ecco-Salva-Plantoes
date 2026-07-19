@@ -277,18 +277,17 @@
   <div class="panel active" id="panel-analise">
     <div class="pac-form" style="margin-bottom:10px">
       <div class="pac-title">🔬 Análise Clínica</div>
-      <div class="pac-row" style="gap:8px">
-        <div class="pac-field" style="flex:0 0 38%"><span class="pac-lbl">Nome / Idade</span><input class="pac-input" id="anNome" type="text" placeholder="Ex: Maria, 80"></div>
-        <div class="pac-field" style="flex:1"><span class="pac-lbl">Sinal Vital Alterado</span><input class="pac-input" id="anSinais" type="text" placeholder="PA 200x120, SpO2 92%..."></div>
-      </div>
       <div class="pac-row">
-        <div class="pac-field"><span class="pac-lbl">Doenças Prévias / Comorbidades</span>
-          <input class="pac-input" id="anComorbidades" type="text" placeholder="Ex: HAS, DM, ICC, DPOC...">
-        </div>
-      </div>
-      <div class="pac-row">
-        <div class="pac-field"><span class="pac-lbl">Queixa Principal</span>
-          <input class="pac-input" id="anQueixa" type="text" placeholder="Ex: dor torácica, dispneia, vômitos...">
+        <div class="pac-field">
+          <span class="pac-lbl" style="line-height:1.6">
+            Nome/Idade &nbsp;—&nbsp; Sinal Vital Alterado<br>
+            Doenças Prévias &nbsp;—&nbsp; Queixa Principal
+          </span>
+          <div style="display:flex;align-items:flex-start;gap:6px">
+            <textarea id="anVoz" rows="3" placeholder="Ex: Nome/Idade: Maria, 80 — Sinais: PA 200x120 — Doenças: HAS, DM — Queixa: Dor no peito&#10;&#10;Ou toque no 🎙️ e fale os dados" oninput="_campoPaciente.voz=this.value" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:Inter,sans-serif;font-size:12px;outline:none;resize:none;line-height:1.6;margin-bottom:0"></textarea>
+            <button onclick="iniciarVoz()" id="btnMicrofone" title="Iniciar ditado por voz" style="flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;cursor:pointer;font-size:20px;line-height:1;margin-top:0">🎙️</button>
+          </div>
+          <div id="vozStatus" style="font-size:10px;color:var(--accent);margin-top:3px;display:none">🔴 Gravando... toque ⏹️ para parar</div>
         </div>
       </div>
       <div class="pac-row">
@@ -308,16 +307,11 @@
           </div>
         </div>
       </div>
-      <div class="pac-row">
-        <div class="pac-field">
-          <span class="pac-lbl">🎙️ Observações por Voz</span>
-          <div style="display:flex;align-items:center;gap:6px">
-            <input class="pac-input" id="anVoz" type="text" placeholder="Toque no microfone e fale..." readonly style="flex:1;margin-bottom:0;cursor:pointer" onclick="iniciarVoz()">
-            <button onclick="iniciarVoz()" id="btnMicrofone" title="Falar observações" style="flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px;line-height:1">🎙️</button>
-          </div>
-          <div id="vozStatus" style="font-size:10px;color:var(--accent);margin-top:3px;display:none">🔴 Gravando... toque novamente para parar</div>
-        </div>
-      </div>
+      <!-- Campos ocultos mantidos para compatibilidade com o resto do código -->
+      <input type="hidden" id="anNome">
+      <input type="hidden" id="anSinais">
+      <input type="hidden" id="anComorbidades">
+      <input type="hidden" id="anQueixa">
     </div>
     <button id="anBtn" onclick="rodarAnalise()" style="width:100%;padding:12px;border-radius:9px;border:none;background:var(--accent);color:white;font-family:Inter,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px">🔬 Analisar Paciente</button>
     <div id="anResult"></div>
@@ -1391,21 +1385,22 @@ function horaAgora() {
 function buildFormularioAnalise() {
   return `<div class="pac-form" style="margin-bottom:10px">
       <div class="pac-title">🔬 Análise Clínica</div>
-      <div class="pac-row" style="gap:8px">
-        <div class="pac-field" style="flex:0 0 38%"><span class="pac-lbl">Nome / Idade</span><input class="pac-input" id="anNome" type="text" placeholder="Ex: Maria, 80" oninput="_campoPaciente.nome=this.value"></div>
-        <div class="pac-field" style="flex:1"><span class="pac-lbl">Sinal Vital Alterado</span><input class="pac-input" id="anSinais" type="text" placeholder="PA 200x120, SpO2 92%..." oninput="_campoPaciente.sinais=this.value"></div>
-      </div>
-      <div class="pac-row"><div class="pac-field"><span class="pac-lbl">Doenças Prévias / Comorbidades</span>
-        <input class="pac-input" id="anComorbidades" type="text" placeholder="Ex: HAS, DM, ICC, DPOC..." oninput="_campoPaciente.comorb=this.value">
-      </div></div>
-      <div class="pac-row"><div class="pac-field"><span class="pac-lbl">Queixa Principal</span>
-        <input class="pac-input" id="anQueixa" type="text" placeholder="Ex: dor torácica, dispneia, vômitos..." oninput="_campoPaciente.queixa=this.value">
+      <div class="pac-row"><div class="pac-field">
+        <span class="pac-lbl" style="line-height:1.7">
+          Nome/Idade &nbsp;—&nbsp; Sinal Vital Alterado<br>
+          Doenças Prévias &nbsp;—&nbsp; Queixa Principal
+        </span>
+        <div style="display:flex;align-items:flex-start;gap:6px">
+          <textarea id="anVoz" rows="3" placeholder="Ex: Nome/Idade: Maria, 80 — Sinais: PA 200x120 — Doenças: HAS, DM — Queixa: Dor no peito" oninput="_campoPaciente.voz=this.value" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:Inter,sans-serif;font-size:12px;outline:none;resize:none;line-height:1.6;margin-bottom:0"></textarea>
+          <button onclick="iniciarVoz()" id="btnMicrofone" title="Iniciar ditado por voz" style="flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;cursor:pointer;font-size:20px;line-height:1">🎙️</button>
+        </div>
+        <div id="vozStatus" style="font-size:10px;color:var(--accent);margin-top:3px;display:none">🔴 Gravando... toque ⏹️ para parar</div>
       </div></div>
       <div class="pac-row"><div class="pac-field">
         <span class="pac-lbl">💊 Medicamentos de Uso Contínuo</span>
         <div style="display:flex;align-items:center;gap:6px">
           <input class="pac-input" id="anMedsContinuos" type="text" placeholder="Ex: Losartana, Metformina, AAS..." oninput="_campoPaciente.medsContinuos=this.value" style="flex:1;margin-bottom:0">
-          <button onclick="abrirCamera()" id="btnFotoInline" title="Fotografar receita ou tela de medicamentos" style="flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px;line-height:1">📸</button>
+          <button onclick="abrirCamera()" title="Fotografar receita ou tela" style="flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px;line-height:1">📸</button>
           <input type="file" id="anFotoInput" accept="image/*" capture="camera" style="display:none" onchange="anFotoSelecionada(this)">
         </div>
         <div id="anPreviewGrid" style="display:none;margin-top:6px">
@@ -1416,27 +1411,26 @@ function buildFormularioAnalise() {
           <div id="anImgGrid" style="display:flex;flex-wrap:wrap;gap:6px"></div>
         </div>
       </div></div>
-      <div class="pac-row"><div class="pac-field">
-        <span class="pac-lbl">🎙️ Observações por Voz</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <input class="pac-input" id="anVoz" type="text" placeholder="Toque no microfone e fale..." readonly style="flex:1;margin-bottom:0;cursor:pointer" onclick="iniciarVoz()">
-          <button onclick="iniciarVoz()" id="btnMicrofone" title="Falar observações" style="flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px;line-height:1">🎙️</button>
-        </div>
-        <div id="vozStatus" style="font-size:10px;color:var(--text-dim);margin-top:3px;display:none">🔴 Gravando... toque novamente para parar</div>
-      </div></div>
+      <input type="hidden" id="anNome">
+      <input type="hidden" id="anSinais">
+      <input type="hidden" id="anComorbidades">
+      <input type="hidden" id="anQueixa">
     </div>
     <button id="anBtn" onclick="rodarAnalise()" style="width:100%;padding:12px;border-radius:9px;border:none;background:var(--accent);color:white;font-family:Inter,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px">🔬 Analisar Paciente</button>
     <div id="anResult"></div>`;
 }
 
 async function salvarAtd() {
-  const nomeVal    = (document.getElementById('anNome')          && document.getElementById('anNome').value.trim())          || _pacNome   || 'Não identificado';
-  const sinaisAtd  = (document.getElementById('anSinais')        && document.getElementById('anSinais').value.trim())        || '';
-  const comorbAtd  = (document.getElementById('anComorbidades')  && document.getElementById('anComorbidades').value.trim())  || '';
-  const queixaAtd  = (document.getElementById('anQueixa')        && document.getElementById('anQueixa').value.trim())        || '';
+  const vozTextoAtd = (document.getElementById('anVoz') && document.getElementById('anVoz').value.trim()) || _campoPaciente.voz || '';
+  // Extrair nome do texto livre (primeira parte antes de hífen ou ponto e vírgula)
+  let nomeVal = _pacNome || 'Não identificado';
+  if (vozTextoAtd) {
+    const mNome = vozTextoAtd.match(/Nome\/Idade:\s*([^;\-\n]+)/i) || vozTextoAtd.match(/^([^;\-\n]+)/);
+    if (mNome) nomeVal = mNome[1].trim() || nomeVal;
+  }
   const nome   = formatarNomeIdade(nomeVal);
   const idade  = '';
-  const queixa = [formatarSinais(sinaisAtd), formatarTexto(comorbAtd), formatarTexto(queixaAtd)].filter(Boolean).join(' | ');
+  const queixa = vozTextoAtd || '';
   const tempoAtd = tempoAtendimento();
   const meds  = [...selecionados].join(', ');
 
@@ -2554,13 +2548,14 @@ function tempoAtendimento() {
 }
 
 async function rodarAnalise() {
-  const nomeRaw   = (document.getElementById('anNome')         || {value:''}).value.trim();
-  const sinaisVal = (document.getElementById('anSinais')       || {value:''}).value.trim();
-  const comorbVal = (document.getElementById('anComorbidades') || {value:''}).value.trim();
-  const queixaVal = (document.getElementById('anQueixa')       || {value:''}).value.trim();
+  const vozTexto  = (document.getElementById('anVoz')          || {value:''}).value.trim() || _campoPaciente.voz || '';
+  const nomeRaw   = _campoPaciente.nome   || '';
+  const sinaisVal = _campoPaciente.sinais || '';
+  const comorbVal = _campoPaciente.comorb || '';
+  const queixaVal = _campoPaciente.queixa || '';
 
-  if (!sinaisVal && !queixaVal && !nomeRaw) {
-    alert('Preencha ao menos um campo para analisar.');
+  if (!vozTexto && !sinaisVal && !queixaVal && !nomeRaw) {
+    alert('Preencha os dados do paciente para analisar.');
     return;
   }
 
@@ -2582,15 +2577,14 @@ async function rodarAnalise() {
     });
 
     let textPrompt = '';
+    if (vozTexto)  textPrompt += `Dados do paciente: ${vozTexto}\n`;
     if (nomeRaw)   textPrompt += `Paciente: ${nomeRaw}\n`;
     if (sinaisVal) textPrompt += `Sinais vitais alterados: ${sinaisVal}\n`;
-    if (comorbVal) textPrompt += `Doenças prévias/comorbidades: ${comorbVal}\n`;
+    if (comorbVal) textPrompt += `Doenças prévias: ${comorbVal}\n`;
     if (queixaVal) textPrompt += `Queixa principal: ${queixaVal}\n`;
     const medsCont = (document.getElementById('anMedsContinuos') || {value:''}).value.trim();
     if (medsCont) textPrompt += `Medicamentos de uso contínuo do paciente: ${medsCont}\nIMPORTANTE: analise se algum desses medicamentos de rotina pode estar causando, agravando ou interagindo com o problema atual.\nATENÇÃO CRÍTICA: O campo classes_medicamentos deve conter EXATAMENTE estes medicamentos listados acima e NENHUM OUTRO. Não invente, não adicione, não sugira outros medicamentos nesse campo.\n`;
     if (!_anFotos.length && !medsCont) textPrompt += `(Sem medicamentos de uso contínuo informados. Retorne classes_medicamentos como array vazio [])`;
-    const vozObs = (document.getElementById('anVoz') || {value:''}).value.trim() || _campoPaciente.voz || '';
-    if (vozObs) textPrompt += `\nObservações adicionais do socorrista (por voz): ${vozObs}`;
     userContent.push({ type: 'text', text: textPrompt });
 
     // Montar conteúdo para Groq (texto apenas — imagens via OCR separado)
@@ -3211,7 +3205,12 @@ function iniciarVoz() {
   _vozAtiva = true;
   if (btn) { btn.textContent = '⏹️'; btn.style.background = 'rgba(232,50,60,0.2)'; btn.style.borderColor = 'var(--accent)'; }
   if (status) status.style.display = 'block';
-  if (campo) { campo.value = ''; campo.placeholder = 'Falando... toque ⏹️ para parar'; }
+  if (campo) { campo.value = ''; campo.placeholder = 'Microfone aberto — fale: nome... sinais... doença... queixa... medicamento...'; }
+  // Atualizar status com indicador pulsante
+  if (status) {
+    status.textContent = '🔴 Microfone aberto — fale quando quiser · toque ⏹️ para parar e processar';
+    status.style.display = 'block';
+  }
 
   let finalTexto = '';
 
@@ -3245,9 +3244,17 @@ function iniciarVoz() {
   };
 
   rec.onend = () => {
-    // Se ainda ativo e não foi parado manualmente, reiniciar
-    if (_vozAtiva) {
-      try { setTimeout(() => { if (_vozAtiva) rec.start(); }, 100); } catch(e) {}
+    if (!_vozAtiva) return;
+    // Reiniciar imediatamente — Android fecha após silêncio mesmo com continuous=true
+    try {
+      rec.start();
+    } catch(e) {
+      // Se falhar, tentar com delay
+      setTimeout(() => {
+        if (_vozAtiva) {
+          try { rec.start(); } catch(e2) {}
+        }
+      }, 50);
     }
   };
 
@@ -3256,24 +3263,24 @@ function iniciarVoz() {
 
 function processarTextoVoz(textoFalado) {
   const campo = document.getElementById('anVoz');
-  if (!textoFalado) { if (campo) campo.placeholder = 'Toque no microfone e fale...'; return; }
+  if (!textoFalado) { if (campo) campo.placeholder = 'Ex: Nome/Idade: Maria, 80; Sinais: PA 200x120; Doencas: HAS, DM; Queixa: Dor no peito'; return; }
 
   const GATILHOS = {
     nome:   ['nome', 'paciente'],
     sinais: ['sinal', 'sinais', 'vital', 'pressao', 'pa', 'saturacao', 'spo2', 'frequencia', 'fc', 'hgt', 'glicemia'],
     comorb: ['doenca', 'doencas', 'comorbidade', 'historico', 'antecedente', 'tem', 'portador'],
     queixa: ['queixa', 'sintoma', 'sente', 'apresenta', 'reclama'],
-    meds:   ['medicamento', 'remedio', 'usa', 'toma', 'uso'],
   };
 
   const normalizar = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  // Unir siglas faladas letra por letra: "i c c" -> "icc", "h a s" -> "has"
-  let textoNorm = textoFalado.replace(/\b([a-zA-Z])\s+([a-zA-Z])\s+([a-zA-Z])\s+([a-zA-Z])\b/gi, '$1$2$3$4');
-  textoNorm = textoNorm.replace(/\b([a-zA-Z])\s+([a-zA-Z])\s+([a-zA-Z])\b/gi, '$1$2$3');
-  textoNorm = textoNorm.replace(/\b([a-zA-Z])\s+([a-zA-Z])\b/gi, '$1$2');
+  // Unir siglas faladas letra por letra: "i c c" -> "icc"
+  let textoNorm = textoFalado
+    .replace(/\b([a-z\u00c0-\u024f])\s+([a-z\u00c0-\u024f])\s+([a-z\u00c0-\u024f])\s+([a-z\u00c0-\u024f])\b/gi, '$1$2$3$4')
+    .replace(/\b([a-z\u00c0-\u024f])\s+([a-z\u00c0-\u024f])\s+([a-z\u00c0-\u024f])\b/gi, '$1$2$3')
+    .replace(/\b([a-z\u00c0-\u024f])\s+([a-z\u00c0-\u024f])\b/gi, '$1$2');
   const txt = normalizar(textoNorm);
   const palavras = txt.split(/\s+/);
-  const resultado = { nome: '', sinais: '', comorb: '', queixa: '', meds: '' };
+  const resultado = { nome: '', sinais: '', comorb: '', queixa: '' };
   let campoAtual = null;
   let conteudo = [];
 
@@ -3304,123 +3311,96 @@ function processarTextoVoz(textoFalado) {
   const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 
   // Processar nome: "Maria oitenta" -> "Maria, 80"
-  const processarNome = s => {
-    const numeros = {'zero':0,'um':1,'dois':2,'tres':3,'quatro':4,'cinco':5,'seis':6,'sete':7,'oito':8,'nove':9,
-      'dez':10,'onze':11,'doze':12,'treze':13,'quatorze':14,'quinze':15,'dezesseis':16,'dezessete':17,'dezoito':18,'dezenove':19,
-      'vinte':20,'trinta':30,'quarenta':40,'cinquenta':50,'sessenta':60,'setenta':70,'oitenta':80,'noventa':90,'cem':100};
-    const partes = s.trim().split(/\s+/);
+  const numPorExtenso = {'zero':0,'um':1,'uma':1,'dois':2,'tres':3,'quatro':4,'cinco':5,'seis':6,'sete':7,'oito':8,'nove':9,
+    'dez':10,'onze':11,'doze':12,'treze':13,'quatorze':14,'quinze':15,'dezesseis':16,'dezessete':17,'dezoito':18,'dezenove':19,
+    'vinte':20,'trinta':30,'quarenta':40,'cinquenta':50,'sessenta':60,'setenta':70,'oitenta':80,'noventa':90,'cem':100};
+  const converterNome = s => {
+    const p = s.trim().split(/\s+/);
     let nome = [], idade = null;
-    for (let i = 0; i < partes.length; i++) {
-      const p = partes[i].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-      if (numeros[p] !== undefined) {
-        // Verificar se a proxima palavra e "e" + numero (ex: "vinte e um")
-        if (partes[i+1] && partes[i+1].toLowerCase() === 'e' && partes[i+2] && numeros[partes[i+2].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')] !== undefined) {
-          idade = numeros[p] + numeros[partes[i+2].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')];
-          i += 2;
-        } else {
-          idade = numeros[p];
+    for (let j = 0; j < p.length; j++) {
+      const n = normalizar(p[j]);
+      if (numPorExtenso[n] !== undefined) {
+        let val = numPorExtenso[n];
+        if (p[j+1] && normalizar(p[j+1]) === 'e' && p[j+2] && numPorExtenso[normalizar(p[j+2])] !== undefined) {
+          val += numPorExtenso[normalizar(p[j+2])]; j += 2;
         }
-      } else if (/^\d+$/.test(partes[i])) {
-        idade = parseInt(partes[i]);
+        idade = val;
+      } else if (/^\d+$/.test(p[j])) {
+        idade = parseInt(p[j]);
       } else {
-        nome.push(cap(partes[i]));
+        nome.push(cap(p[j]));
       }
     }
     return idade !== null ? nome.join(' ') + ', ' + idade : nome.join(' ');
   };
 
   // Processar sinais: "duzentos por cento e vinte" -> "PA 200x120"
-  const processarSinais = s => {
-    const nums = {'zero':0,'um':1,'uma':1,'dois':2,'duas':2,'tres':3,'quatro':4,'cinco':5,'seis':6,'sete':7,'oito':8,'nove':9,
+  const converterSinais = s => {
+    const nums = {'zero':0,'um':1,'uma':1,'dois':2,'tres':3,'quatro':4,'cinco':5,'seis':6,'sete':7,'oito':8,'nove':9,
       'dez':10,'onze':11,'doze':12,'treze':13,'quatorze':14,'quinze':15,'dezesseis':16,'dezessete':17,'dezoito':18,'dezenove':19,
       'vinte':20,'trinta':30,'quarenta':40,'cinquenta':50,'sessenta':60,'setenta':70,'oitenta':80,'noventa':90,
       'cem':100,'cento':100,'duzentos':200,'duzentas':200,'trezentos':300,'quatrocentos':400,'quinhentos':500};
-    // Substituir "por" entre numeros por "x"
-    let r = s.replace(/\b(\d+)\s+por\s+(\d+)/gi, '$1x$2');
-    // Converter numeros por extenso
-    const palavras = r.split(/\s+/);
-    let resultado = [];
-    let i = 0;
-    while (i < palavras.length) {
-      const p = palavras[i].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-      if (nums[p] !== undefined) {
-        let val = nums[p];
-        // "cento e vinte" = 120, "duzentos e vinte" = 220
-        if (palavras[i+1] && palavras[i+1].toLowerCase() === 'e' && palavras[i+2]) {
-          const p2 = palavras[i+2].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-          if (nums[p2] !== undefined) { val += nums[p2]; i += 2; }
-        }
-        resultado.push(val);
-      } else if (palavras[i].toLowerCase() === 'por') {
-        // "por" entre numeros vira "x"
-        if (resultado.length > 0 && i+1 < palavras.length) {
-          resultado.push('x');
-        } else {
-          resultado.push(palavras[i]);
-        }
+    const p = normalizar(s).split(/\s+/);
+    let res = [], j = 0;
+    while (j < p.length) {
+      if (nums[p[j]] !== undefined) {
+        let val = nums[p[j]];
+        if (p[j+1] === 'e' && p[j+2] && nums[p[j+2]] !== undefined) { val += nums[p[j+2]]; j += 2; }
+        res.push(val);
+      } else if (p[j] === 'por' && res.length > 0) {
+        res.push('x');
+      } else if (p[j] === 'e' && j > 0 && nums[p[j-1]] !== undefined) {
+        // skip standalone 'e' between numbers
       } else {
-        resultado.push(palavras[i].toUpperCase());
+        res.push(p[j].toUpperCase());
       }
-      i++;
+      j++;
     }
-    return resultado.join('').replace(/([A-Z]+)(\d)/g,'$1 $2').replace(/(\d)([A-Z])/g,'$1 $2').trim();
+    return res.join('').replace(/([A-Z]+)(\d)/g,'$1 $2').replace(/(\d)([A-Z])/g,'$1 $2').trim();
   };
 
-  // Processar comorbidades: capitalizar cada termo, separar por virgula
-  const processarComorb = s => {
-    // Siglas conhecidas
-    const siglas = {
-      'has':'HAS','dm':'DM','icc':'ICC','dpoc':'DPOC','avc':'AVC','iam':'IAM',
-      'fa':'FA','irc':'IRC','tep':'TEP','tvp':'TVP','hiv':'HIV','hve':'HVE',
-      'ic':'IC','avci':'AVCI','avch':'AVCH','tce':'TCE','dm1':'DM1','dm2':'DM2'
+  // Processar comorbidades com siglas
+  const converterComorb = s => {
+    const mapa = {
+      'hipertensao':'HAS','has':'HAS','pressao alta':'HAS',
+      'diabetes':'DM','dm':'DM','diabetico':'DM','diabetica':'DM',
+      'insuficiencia cardiaca':'ICC','icc':'ICC',
+      'dpoc':'DPOC','bronquite':'DPOC','enfisema':'DPOC',
+      'avc':'AVC','derrame':'AVC',
+      'iam':'IAM','infarto':'IAM',
+      'fa':'FA','fibrilacao atrial':'FA',
+      'irc':'IRC','insuficiencia renal':'IRC',
+      'epilepsia':'Epilepsia','asma':'Asma',
+      'depressao':'Depress\u00e3o','ansiedade':'Ansiedade',
+      'cancer':'C\u00e2ncer','neoplasia':'C\u00e2ncer',
+      'hipotireoidismo':'Hipotireoidismo',
+      'obesidade':'Obesidade','colesterol alto':'Dislipidemia',
+      'hemofilia':'Hemofilia','artrite':'Artrite','hiv':'HIV',
     };
-    // Separar por "e", "mais", virgula
-    const termos = s.split(/\s*(?:\be\b|,|mais)\s*/i).map(t => t.trim()).filter(Boolean);
-    return termos.map(t => {
-      const lower = t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-      if (siglas[lower]) return siglas[lower];
-      // Mapear nomes comuns para siglas com nome completo
-      const mapa = {
-        'hipertensao': 'HAS (Hipertens\u00e3o Arterial Sist\u00eamica)',
-        'pressao alta': 'HAS (Hipertens\u00e3o Arterial Sist\u00eamica)',
-        'diabetes': 'DM (Diabetes Mellitus)',
-        'diabetico': 'DM (Diabetes Mellitus)',
-        'insuficiencia cardiaca': 'ICC (Insufici\u00eancia Card\u00edaca Congestiva)',
-        'bronquite': 'DPOC',
-        'enfisema': 'DPOC',
-        'derrame': 'AVC (Acidente Vascular Cerebral)',
-        'infarto': 'IAM (Infarto Agudo do Mioc\u00e1rdio)',
-        'epilepsia': 'Epilepsia',
-        'asma': 'Asma',
-        'depressao': 'Depress\u00e3o',
-        'ansiedade': 'Ansiedade',
-        'obesidade': 'Obesidade',
-        'cancer': 'C\u00e2ncer',
-        'hipotireoidismo': 'Hipotireoidismo',
-        'artrite': 'Artrite',
-        'osteoporose': 'Osteoporose',
-        'insuficiencia renal': 'IRC (Insufici\u00eancia Renal Cr\u00f4nica)',
-        'hemofilia': 'Hemofilia',
-      };
-      if (mapa[lower]) return mapa[lower];
-      return cap(t);
-    }).join(', ');
+    const termos = normalizar(s).split(/\s*(?:\be\b|,)\s*/).map(t => t.trim()).filter(Boolean);
+    return termos.map(t => mapa[t] || cap(t)).join(', ');
   };
 
-  let ok = false;
-  if (resultado.nome)   { const el = document.getElementById('anNome');          if (el) { el.value = processarNome(resultado.nome);    _campoPaciente.nome   = el.value; ok = true; } }
-  if (resultado.sinais) { const el = document.getElementById('anSinais');        if (el) { el.value = processarSinais(resultado.sinais); _campoPaciente.sinais = el.value; ok = true; } }
-  if (resultado.comorb) { const el = document.getElementById('anComorbidades');  if (el) { el.value = processarComorb(resultado.comorb); _campoPaciente.comorb = el.value; ok = true; } }
-  if (resultado.queixa) { const el = document.getElementById('anQueixa');        if (el) { el.value = cap(resultado.queixa);             _campoPaciente.queixa = el.value; ok = true; } }
-  if (resultado.meds)   { const el = document.getElementById('anMedsContinuos'); if (el) { el.value = cap(resultado.meds);               _campoPaciente.medsContinuos = el.value; ok = true; } }
+  // Montar linha de resumo
+  const partes = [];
+  if (resultado.nome)   partes.push('Nome/Idade: ' + converterNome(resultado.nome));
+  if (resultado.sinais) partes.push('Sinais: ' + converterSinais(resultado.sinais));
+  if (resultado.comorb) partes.push('Doen\u00e7as: ' + converterComorb(resultado.comorb));
+  if (resultado.queixa) partes.push('Queixa: ' + cap(resultado.queixa));
 
-  if (campo) campo.placeholder = ok ? '\u2705 Preenchido!' : 'Fale: nome... sinais... doenca... queixa... medicamento...';
-  if (ok) {
-    const t = document.createElement('div');
-    t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#22C97A;color:white;border-radius:8px;padding:10px 16px;font-size:12px;font-weight:700;z-index:999;text-align:center;max-width:300px';
-    t.textContent = '\u2705 Dados preenchidos por voz!';
-    document.body.appendChild(t); setTimeout(() => t.remove(), 2500);
+  if (partes.length === 0) {
+    if (campo) campo.value = textoFalado; // mostrar o que foi captado para o Jose Luiz ver
+    return;
   }
+
+  const resumo = partes.join('; ');
+  if (campo) { campo.value = resumo; campo.style.fontSize = '11px'; }
+  _campoPaciente.voz = resumo;
+
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#22C97A;color:white;border-radius:8px;padding:10px 16px;font-size:12px;font-weight:700;z-index:999;text-align:center;max-width:300px';
+  t.textContent = '\u2705 Ditado registrado!';
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2000);
 }
 
 
