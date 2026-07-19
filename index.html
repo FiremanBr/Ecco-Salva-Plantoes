@@ -3254,41 +3254,63 @@ function iniciarVoz() {
   rec.start();
 }
 
-async function processarTextoVoz(textoFalado) {
+function processarTextoVoz(textoFalado) {
   const campo = document.getElementById('anVoz');
   if (!textoFalado) { if (campo) campo.placeholder = 'Toque no microfone e fale...'; return; }
-  if (campo) { campo.placeholder = 'Processando...'; campo.value = ''; }
-  try {
-    const GROQ_KEY = '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';
-    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile', max_tokens: 300, temperature: 0,
-        messages: [
-                    { role: 'system', content: 'Assistente APH brasileiro. Extraia dados e retorne APENAS JSON: {"nome":"","sinais":"","comorb":"","queixa":"","meds":""}. REGRAS: (1)nome: nome+virgula+idade ex: Maria, 80. (2)sinais: APENAS sinais vitais numericos ex: PA 200x120, SpO2 88%. NUNCA sintomas aqui. (3)comorb: doencas como SIGLA (Nome). Banco: hipertensao=HAS (Hipertensao Arterial Sistemica); insuf cardiaca=ICC (Insuficiencia Cardiaca Congestiva); infarto=IAM; fibrilacao atrial=FA; DPOC/bronquite=DPOC; AVC/derrame=AVC; diabetes=DM (Diabetes Mellitus); insuf renal=IRC; epilepsia=Epilepsia; asma=Asma; depressao=Depressao; cancer=Cancer; hipotireoidismo=Hipotireoidismo; obesidade=Obesidade; colesterol alto=Dislipidemia; hemofilia=Hemofilia; artrite=Artrite; HIV=HIV. (4)queixa: queixa principal maiuscula. (5)meds: medicamentos maiusculos separados por virgula. Se sigla: HCT=HCT (Hidroclorotiazida); AAS=AAS; NPH=Insulina NPH. Retorne APENAS JSON valido.' },
-        ]
-      })
-    });
-    const data = await resp.json();
-    const raw = (data?.choices?.[0]?.message?.content || '').trim();
-    let clean = raw.replace(/```[a-z]*\s*/gi,'').replace(/```/g,'').trim();
-    const fb = clean.indexOf('{'), lb = clean.lastIndexOf('}');
-    if (fb >= 0 && lb > fb) {
-      const d = JSON.parse(clean.slice(fb, lb+1));
-      if (d.nome)   { const el = document.getElementById('anNome');          if (el) { el.value = d.nome;   _campoPaciente.nome   = d.nome; } }
-      if (d.sinais) { const el = document.getElementById('anSinais');        if (el) { el.value = d.sinais; _campoPaciente.sinais = d.sinais; } }
-      if (d.comorb) { const el = document.getElementById('anComorbidades');  if (el) { el.value = d.comorb; _campoPaciente.comorb = d.comorb; } }
-      if (d.queixa) { const el = document.getElementById('anQueixa');        if (el) { el.value = d.queixa; _campoPaciente.queixa = d.queixa; } }
-      if (d.meds)   { const el = document.getElementById('anMedsContinuos'); if (el) { el.value = d.meds;   _campoPaciente.medsContinuos = d.meds; } }
-      if (campo) campo.placeholder = '✅ Preenchido! Toque para usar de novo.';
-      const t = document.createElement('div');
-      t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#22C97A;color:white;border-radius:8px;padding:10px 16px;font-size:12px;font-weight:700;z-index:999;text-align:center;max-width:280px';
-      t.textContent = '✅ Dados preenchidos por voz!';
-      document.body.appendChild(t); setTimeout(() => t.remove(), 2500);
+
+  const GATILHOS = {
+    nome:   ['nome', 'paciente'],
+    sinais: ['sinal', 'sinais', 'vital', 'pressao', 'pa', 'saturacao', 'spo2', 'frequencia', 'fc', 'hgt', 'glicemia'],
+    comorb: ['doenca', 'doencas', 'comorbidade', 'historico', 'antecedente', 'tem', 'portador'],
+    queixa: ['queixa', 'sintoma', 'sente', 'apresenta', 'reclama'],
+    meds:   ['medicamento', 'remedio', 'usa', 'toma', 'uso'],
+  };
+
+  const normalizar = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const txt = normalizar(textoFalado);
+  const palavras = txt.split(/\s+/);
+  const resultado = { nome: '', sinais: '', comorb: '', queixa: '', meds: '' };
+  let campoAtual = null;
+  let conteudo = [];
+
+  let i = 0;
+  while (i < palavras.length) {
+    let detectou = null;
+    for (const [c, gatilhos] of Object.entries(GATILHOS)) {
+      for (const g of gatilhos) {
+        const gw = g.split(' ');
+        if (palavras.slice(i, i + gw.length).join(' ') === g) {
+          detectou = { c, skip: gw.length };
+          break;
+        }
+      }
+      if (detectou) break;
     }
-  } catch(e) {
-    if (campo) { campo.value = textoFalado; campo.placeholder = 'Toque no microfone e fale...'; }
+    if (detectou) {
+      if (campoAtual && conteudo.length) { resultado[campoAtual] = conteudo.join(' ').trim(); conteudo = []; }
+      campoAtual = detectou.c;
+      i += detectou.skip;
+    } else {
+      if (campoAtual) conteudo.push(palavras[i]);
+      i++;
+    }
+  }
+  if (campoAtual && conteudo.length) resultado[campoAtual] = conteudo.join(' ').trim();
+
+  const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+  let ok = false;
+  if (resultado.nome)   { const el = document.getElementById('anNome');          if (el) { el.value = cap(resultado.nome);   _campoPaciente.nome   = el.value; ok = true; } }
+  if (resultado.sinais) { const el = document.getElementById('anSinais');        if (el) { el.value = cap(resultado.sinais); _campoPaciente.sinais = el.value; ok = true; } }
+  if (resultado.comorb) { const el = document.getElementById('anComorbidades');  if (el) { el.value = cap(resultado.comorb); _campoPaciente.comorb = el.value; ok = true; } }
+  if (resultado.queixa) { const el = document.getElementById('anQueixa');        if (el) { el.value = cap(resultado.queixa); _campoPaciente.queixa = el.value; ok = true; } }
+  if (resultado.meds)   { const el = document.getElementById('anMedsContinuos'); if (el) { el.value = cap(resultado.meds);   _campoPaciente.medsContinuos = el.value; ok = true; } }
+
+  if (campo) campo.placeholder = ok ? '\u2705 Preenchido!' : 'Fale: nome... sinais... doenca... queixa... medicamento...';
+  if (ok) {
+    const t = document.createElement('div');
+    t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#22C97A;color:white;border-radius:8px;padding:10px 16px;font-size:12px;font-weight:700;z-index:999;text-align:center;max-width:300px';
+    t.textContent = '\u2705 Dados preenchidos por voz!';
+    document.body.appendChild(t); setTimeout(() => t.remove(), 2500);
   }
 }
 
