@@ -290,6 +290,10 @@
       <button onclick="filtroRapido('mes')" class="filtro-btn" data-filtro="mes" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif">Este mês</button>
       <button onclick="filtroRapido('todos')" class="filtro-btn" data-filtro="todos" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif">Todos</button>
     </div>
+    <div id="statsPlantao" style="display:none;margin-bottom:12px;padding:12px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:10px">📊 Estatísticas do Plantão</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="statsGrid"></div>
+    </div>
     <div id="listaAtd"></div>
   </div>
 
@@ -1694,6 +1698,9 @@ async function renderHistorico() {
       msgVazia = 'Nenhum atendimento registrado.';
     }
   }
+
+  // Calcular e exibir estatísticas
+  calcularStats(atdFiltrados);
 
   if (atdFiltrados.length === 0) {
     lista.innerHTML = '<div class="empty-txt">' + msgVazia + '</div>';
@@ -3241,6 +3248,63 @@ function verificarInteracoes() {
       '<div style="font-size:11px;font-weight:800;color:' + cor + ';margin-bottom:2px">' + icon + ' ' + a.meds[0] + ' + ' + a.meds[1] + '</div>' +
       '<div style="font-size:11px;color:var(--text);line-height:1.4">' + a.efeito + '</div></div>';
   }).join('');
+}
+
+// ── ESTATÍSTICAS DO PLANTÃO ──────────────
+function calcularStats(atds) {
+  const painel = document.getElementById('statsPlantao');
+  const grid = document.getElementById('statsGrid');
+  if (!painel || !grid || !atds.length) {
+    if (painel) painel.style.display = 'none';
+    return;
+  }
+  painel.style.display = 'block';
+
+  // Total
+  const total = atds.length;
+
+  // Medicamentos mais usados
+  const medsCount = {};
+  atds.forEach(a => {
+    if (!a.meds) return;
+    a.meds.split(',').map(m => m.trim()).filter(Boolean).forEach(m => {
+      medsCount[m] = (medsCount[m] || 0) + 1;
+    });
+  });
+  const medsOrdenados = Object.entries(medsCount).sort((a,b) => b[1]-a[1]);
+  const topMed = medsOrdenados[0] ? medsOrdenados[0][0] : '—';
+  const topMedCount = medsOrdenados[0] ? medsOrdenados[0][1] : 0;
+
+  // Hora de pico
+  const horaCount = {};
+  atds.forEach(a => {
+    if (!a.hora) return;
+    const h = a.hora.split(':')[0] + 'h';
+    horaCount[h] = (horaCount[h] || 0) + 1;
+  });
+  const horaPico = Object.entries(horaCount).sort((a,b) => b[1]-a[1])[0];
+  const horaPicoStr = horaPico ? horaPico[0] : '—';
+
+  // Média de meds por atendimento
+  const totalMeds = atds.reduce((acc, a) => {
+    if (!a.meds) return acc;
+    return acc + a.meds.split(',').filter(m => m.trim()).length;
+  }, 0);
+  const mediaMeds = total > 0 ? (totalMeds / total).toFixed(1) : '0';
+
+  const stat = (icone, label, valor, sub) => `
+    <div style="background:var(--surface3);border-radius:8px;padding:10px;text-align:center">
+      <div style="font-size:18px;margin-bottom:2px">${icone}</div>
+      <div style="font-size:18px;font-weight:800;color:var(--text)">${valor}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-top:1px">${label}</div>
+      ${sub ? `<div style="font-size:10px;color:var(--text-dim);margin-top:2px">${sub}</div>` : ''}
+    </div>`;
+
+  grid.innerHTML =
+    stat('🚑', 'Atendimentos', total, '') +
+    stat('💊', 'Med. mais usado', topMed.length > 12 ? topMed.substring(0,12)+'…' : topMed, topMedCount > 0 ? topMedCount + 'x' : '') +
+    stat('⏰', 'Hora de pico', horaPicoStr, horaPico ? horaPico[1] + ' atd' : '') +
+    stat('📋', 'Média meds/atd', mediaMeds, '');
 }
 
 // ── FAVORITOS ─────────────────────────────
