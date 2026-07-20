@@ -225,8 +225,8 @@
   <div class="tabs">
     <button class="tab active" data-color="#3B9BE8" onclick="switchTab('analise',this)">🔬 Análise</button>
     <button class="tab" data-color="#22C97A" onclick="switchTab('maleta',this)">💊 Maleta</button>
-    <button class="tab" data-color="#F5C842" onclick="switchTab('sintoma',this)">🎯 Sintoma</button>
     <button class="tab" data-color="#A78BFA" onclick="switchTab('historico',this)">📋 Pacientes</button>
+    <button class="tab" data-color="#F5C842" onclick="switchTab('sintoma',this)">🎯 Sintoma</button>
     <button class="tab" data-color="#E8323C" onclick="switchTab('seguranca',this)">☠️ Segurança</button>
   </div>
 </div>
@@ -1063,10 +1063,12 @@ function renderMaleta() {
 }
 
 function temDadosPaciente() {
+  const voz    = document.getElementById('anVoz')    && document.getElementById('anVoz').value.trim();
   const nome   = document.getElementById('anNome')   && document.getElementById('anNome').value.trim();
   const sinais = document.getElementById('anSinais') && document.getElementById('anSinais').value.trim();
   const queixa = document.getElementById('anQueixa') && document.getElementById('anQueixa').value.trim();
-  return !!(nome || sinais || queixa);
+  const meds   = document.getElementById('anMedsContinuos') && document.getElementById('anMedsContinuos').value.trim();
+  return !!(voz || nome || sinais || queixa || meds || _campoPaciente.voz || _ultimaAnalise);
 }
 
 function toggleMed(nome, el) {
