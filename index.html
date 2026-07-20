@@ -3584,22 +3584,23 @@ function switchTab(tab, el) {
   setTimeout(atualizarContadorAtd, 300);
 
   // Aplicar dados do Firebase quando estiverem prontos
-  // Aguardar Firebase e aplicar dados
-  const aplicarFbDados = () => {
-    if (window._fbCarregado !== undefined) {
-      // Firebase respondeu — aplicar (mesmo que vazio)
-      if (window._fbCarregado.length > 0) {
-        atendimentos.splice(0, atendimentos.length, ...window._fbCarregado);
+  // Carregar do Firebase após inicializar (atualiza contador)
+  setTimeout(async () => {
+    if (window._firebaseReady) {
+      try {
+        const snap = await window._fbGetDocs(window._fbCollection(window._db, 'atendimentos'));
+        const docs = [];
+        snap.forEach(d => docs.push({ _id: d.id, ...d.data() }));
+        docs.sort((a,b) => (b.ts||0) - (a.ts||0));
+        atendimentos.splice(0, atendimentos.length, ...docs);
+        localStorage_safe_set('ecco_atendimentos', JSON.stringify(atendimentos));
         atualizarContadorAtd();
-        renderHistorico();
-      }
-      window._fbCarregado = undefined; // consumido
-    } else {
-      // Firebase ainda não respondeu — tentar de novo
-      setTimeout(aplicarFbDados, 200);
+        // Se aba pacientes estiver ativa, renderizar
+        const ph = document.getElementById('panel-historico');
+        if (ph && ph.classList.contains('active')) renderHistorico();
+      } catch(e) { console.log('Firebase init load error:', e); }
     }
-  };
-  setTimeout(aplicarFbDados, 500);
+  }, 1500);
 })();
 
 </script>
