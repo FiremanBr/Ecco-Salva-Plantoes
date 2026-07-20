@@ -1720,7 +1720,7 @@ function _exibirModal(a) {
   // Medicamentos de uso contínuo (foto)
   if (a.analise && a.analise.classes && a.analise.classes.length) {
     const classesHtml = a.analise.classes.map(function(c) {
-      return '<div style="margin-bottom:5px"><div style="font-size:10px;font-weight:800;text-transform:uppercase;color:var(--text-muted);margin-bottom:2px">' + c.icone + ' ' + c.classe + '</div>' +
+      return '<div style="margin-bottom:5px"><div style="font-size:10px;font-weight:800;text-transform:uppercase;color:#60BFFF;margin-bottom:2px">' + c.icone + ' ' + c.classe + '</div>' +
         c.itens.map(function(item) { return '<div style="font-size:11px;color:var(--text);padding:1px 0 1px 10px;border-left:2px solid var(--border)">' + item + '</div>'; }).join('') + '</div>';
     }).join('');
     html += '<div style="margin-top:10px"><div class="row-lbl">💊 Uso contínuo (foto)</div><div style="margin-top:5px">' + classesHtml + '</div></div>';
@@ -2698,11 +2698,11 @@ async function rodarAnalise() {
 
     // Cabeçalho do paciente organizado
     if (pacNomeExib || pacSinaisExib || pacDoencaExib || pacQueixaExib) {
-      let pacHtml = '<div style="display:flex;flex-direction:column;gap:2px;margin-bottom:12px;padding:10px 12px;background:var(--surface2);border-radius:10px;border-left:3px solid var(--blue)">';
-      if (pacNomeExib)   pacHtml += `<div style="font-size:13px;font-weight:800;color:var(--text)">👤 ${pacNomeExib}</div>`;
-      if (pacSinaisExib) pacHtml += `<div style="font-size:11px;color:var(--text-muted);margin-top:2px"><span style="color:var(--yellow);font-weight:700">Sinal Vital Alterado:</span> ${pacSinaisExib}</div>`;
-      if (pacDoencaExib) pacHtml += `<div style="font-size:11px;color:var(--text-muted)"><span style="color:var(--text);font-weight:700">Doenças Prévias:</span> ${pacDoencaExib}</div>`;
-      if (pacQueixaExib) pacHtml += `<div style="font-size:11px;color:var(--text-muted)"><span style="color:var(--text);font-weight:700">Queixa Principal:</span> ${pacQueixaExib}</div>`;
+      let pacHtml = '<div style="display:flex;flex-direction:column;gap:3px;margin-bottom:12px;padding:10px 12px;background:var(--surface2);border-radius:10px;border-left:3px solid var(--blue)">';
+      if (pacNomeExib)   pacHtml += `<div style="font-size:14px;font-weight:800;color:#FFFFFF">👤 ${pacNomeExib}</div>`;
+      if (pacSinaisExib) pacHtml += `<div style="font-size:12px;margin-top:2px"><span style="color:#F5C842;font-weight:700">Sinal Vital Alterado:</span> <span style="color:#FFFFFF">${pacSinaisExib}</span></div>`;
+      if (pacDoencaExib) pacHtml += `<div style="font-size:12px"><span style="color:#F5C842;font-weight:700">Doenças Prévias:</span> <span style="color:#FFFFFF">${pacDoencaExib}</span></div>`;
+      if (pacQueixaExib) pacHtml += `<div style="font-size:12px"><span style="color:#F5C842;font-weight:700">Queixa Principal:</span> <span style="color:#FFFFFF">${pacQueixaExib}</span></div>`;
       pacHtml += '</div>';
       html += pacHtml;
     }
@@ -2711,8 +2711,8 @@ async function rodarAnalise() {
     if (d.classes_medicamentos && d.classes_medicamentos.length) {
       const classesHtml = d.classes_medicamentos.map(c => `
         <div style="margin-bottom:6px">
-          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:3px">${c.icone} ${c.classe}</div>
-          ${c.itens.map(item => `<div style="font-size:12px;color:var(--text);padding:2px 0 2px 14px;border-left:2px solid var(--border)">${item}</div>`).join('')}
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:#60BFFF;margin-bottom:4px">${c.icone} ${c.classe}</div>
+          ${c.itens.map(item => `<div style="font-size:12px;color:#E8EFF8;padding:3px 0 3px 12px;border-left:2px solid #3B9BE8">${item}</div>`).join('')}
         </div>`).join('');
       html += `<div class="an-section">
         <div class="an-header" style="color:var(--blue)">💊 Medicamentos identificados</div>
@@ -2738,9 +2738,21 @@ async function rodarAnalise() {
       </div>`;
     }
 
-    // 4. Alertas clínicos — medicamentos a evitar neste paciente
+    // 4. Alertas clínicos — apenas medicamentos que estão na maleta
+    const medsDaMaleta = Object.keys(MEDS_DB).map(m => m.toLowerCase());
     if (d.alertas_clinicos && d.alertas_clinicos.length) {
-      const itensAlertas = d.alertas_clinicos.map(a => {
+      // Filtrar: só mostrar alerta se o medicamento está na maleta
+      const maletaNomes = (typeof MEDS !== 'undefined' ? MEDS : Object.keys(MEDS_DB)).map(m => m.toLowerCase());
+      const alertasFiltrados = d.alertas_clinicos.filter(a => {
+        const medLower = (a.medicamento || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+        // Verifica se algum medicamento da maleta aparece no alerta
+        return maletaNomes.some(m => {
+          const mNorm = m.normalize('NFD').replace(/[̀-ͯ]/g,'');
+          return medLower.includes(mNorm.substring(0,6)) || mNorm.includes(medLower.substring(0,6));
+        });
+      });
+      if (!alertasFiltrados.length) { window._recsParaVerDetalhe = []; }
+      const itensAlertas = alertasFiltrados.map(a => {
         const isGrave = (a.gravidade || '').toLowerCase() === 'grave';
         const cor = isGrave ? '#E8323C' : '#F5C842';
         const bg  = isGrave ? 'rgba(232,50,60,0.08)' : 'rgba(245,200,66,0.08)';
@@ -2751,10 +2763,12 @@ async function rodarAnalise() {
           + `<div style="font-size:11px;color:var(--text);line-height:1.4;opacity:.9">${a.motivo}</div>`
           + `</div>`;
       }).join('');
-      html += `<div class="an-conduta" style="border-color:rgba(232,50,60,0.3)">`
-        + `<div class="an-conduta-header" style="color:#E8323C">⚠️ Alertas Clínicos — Cautela ao Medicar</div>`
-        + `<div class="an-conduta-body" style="padding:8px 13px">${itensAlertas}</div>`
-        + `</div>`;
+      if (alertasFiltrados.length) {
+        html += `<div class="an-conduta" style="border-color:rgba(232,50,60,0.3)">`
+          + `<div class="an-conduta-header" style="color:#E8323C">⚠️ Alertas Clínicos — Cautela ao Medicar</div>`
+          + `<div class="an-conduta-body" style="padding:8px 13px">${itensAlertas}</div>`
+          + `</div>`;
+      }
     }
     // Sem recomendações de maleta
     window._recsParaVerDetalhe = [];
