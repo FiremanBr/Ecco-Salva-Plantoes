@@ -2507,7 +2507,7 @@ async function rodarAnalise() {
   const vozRaw = (campoVoz || {value:''}).value.trim() || _campoPaciente.voz || '';
 
   // Se o texto não está no formato organizado, organizar automaticamente via Groq
-  const estaOrganizado = vozRaw.includes('Nome/Idade:') || vozRaw.includes('Sinal Vital') || vozRaw.includes('Doencas') || vozRaw.includes('Doenças');
+  const estaOrganizado = vozRaw.includes('Nome/Idade:') || vozRaw.includes('Sinal Vital') || vozRaw.includes('Doen') || vozRaw.includes('Doenças');
   if (vozRaw && !estaOrganizado) {
     try {
       const GROQ_KEY = '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';
@@ -2517,7 +2517,7 @@ async function rodarAnalise() {
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile', max_tokens: 150, temperature: 0,
           messages: [
-            { role: 'system', content: 'You are an APH triage assistant. Organize Portuguese medical text into this exact format. Return ONLY the organized text:\nNome/Idade: [name, age]\nSinal Vital Alterado: [vitals]\nDoencas Previas: [diseases with full name]\nQueixa Principal: [complaint]\nOmit lines not mentioned. Rules:\n- PA/pressao: always write PA with uppercase, x between values: PA 300x150\n- saturacao/spo2: SpO2 87%\n- temperatura/febre: Temperatura 38.5°C\n- FC: FC 120bpm\n- Diseases MUST include abbreviation AND full name in parentheses: HAS (Hipertensao Arterial Sistemica), DM (Diabetes Mellitus), ICC (Insuficiencia Cardiaca Congestiva), AVC (Acidente Vascular Cerebral), DPOC (Doenca Pulmonar Obstrutiva Cronica), IAM (Infarto Agudo do Miocardio), IRC (Insuficiencia Renal Cronica), FA (Fibrilacao Atrial)\nExample: "Maria 90 PA 300 por 350 HAS DM dor no peito" becomes:\nNome/Idade: Maria, 90\nSinal Vital Alterado: PA 300x350\nDoencas Previas: HAS (Hipertensao Arterial Sistemica), DM (Diabetes Mellitus)\nQueixa Principal: Dor no peito' },
+            { role: 'system', content: 'You are an APH triage assistant. Organize Portuguese medical text into this exact format. Return ONLY the organized text:\nNome/Idade: [name, age]\nSinal Vital Alterado: [vitals]\nDoenças Prévias: [diseases with full name]\nQueixa Principal: [complaint]\nOmit lines not mentioned. Rules:\n- PA/pressao: always write PA with uppercase, x between values: PA 300x150\n- saturacao/spo2: SpO2 87%\n- temperatura/febre: Temperatura 38.5°C\n- FC: FC 120bpm\n- Diseases MUST include abbreviation AND full name in parentheses: HAS (Hipertensão Arterial Sistêmica), DM (Diabetes Mellitus), ICC (Insuficiência Cardíaca Congestiva), AVC (Acidente Vascular Cerebral), DPOC (Doença Pulmonar Obstrutiva Crônica), IAM (Infarto Agudo do Miocárdio), IRC (Insuficiência Renal Crônica), FA (Fibrilção Atrial)\nExample: "Maria 90 PA 300 por 350 HAS DM dor no peito" becomes:\nNome/Idade: Maria, 90\nSinal Vital Alterado: PA 300x350\nDoenças Prévias: HAS (Hipertensão Arterial Sistêmica), DM (Diabetes Mellitus)\nQueixa Principal: Dor no peito' },
             { role: 'user', content: vozRaw }
           ]
         })
