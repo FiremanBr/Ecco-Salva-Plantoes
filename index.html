@@ -1910,29 +1910,8 @@ async function deletarAtdKey(key) {
       .catch(e => console.warn("Erro ao deletar da nuvem:", e));
   }
   localStorage_safe_set('ecco_atendimentos', JSON.stringify(atendimentos));
-  const atdHoje = atendimentos.filter(a => a.data === hoje);
-  const lista = document.getElementById('listaAtd');
-  if (!atdHoje.length) {
-    lista.innerHTML = '<div class="empty-txt">Nenhum atendimento registrado hoje.</div>';
-  } else {
-    lista.innerHTML = atdHoje.map(a => `
-      <div class="atd-card">
-        <div class="atd-top" onclick="verAtdKey('${a._id || a.hora + a.nome}')" style="cursor:pointer">
-          <span class="atd-num">ATD ${String(a.num).padStart(2,'0')} — ${a.hora}</span>
-          <span class="atd-time">${a.data}</span>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <div onclick="verAtdKey('${a._id || a.hora + a.nome}')" style="flex:1;cursor:pointer">
-            <div class="atd-name">${a.nome}</div>
-            <div class="atd-prev" style="color:var(--accent);margin-top:3px">${a.meds}</div>
-          </div>
-          <div style="display:flex;gap:5px;flex-shrink:0">
-        <button onclick="editarAtdKey('${a._id || a.hora + a.nome}')" style="background:rgba(59,155,232,0.12);border:1px solid rgba(59,155,232,0.3);border-radius:6px;color:var(--blue);font-size:11px;font-weight:700;padding:5px 9px;cursor:pointer;font-family:Inter,sans-serif">✏️</button>
-        <button onclick="deletarAtdKey('${a._id || a.hora + a.nome}')" style="background:rgba(232,50,60,0.12);border:1px solid rgba(232,50,60,0.3);border-radius:6px;color:var(--accent);font-size:11px;font-weight:700;padding:5px 9px;cursor:pointer;font-family:Inter,sans-serif">🗑️</button>
-      </div>
-        </div>
-      </div>`).join('');
-  }
+  atualizarContadorAtd();
+  renderHistorico(); // mantém o filtro ativo
 }
 
 function fecharModal() { document.getElementById('modalOv').classList.remove('open'); }
