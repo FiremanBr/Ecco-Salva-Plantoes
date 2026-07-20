@@ -38,37 +38,37 @@
   try {
     const q = query(collection(db, 'atendimentos'));
     const snap = await getDocs(q);
-    if (!snap.empty) {
-      const fbAtds = [];
-      snap.forEach(d => fbAtds.push({ ...d.data(), _id: d.id }));
-      fbAtds.sort((a,b) => (b.ts||0) - (a.ts||0));
-      const localAtds = JSON.parse(localStorage.getItem('ecco_atendimentos') || '[]');
-      const localSemId = localAtds.filter(a => !a._id);
-      const merged = [...fbAtds, ...localSemId];
-      localStorage.setItem('ecco_atendimentos', JSON.stringify(merged));
-      window._atendimentosFirebase = merged;
-      console.log('Firebase: ' + fbAtds.length + ' atendimentos carregados');
-      // Salvar no localStorage — o app vai ler de lá ao inicializar
-      // E disparar renderHistorico quando estiver pronto
-      const aplicarFirebase = () => {
-        try {
-          // Atualizar a variável global via referência direta
-          if (typeof renderHistorico === 'function') {
-            // App já carregou — recarregar atendimentos do localStorage atualizado
-            const fresh = JSON.parse(localStorage.getItem('ecco_atendimentos') || '[]');
-            atendimentos.splice(0, atendimentos.length, ...fresh);
-            if (typeof atualizarContadorAtd === 'function') atualizarContadorAtd();
-            const ph = document.getElementById('panel-historico');
-            if (ph && ph.classList.contains('active')) renderHistorico();
-          } else {
-            setTimeout(aplicarFirebase, 200);
-          }
-        } catch(e) { setTimeout(aplicarFirebase, 200); }
-      };
-      setTimeout(aplicarFirebase, 800);
-    }
+    const fbAtds = [];
+    snap.forEach(d => fbAtds.push({ ...d.data(), _id: d.id }));
+    fbAtds.sort((a,b) => (b.ts||0) - (a.ts||0));
+    // Salvar no localStorage para o app ler
+    localStorage.setItem('ecco_atendimentos', JSON.stringify(fbAtds));
+    window._fbCarregado = fbAtds;
+    // Mostrar toast de debug
+    const toastFb = document.createElement('div');
+    toastFb.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#22C97A;color:white;border-radius:8px;padding:6px 14px;font-size:11px;font-weight:700;z-index:9999';
+    toastFb.textContent = 'Firebase: ' + fbAtds.length + ' atendimentos';
+    document.body.appendChild(toastFb);
+    setTimeout(() => toastFb.remove(), 3000);
+    // Aplicar quando o app estiver pronto
+    const tentarAplicar = () => {
+      if (typeof atendimentos !== 'undefined' && typeof renderHistorico === 'function') {
+        atendimentos.splice(0, atendimentos.length, ...fbAtds);
+        if (typeof atualizarContadorAtd === 'function') atualizarContadorAtd();
+        const ph = document.getElementById('panel-historico');
+        if (ph && ph.classList.contains('active')) renderHistorico();
+      } else {
+        setTimeout(tentarAplicar, 300);
+      }
+    };
+    tentarAplicar();
   } catch(e) {
     console.log('Firebase load error:', e.message);
+    const toastErr = document.createElement('div');
+    toastErr.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#E8323C;color:white;border-radius:8px;padding:6px 14px;font-size:11px;font-weight:700;z-index:9999';
+    toastErr.textContent = 'Firebase erro: ' + e.message;
+    document.body.appendChild(toastErr);
+    setTimeout(() => toastErr.remove(), 5000);
   }
 </script>
 <style>
