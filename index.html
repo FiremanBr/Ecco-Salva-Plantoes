@@ -43,15 +43,9 @@
     fbAtds.sort((a,b) => (b.ts||0) - (a.ts||0));
     // Salvar no localStorage para o app ler
     localStorage.setItem('ecco_atendimentos', JSON.stringify(fbAtds));
-    window._fbCarregado = fbAtds;
-    // Mostrar toast de debug
-    const toastFb = document.createElement('div');
-    toastFb.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#22C97A;color:white;border-radius:8px;padding:6px 14px;font-size:11px;font-weight:700;z-index:9999';
-    toastFb.textContent = 'Firebase: ' + fbAtds.length + ' atendimentos';
-    document.body.appendChild(toastFb);
-    setTimeout(() => toastFb.remove(), 3000);
-    // Sinalizar que Firebase carregou — script principal vai aplicar
-    window._fbPronto = true;
+    // Disparar evento customizado para o script principal capturar
+    localStorage.setItem('ecco_atendimentos', JSON.stringify(fbAtds));
+    document.dispatchEvent(new CustomEvent('firebase-loaded', { detail: fbAtds }));
   } catch(e) {
     console.log('Firebase load error:', e.message);
     const toastErr = document.createElement('div');
@@ -2612,6 +2606,11 @@ async function rodarAnalise() {
       })
     });
 
+    if (resp.status === 429) {
+      res.innerHTML = '<div class="error-box">⏳ Limite de requisições atingido. Aguarde 30 segundos e tente novamente.</div>';
+      btn.disabled = false;
+      return;
+    }
     if (!resp.ok) {
       const errBody = await resp.text().catch(() => '');
       throw new Error(`Erro HTTP ${resp.status}${errBody ? ': ' + errBody.slice(0,120) : ''}`);
@@ -3584,23 +3583,13 @@ function switchTab(tab, el) {
   setTimeout(atualizarContadorAtd, 300);
 
   // Aplicar dados do Firebase quando estiverem prontos
-  // Carregar do Firebase após inicializar (atualiza contador)
-  setTimeout(async () => {
-    if (window._firebaseReady) {
-      try {
-        const snap = await window._fbGetDocs(window._fbCollection(window._db, 'atendimentos'));
-        const docs = [];
-        snap.forEach(d => docs.push({ _id: d.id, ...d.data() }));
-        docs.sort((a,b) => (b.ts||0) - (a.ts||0));
-        atendimentos.splice(0, atendimentos.length, ...docs);
-        localStorage_safe_set('ecco_atendimentos', JSON.stringify(atendimentos));
-        atualizarContadorAtd();
-        // Se aba pacientes estiver ativa, renderizar
-        const ph = document.getElementById('panel-historico');
-        if (ph && ph.classList.contains('active')) renderHistorico();
-      } catch(e) { console.log('Firebase init load error:', e); }
-    }
-  }, 1500);
+  // Ouvir evento do Firebase e aplicar dados
+  document.addEventListener('firebase-loaded', (e) => {
+    const docs = e.detail;
+    atendimentos.splice(0, atendimentos.length, ...docs);
+    atualizarContadorAtd();
+    renderHistorico();
+  });
 })();
 
 </script>
