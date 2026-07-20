@@ -2481,16 +2481,28 @@ function anFotoSelecionada(input) {
             const groqData = await groqResp.json();
             const nomeMed = (groqData?.choices?.[0]?.message?.content || '').trim().replace(/['"]/g, '');
             if (nomeMed) {
-              const atual = campoMeds.value.trim();
-              campoMeds.value = atual ? atual + ', ' + nomeMed : nomeMed;
-              _campoPaciente.medsContinuos = campoMeds.value;
+              // Evitar duplicatas entre fotos
+              const medsAtual = campoMeds.value.trim();
+              const listaAtual = medsAtual ? medsAtual.split(",").map(m => m.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")) : [];
+              const novos = nomeMed.split(",").map(m => m.trim()).filter(m => {
+                if (m.length < 2) return false;
+                const mLow = m.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+                return !listaAtual.some(a => a.includes(mLow.substring(0,5)) || mLow.includes(a.substring(0,5)));
+              });
+              if (novos.length > 0) {
+                campoMeds.value = medsAtual ? medsAtual + ", " + novos.join(", ") : novos.join(", ");
+                _campoPaciente.medsContinuos = campoMeds.value;
+              }
             }
           } catch(e) {
-            // Fallback: usar texto OCR bruto
-            const atual = campoMeds.value.trim();
-            const primeiraLinha = textoOCR.split('\n')[0];
-            campoMeds.value = atual ? atual + ', ' + primeiraLinha : primeiraLinha;
-            _campoPaciente.medsContinuos = campoMeds.value;
+            // Fallback: usar texto OCR bruto sem duplicar
+            const medsAtual = campoMeds.value.trim();
+            const primeiraLinha = textoOCR.split("\n")[0];
+            const pLow = primeiraLinha.toLowerCase().substring(0,5);
+            if (!medsAtual.toLowerCase().includes(pLow)) {
+              campoMeds.value = medsAtual ? medsAtual + ", " + primeiraLinha : primeiraLinha;
+              _campoPaciente.medsContinuos = campoMeds.value;
+            }
           }
           if (fotoTxt) fotoTxt.textContent = '+ Adicionar mais foto';
           const t = document.createElement('div');
@@ -2548,7 +2560,7 @@ async function rodarAnalise() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile', max_tokens: 150, temperature: 0,
+          model: 'llama-3.1-8b-instant', max_tokens: 150, temperature: 0,
           messages: [
             { role: 'system', content: 'You are an APH triage assistant. Organize Portuguese medical text into this exact format. Return ONLY the organized text:\nNome/Idade: [name, age]\nSinal Vital Alterado: [vitals]\nDoenças Prévias: [diseases with full name]\nQueixa Principal: [complaint]\nOmit lines not mentioned. Rules:\n- PA/pressao: always write PA with uppercase, x between values: PA 300x150\n- saturacao/spo2: SpO2 87%\n- temperatura/febre: Temperatura 38.5°C\n- FC: FC 120bpm\n- Diseases MUST include abbreviation AND full name in parentheses: HAS (Hipertensão Arterial Sistêmica), DM (Diabetes Mellitus), ICC (Insuficiência Cardíaca Congestiva), AVC (Acidente Vascular Cerebral), DPOC (Doença Pulmonar Obstrutiva Crônica), IAM (Infarto Agudo do Miocárdio), IRC (Insuficiência Renal Crônica), FA (Fibrilção Atrial)\nExample: "Maria 90 PA 300 por 350 HAS DM dor no peito" becomes:\nNome/Idade: Maria, 90\nSinal Vital Alterado: PA 300x350\nDoenças Prévias: HAS (Hipertensão Arterial Sistêmica), DM (Diabetes Mellitus)\nQueixa Principal: Dor no peito' },
             { role: 'user', content: vozRaw }
@@ -2556,10 +2568,13 @@ async function rodarAnalise() {
         })
       });
       const data = await resp.json();
+    if (resp.status === 429) { console.log('Rate limit organização — texto direto'); }
+    else {
       const organizado = (data?.choices?.[0]?.message?.content || '').trim();
       if (organizado && campoVoz) {
         campoVoz.value = organizado;
         _campoPaciente.voz = organizado;
+    }
       }
     } catch(e) {}
   }
