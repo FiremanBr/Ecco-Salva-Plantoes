@@ -50,9 +50,9 @@
       console.log('Firebase: ' + fbAtds.length + ' atendimentos carregados');
       // Aguardar o app carregar e então atualizar
       const aplicar = () => {
-        if (typeof atendimentos !== 'undefined') {
-          atendimentos.length = 0;
-          merged.forEach(a => atendimentos.push(a));
+        if (window.atendimentos) {
+          window.atendimentos.length = 0;
+          merged.forEach(a => window.atendimentos.push(a));
           if (typeof atualizarContadorAtd === 'function') atualizarContadorAtd();
           if (typeof renderHistorico === 'function') {
             const ph = document.getElementById('panel-historico');
@@ -1396,7 +1396,8 @@ function analisar() {
 }
 
 // ── HISTÓRICO DE PACIENTES (numeração automática por dia) ──
-let atendimentos = JSON.parse(localStorage_safe_get('ecco_atendimentos') || '[]');
+window.atendimentos = JSON.parse(localStorage_safe_get('ecco_atendimentos') || '[]');
+let atendimentos = window.atendimentos;
 
 function localStorage_safe_get(key) {
   try { return localStorage.getItem(key); } catch(e) { return null; }
@@ -1641,7 +1642,7 @@ async function renderHistorico() {
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
         <div onclick="verAtdKey('${a._id || a.hora + a.nome}')" style="flex:1;cursor:pointer">
           <div class="atd-name">${a.nome}${a.idade ? ' · '+a.idade+' anos' : ''}</div>
-          ${a.queixa ? `<div class="atd-prev">${a.queixa}</div>` : ''}
+          ${a.queixa ? `<div class="atd-prev">${(()=>{ const q=a.queixa; if(q.includes('|'))return q; const linhas=q.split('\n').filter(l=>l.trim()); const partes=[]; linhas.forEach(l=>{if(/sinal vital/i.test(l))partes.push(l.replace(/^[^:]+:\s*/i,'').trim());else if(/doen/i.test(l))partes.push(l.replace(/^[^:]+:\s*/i,'').trim());else if(/queixa/i.test(l))partes.push(l.replace(/^[^:]+:\s*/i,'').trim());}); return partes.length?partes.join(' · '):q.substring(0,80); })()}</div>` : ''}
           <div class="atd-prev" style="color:var(--accent);margin-top:3px">${a.meds}</div>
         </div>
         <div style="display:flex;gap:5px;flex-shrink:0">
