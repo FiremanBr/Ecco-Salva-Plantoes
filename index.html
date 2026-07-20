@@ -33,6 +33,33 @@
   window._fbOrderBy = orderBy;
   window._firebaseReady = true;
   console.log("Firebase conectado!");
+
+  // Carregar atendimentos do Firebase ao iniciar
+  try {
+    const q = query(collection(db, 'atendimentos'), orderBy('ts', 'desc'));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      const fbAtds = [];
+      snap.forEach(d => fbAtds.push({ ...d.data(), _id: d.id }));
+      // Mesclar com localStorage — Firebase tem prioridade
+      const localAtds = JSON.parse(localStorage.getItem('ecco_atendimentos') || '[]');
+      const localSemId = localAtds.filter(a => !a._id);
+      const merged = [...fbAtds, ...localSemId];
+      localStorage.setItem('ecco_atendimentos', JSON.stringify(merged));
+      // Atualizar variável global e UI
+      if (typeof atendimentos !== 'undefined') {
+        atendimentos.length = 0;
+        merged.forEach(a => atendimentos.push(a));
+      }
+      window._atendimentosFirebase = merged;
+      console.log('Firebase: ' + fbAtds.length + ' atendimentos carregados');
+      // Atualizar contador e histórico se já renderizado
+      if (typeof atualizarContadorAtd === 'function') atualizarContadorAtd();
+      if (typeof renderHistorico === 'function' && document.getElementById('panel-historico')?.classList.contains('active')) renderHistorico();
+    }
+  } catch(e) {
+    console.log('Firebase load error:', e.message);
+  }
 </script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
