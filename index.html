@@ -2554,7 +2554,7 @@ async function rodarAnalise() {
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile', max_tokens: 150, temperature: 0,
           messages: [
-            { role: 'system', content: 'You are an APH triage assistant. Organize Portuguese medical text into this exact format. Return ONLY the organized text:\nNome/Idade: [name, age]\nSinal Vital Alterado: [vitals]\nDoencas Previas: [diseases with full name]\nQueixa Principal: [complaint]\nOmit lines not mentioned. Rules:\n- PA/pressao: always write PA with uppercase, x between values: PA 300x150\n- saturacao/spo2: SpO2 87%\n- temperatura/febre: Temperatura 38.5C\n- FC: FC 120bpm\n- Diseases MUST include abbreviation AND full name in parentheses: HAS (Hipertensao Arterial Sistemica), DM (Diabetes Mellitus), ICC (Insuficiencia Cardiaca Congestiva), AVC (Acidente Vascular Cerebral), DPOC (Doenca Pulmonar Obstrutiva Cronica), IAM (Infarto Agudo do Miocardio), IRC (Insuficiencia Renal Cronica), FA (Fibrilacao Atrial)\nExample: "Maria 90 PA 300 por 350 HAS DM dor no peito" becomes:\nNome/Idade: Maria, 90\nSinal Vital Alterado: PA 300x350\nDoencas Previas: HAS (Hipertensao Arterial Sistemica), DM (Diabetes Mellitus)\nQueixa Principal: Dor no peito' },
+            { role: 'system', content: 'You are an APH triage assistant. Organize Portuguese medical text into this exact format. Return ONLY the organized text:\nNome/Idade: [name, age]\nSinal Vital Alterado: [vitals]\nDoencas Previas: [diseases with full name]\nQueixa Principal: [complaint]\nOmit lines not mentioned. Rules:\n- PA/pressao: always write PA with uppercase, x between values: PA 300x150\n- saturacao/spo2: SpO2 87%\n- temperatura/febre: Temperatura 38.5°C\n- FC: FC 120bpm\n- Diseases MUST include abbreviation AND full name in parentheses: HAS (Hipertensao Arterial Sistemica), DM (Diabetes Mellitus), ICC (Insuficiencia Cardiaca Congestiva), AVC (Acidente Vascular Cerebral), DPOC (Doenca Pulmonar Obstrutiva Cronica), IAM (Infarto Agudo do Miocardio), IRC (Insuficiencia Renal Cronica), FA (Fibrilacao Atrial)\nExample: "Maria 90 PA 300 por 350 HAS DM dor no peito" becomes:\nNome/Idade: Maria, 90\nSinal Vital Alterado: PA 300x350\nDoencas Previas: HAS (Hipertensao Arterial Sistemica), DM (Diabetes Mellitus)\nQueixa Principal: Dor no peito' },
             { role: 'user', content: vozRaw }
           ]
         })
@@ -3190,7 +3190,7 @@ function verificarInteracoes() {
   if (!box) {
     box = document.createElement('div');
     box.id = 'interacoesAlertBox';
-    box.style.cssText = 'position:fixed;bottom:70px;right:14px;left:14px;z-index:88;display:flex;flex-direction:column;gap:5px;max-width:452px;margin:0 auto';
+    box.style.cssText = 'position:fixed;bottom:70px;right:14px;left:14px;z-index:88;display:flex;flex-direction:column;gap:5px;max-width:452px;margin:0 auto;background:var(--bg);border-radius:12px;padding:8px;box-shadow:0 4px 24px rgba(0,0,0,0.5)';
     document.body.appendChild(box);
   }
   if (!alertas.length) { box.innerHTML = ''; return; }
