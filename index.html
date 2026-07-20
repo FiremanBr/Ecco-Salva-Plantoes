@@ -50,22 +50,8 @@
     toastFb.textContent = 'Firebase: ' + fbAtds.length + ' atendimentos';
     document.body.appendChild(toastFb);
     setTimeout(() => toastFb.remove(), 3000);
-    // Aplicar quando o app estiver pronto
-    const tentarAplicar = () => {
-      if (typeof atendimentos !== 'undefined' && typeof renderHistorico === 'function') {
-        // Atualizar array global
-        atendimentos.splice(0, atendimentos.length, ...fbAtds);
-        // Atualizar localStorage também
-        localStorage.setItem('ecco_atendimentos', JSON.stringify(fbAtds));
-        // Atualizar UI
-        if (typeof atualizarContadorAtd === 'function') atualizarContadorAtd();
-        // Sempre renderizar historico (não só quando a aba estiver ativa)
-        if (typeof renderHistorico === 'function') renderHistorico();
-      } else {
-        setTimeout(tentarAplicar, 300);
-      }
-    };
-    setTimeout(tentarAplicar, 1000);
+    // Sinalizar que Firebase carregou — script principal vai aplicar
+    window._fbPronto = true;
   } catch(e) {
     console.log('Firebase load error:', e.message);
     const toastErr = document.createElement('div');
@@ -3595,6 +3581,19 @@ function switchTab(tab, el) {
   }
   setTimeout(atualizarStatusOnline, 100);
   setTimeout(atualizarContadorAtd, 300);
+
+  // Aplicar dados do Firebase quando estiverem prontos
+  const aplicarFbDados = () => {
+    if (window._fbCarregado) {
+      atendimentos.splice(0, atendimentos.length, ...window._fbCarregado);
+      atualizarContadorAtd();
+      renderHistorico();
+      window._fbCarregado = null; // evitar reaplicar
+    } else if (!window._fbPronto) {
+      setTimeout(aplicarFbDados, 200);
+    }
+  };
+  setTimeout(aplicarFbDados, 500);
 })();
 // Limpar atendimentos sem _id (dados antigos pre-Firebase) do localStorage
 atendimentos = atendimentos.filter(a => a._id !== undefined || false);
