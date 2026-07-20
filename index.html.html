@@ -48,19 +48,24 @@
       localStorage.setItem('ecco_atendimentos', JSON.stringify(merged));
       window._atendimentosFirebase = merged;
       console.log('Firebase: ' + fbAtds.length + ' atendimentos carregados');
-      // Aplicar dados do Firebase após app carregar
-      const aplicar = () => {
-        if (window.atendimentos && typeof atualizarContadorAtd === 'function') {
-          window.atendimentos.length = 0;
-          merged.forEach(a => window.atendimentos.push(a));
-          atualizarContadorAtd();
-          const ph = document.getElementById('panel-historico');
-          if (ph && ph.classList.contains('active') && typeof renderHistorico === 'function') renderHistorico();
-        } else {
-          setTimeout(aplicar, 300);
-        }
+      // Salvar no localStorage — o app vai ler de lá ao inicializar
+      // E disparar renderHistorico quando estiver pronto
+      const aplicarFirebase = () => {
+        try {
+          // Atualizar a variável global via referência direta
+          if (typeof renderHistorico === 'function') {
+            // App já carregou — recarregar atendimentos do localStorage atualizado
+            const fresh = JSON.parse(localStorage.getItem('ecco_atendimentos') || '[]');
+            atendimentos.splice(0, atendimentos.length, ...fresh);
+            if (typeof atualizarContadorAtd === 'function') atualizarContadorAtd();
+            const ph = document.getElementById('panel-historico');
+            if (ph && ph.classList.contains('active')) renderHistorico();
+          } else {
+            setTimeout(aplicarFirebase, 200);
+          }
+        } catch(e) { setTimeout(aplicarFirebase, 200); }
       };
-      aplicar();
+      setTimeout(aplicarFirebase, 800);
     }
   } catch(e) {
     console.log('Firebase load error:', e.message);
@@ -3503,8 +3508,7 @@ function filtrarHistorico() {
         '<span class="atd-time">' + a.data + '</span></div>' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' +
         '<div data-key="' + chave + '" data-action="ver" style="flex:1;cursor:pointer">' +
-          '<div class="atd-name">' + a.nome + (a.idade ? ' \xb7 ' + a.idade + ' anos' : '') + '</div>' +
-          (a.queixa ? '<div class="atd-prev">' + a.queixa.replace(/ \| /g,' \xb7 ') + '</div>' : '') +
+          '<div class="atd-name">' + a.nome + '</div>' +
           '<div class="atd-prev" style="color:var(--accent);margin-top:3px">' + a.meds + '</div></div>' +
         '<div style="display:flex;gap:5px;flex-shrink:0">' +
           '<button data-key="' + chave + '" data-action="editar" style="background:rgba(59,155,232,0.12);border:1px solid rgba(59,155,232,0.3);border-radius:6px;color:var(--blue);font-size:11px;font-weight:700;padding:5px 9px;cursor:pointer;font-family:Inter,sans-serif">\u270f\ufe0f</button>' +
