@@ -1390,6 +1390,7 @@ function analisar() {
 
 // ── HISTÓRICO DE PACIENTES (numeração automática por dia) ──
 window.atendimentos = JSON.parse(localStorage_safe_get('ecco_atendimentos') || '[]');
+window._fbCarregado = undefined; // Firebase ainda não carregou
 let atendimentos = window.atendimentos;
 
 function localStorage_safe_get(key) {
@@ -3583,23 +3584,23 @@ function switchTab(tab, el) {
   setTimeout(atualizarContadorAtd, 300);
 
   // Aplicar dados do Firebase quando estiverem prontos
-  let _fbAplicado = false;
+  // Aguardar Firebase e aplicar dados
   const aplicarFbDados = () => {
-    if (_fbAplicado) return;
-    if (window._fbCarregado && window._fbCarregado.length >= 0) {
-      _fbAplicado = true;
-      atendimentos.splice(0, atendimentos.length, ...window._fbCarregado);
-      atualizarContadorAtd();
-      renderHistorico();
+    if (window._fbCarregado !== undefined) {
+      // Firebase respondeu — aplicar (mesmo que vazio)
+      if (window._fbCarregado.length > 0) {
+        atendimentos.splice(0, atendimentos.length, ...window._fbCarregado);
+        atualizarContadorAtd();
+        renderHistorico();
+      }
+      window._fbCarregado = undefined; // consumido
     } else {
-      setTimeout(aplicarFbDados, 300);
+      // Firebase ainda não respondeu — tentar de novo
+      setTimeout(aplicarFbDados, 200);
     }
   };
-  setTimeout(aplicarFbDados, 800);
+  setTimeout(aplicarFbDados, 500);
 })();
-// Limpar atendimentos sem _id (dados antigos pre-Firebase) do localStorage
-atendimentos = atendimentos.filter(a => a._id !== undefined || false);
-localStorage_safe_set('ecco_atendimentos', JSON.stringify(atendimentos));
 
 </script>
 </body>
