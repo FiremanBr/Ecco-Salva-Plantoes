@@ -108,9 +108,9 @@
   .med-chip.selected .ck { display: inline; color: var(--accent); }
   .med-chip .first-letter { color: var(--blue); font-weight: 800; font-size: 13px; }
   .med-chip.new-letter { border-left: 2px solid var(--blue); }
-  .med-chip.favorito { border-color: #F5C842; background: rgba(245,200,66,0.08); }
-  .med-chip .star { font-size: 10px; opacity: 0.4; margin-left: 3px; cursor: pointer; transition: opacity .2s; }
-  .med-chip.favorito .star { opacity: 1; }
+  .med-chip.favorito { }
+  .med-chip .star { font-size: 10px; display: none; margin-left: 3px; cursor: pointer; }
+  .med-chip.favorito .star { display: inline; }
 
   /* BUSCA */
   .search-wrap { position: relative; margin-bottom: 8px; }
@@ -1058,7 +1058,7 @@ function renderMaleta() {
       ? `<span class="first-letter">${med[0]}</span>${med.slice(1)}`
       : med;
     const isFav = _favoritos.has(med);
-    html += `<div class="med-chip${isNovaLetra ? ' new-letter' : ''}${isFav ? ' favorito' : ''}" data-med="${med}" onclick="toggleMed('${med}',this)"><span class="ck">✓</span>${nomeExibido}<span class="star" onclick="toggleFavorito('${med}',event)">⭐</span></div>`;
+    html += `<div class="med-chip${isNovaLetra ? ' new-letter' : ''}${isFav ? ' favorito' : ''}" data-med="${med}" onclick="toggleMed('${med}',this)" oncontextmenu="toggleFavorito('${med}',event)" data-fav="${med}"><span class="ck">✓</span>${nomeExibido}${isFav ? '<span class="star">⭐</span>' : ''}</div>`;
   });
   grid.innerHTML = `<div class="med-grid">${html}</div>
     <div style="margin-top:16px;padding:12px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -1068,10 +1068,23 @@ function renderMaleta() {
         <button onclick="abrirTabelaInteracoes()" style="background:rgba(232,50,60,0.1);border:1px solid rgba(232,50,60,0.35);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap">⚠️ Interações</button>
       </div>
     </div>
-    <div style="padding:6px 12px 12px;font-size:10px;color:var(--text-dim);text-align:center;line-height:1.6">
-      📚 Referências: Bula ANVISA · Manual Farmacêutico Einstein · COFEN · AHA/ILCOR<br>
-      Confirme sempre com a bula do lote em uso.
-    </div>`;
+`;
+
+  // Long press para favoritar (mobile)
+  let _lpTimer = null;
+  grid.addEventListener('touchstart', e => {
+    const chip = e.target.closest('.med-chip');
+    if (!chip) return;
+    const med = chip.getAttribute('data-med');
+    if (!med) return;
+    _lpTimer = setTimeout(() => {
+      _lpTimer = null;
+      toggleFavorito(med, e);
+      if (navigator.vibrate) navigator.vibrate(50);
+    }, 600);
+  }, { passive: true });
+  grid.addEventListener('touchend', () => { if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; } });
+  grid.addEventListener('touchmove', () => { if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; } });
 
   // Marcar chips que já estão selecionados (da análise ou maleta)
   // Recombinar selecionados com _recsMarcaradas + _maletaExtras antes de marcar
@@ -3212,16 +3225,29 @@ function verificarInteracoes() {
 
 // ── FAVORITOS ─────────────────────────────
 function toggleFavorito(nome, e) {
-  e.stopPropagation(); // não ativar toggleMed
-  if (_favoritos.has(nome)) {
-    _favoritos.delete(nome);
-  } else {
-    _favoritos.add(nome);
-  }
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  const eraFav = _favoritos.has(nome);
+  if (eraFav) { _favoritos.delete(nome); } else { _favoritos.add(nome); }
   localStorage_safe_set('ecco_favoritos', JSON.stringify([..._favoritos]));
   // Atualizar visual do chip
   const chip = document.querySelector(`.med-chip[data-med="${nome}"]`);
-  if (chip) chip.classList.toggle('favorito', _favoritos.has(nome));
+  if (chip) {
+    chip.classList.toggle('favorito', !eraFav);
+    // Adicionar ou remover estrela
+    const starExist = chip.querySelector('.star');
+    if (!eraFav && !starExist) {
+      const s = document.createElement('span');
+      s.className = 'star'; s.textContent = '⭐';
+      chip.appendChild(s);
+    } else if (eraFav && starExist) {
+      starExist.remove();
+    }
+  }
+  // Toast
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid #F5C842;color:#F5C842;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;z-index:999;white-space:nowrap';
+  t.textContent = eraFav ? '☆ Removido dos favoritos' : '⭐ Adicionado aos favoritos';
+  document.body.appendChild(t); setTimeout(() => t.remove(), 1500);
 }
 
 // ── MODO ESTUDO ───────────────────────────
