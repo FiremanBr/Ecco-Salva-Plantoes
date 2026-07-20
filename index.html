@@ -53,15 +53,19 @@
     // Aplicar quando o app estiver pronto
     const tentarAplicar = () => {
       if (typeof atendimentos !== 'undefined' && typeof renderHistorico === 'function') {
+        // Atualizar array global
         atendimentos.splice(0, atendimentos.length, ...fbAtds);
+        // Atualizar localStorage também
+        localStorage.setItem('ecco_atendimentos', JSON.stringify(fbAtds));
+        // Atualizar UI
         if (typeof atualizarContadorAtd === 'function') atualizarContadorAtd();
-        const ph = document.getElementById('panel-historico');
-        if (ph && ph.classList.contains('active')) renderHistorico();
+        // Sempre renderizar historico (não só quando a aba estiver ativa)
+        if (typeof renderHistorico === 'function') renderHistorico();
       } else {
         setTimeout(tentarAplicar, 300);
       }
     };
-    tentarAplicar();
+    setTimeout(tentarAplicar, 1000);
   } catch(e) {
     console.log('Firebase load error:', e.message);
     const toastErr = document.createElement('div');
