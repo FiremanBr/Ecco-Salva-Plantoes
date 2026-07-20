@@ -1720,7 +1720,7 @@ function _exibirModal(a) {
   // Medicamentos de uso contínuo (foto)
   if (a.analise && a.analise.classes && a.analise.classes.length) {
     const classesHtml = a.analise.classes.map(function(c) {
-      return '<div style="margin-bottom:5px"><div style="font-size:10px;font-weight:800;text-transform:uppercase;color:#60BFFF;margin-bottom:2px">' + c.icone + ' ' + c.classe + '</div>' +
+      return '<div style="margin-bottom:5px"><div style="font-size:10px;font-weight:800;text-transform:uppercase;color:#FF8C00;margin-bottom:2px">' + c.icone + ' ' + c.classe + '</div>' +
         c.itens.map(function(item) { return '<div style="font-size:11px;color:var(--text);padding:1px 0 1px 10px;border-left:2px solid var(--border)">' + item + '</div>'; }).join('') + '</div>';
     }).join('');
     html += '<div style="margin-top:10px"><div class="row-lbl">💊 Uso contínuo (foto)</div><div style="margin-top:5px">' + classesHtml + '</div></div>';
@@ -2554,7 +2554,7 @@ async function rodarAnalise() {
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile', max_tokens: 150, temperature: 0,
           messages: [
-            { role: 'system', content: 'You are an APH triage assistant. Organize the Portuguese medical text into this exact format. Return ONLY the organized text:\nNome/Idade: [name, age]\nSinal Vital Alterado: [vitals with values]\nDoencas Previas: [diseases, use HAS/DM/ICC/AVC/DPOC abbreviations]\nQueixa Principal: [complaint]\nOmit lines not mentioned. number after name=age; PA/pressao=vital sign; hipertensao=HAS; diabetes=DM; dor/dispneia=complaint. Example: "Maria 80 pa 200 por 100 hipertensao dor no peito" becomes:\nNome/Idade: Maria, 80\nSinal Vital Alterado: PA 200x100\nDoencas Previas: HAS\nQueixa Principal: Dor no peito' },
+            { role: 'system', content: 'You are an APH triage assistant. Organize the Portuguese medical text into this exact format. Return ONLY the organized text:\nNome/Idade: [name, age]\nSinal Vital Alterado: [vitals with values]\nDoencas Previas: [diseases, use HAS/DM/ICC/AVC/DPOC abbreviations]\nQueixa Principal: [complaint]\nOmit lines not mentioned. Rules: number after name=age; PA/pressao=vital sign with x between values (PA 200x100); saturacao/spo2/oxigenio=SpO2 with % sign (SpO2 87%); temperatura/febre=Temperatura with C (Temperatura 38.5C); FC=FC with bpm (FC 120bpm); hipertensao=HAS; diabetes=DM; dor/dispneia=complaint. Example: "Joao 70 saturacao 87 temperatura 38 hipertensao diabetes dor no peito" becomes:\nNome/Idade: Joao, 70\nSinal Vital Alterado: SpO2 87%, Temperatura 38C\nDoencas Previas: HAS, DM\nQueixa Principal: Dor no peito' },
             { role: 'user', content: vozRaw }
           ]
         })
@@ -2667,7 +2667,7 @@ async function rodarAnalise() {
       return '';
     };
     const pacNomeExib   = extrairCampo(vozTextoResult, 'Nome/Idade', 'Nome', 'Paciente') || nomeRaw || '';
-    const pacSinaisExib = extrairCampo(vozTextoResult, 'Sinais? [Vv]itais?', 'Sinais?', 'PA') || sinaisVal || '';
+    const pacSinaisExib = extrairCampo(vozTextoResult, 'Sinal Vital Alterado', 'Sinais? [Vv]itais?', 'Sinais?', 'PA', 'SpO2', 'Satura') || sinaisVal || '';
     const pacDoencaExib = extrairCampo(vozTextoResult, 'Doen[çc]as? Pr[eé]vias?', 'Doen[çc]as?', 'Hist[oó]rico') || comorbVal || '';
     const pacQueixaExib = extrairCampo(vozTextoResult, 'Queixa [Pp]rincipal', 'Queixa', 'Sintoma') || queixaVal || '';
 
@@ -2711,7 +2711,7 @@ async function rodarAnalise() {
     if (d.classes_medicamentos && d.classes_medicamentos.length) {
       const classesHtml = d.classes_medicamentos.map(c => `
         <div style="margin-bottom:6px">
-          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:#60BFFF;margin-bottom:4px">${c.icone} ${c.classe}</div>
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:#FF8C00;margin-bottom:4px">${c.icone} ${c.classe}</div>
           ${c.itens.map(item => `<div style="font-size:12px;color:#E8EFF8;padding:3px 0 3px 12px;border-left:2px solid #3B9BE8">${item}</div>`).join('')}
         </div>`).join('');
       html += `<div class="an-section">
