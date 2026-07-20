@@ -285,7 +285,6 @@
       <button onclick="document.getElementById('buscaHistorico').value='';filtrarHistorico()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text-dim);font-size:12px;cursor:pointer">✕</button>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap" id="filtrosRapidos">
-      <button onclick="filtroRapido('hoje')" class="filtro-btn" data-filtro="hoje" style="background:rgba(59,155,232,0.15);border:1px solid rgba(59,155,232,0.4);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--blue);cursor:pointer;font-family:Inter,sans-serif">Hoje</button>
       <button onclick="filtroRapido('ontem')" class="filtro-btn" data-filtro="ontem" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif">Ontem</button>
       <button onclick="filtroRapido('semana')" class="filtro-btn" data-filtro="semana" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif">Esta semana</button>
       <button onclick="filtroRapido('mes')" class="filtro-btn" data-filtro="mes" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif">Este mês</button>
@@ -1065,10 +1064,10 @@ function renderMaleta() {
       ? `<span class="first-letter">${med[0]}</span>${med.slice(1)}`
       : med;
     const isFav = _favoritos.has(med);
-    html += `<div class="med-chip${isNovaLetra ? ' new-letter' : ''}${isFav ? ' favorito' : ''}" data-med="${med}" onclick="toggleMed('${med}',this)" oncontextmenu="toggleFavorito('${med}',event)" data-fav="${med}"><span class="ck">✓</span>${nomeExibido}${isFav ? '<span class="star">⭐</span>' : ''}</div>`;
+    html += `<div class="med-chip${isNovaLetra ? ' new-letter' : ''}${isFav ? ' favorito' : ''}" data-med="${med}" onclick="toggleMed('${med}',this)"><span class="ck">✓</span>${nomeExibido}${isFav ? '<span class="star">⭐</span>' : ''}</div>`;
   });
   grid.innerHTML = `<div class="med-grid">${html}</div>
-    <div style="margin-top:12px;padding:8px 4px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+    <div style="margin-top:12px;padding:8px 4px 0;display:flex;align-items:center;justify-content:space-between;gap:8px;background:transparent">
       <div style="font-size:11px;color:var(--text-muted);line-height:1.4">Toque para ver a ficha<br><span style="color:var(--blue)">Modo Estudo</span> para comparar interações</div>
       <div style="display:flex;gap:6px;flex-shrink:0">
         <button id="btnModoEstudo" onclick="toggleModoEstudo()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap">📚 Modo Estudo</button>
@@ -3288,7 +3287,7 @@ function toggleFavorito(nome, e) {
   // Toast
   const t = document.createElement('div');
   t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid #F5C842;color:#F5C842;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;z-index:999;white-space:nowrap';
-  t.textContent = eraFav ? '⭐ Adicionado aos favoritos' : '☆ Removido dos favoritos';
+  t.textContent = !eraFav ? '⭐ Adicionado aos favoritos' : '☆ Removido dos favoritos';
   document.body.appendChild(t); setTimeout(() => t.remove(), 1500);
 }
 
