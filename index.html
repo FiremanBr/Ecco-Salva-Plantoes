@@ -3583,17 +3583,19 @@ function switchTab(tab, el) {
   setTimeout(atualizarContadorAtd, 300);
 
   // Aplicar dados do Firebase quando estiverem prontos
+  let _fbAplicado = false;
   const aplicarFbDados = () => {
-    if (window._fbCarregado) {
+    if (_fbAplicado) return;
+    if (window._fbCarregado && window._fbCarregado.length >= 0) {
+      _fbAplicado = true;
       atendimentos.splice(0, atendimentos.length, ...window._fbCarregado);
       atualizarContadorAtd();
       renderHistorico();
-      window._fbCarregado = null; // evitar reaplicar
-    } else if (!window._fbPronto) {
-      setTimeout(aplicarFbDados, 200);
+    } else {
+      setTimeout(aplicarFbDados, 300);
     }
   };
-  setTimeout(aplicarFbDados, 500);
+  setTimeout(aplicarFbDados, 800);
 })();
 // Limpar atendimentos sem _id (dados antigos pre-Firebase) do localStorage
 atendimentos = atendimentos.filter(a => a._id !== undefined || false);
