@@ -3284,9 +3284,13 @@ function calcularStats(atds) {
       ${sub ? `<div style="font-size:10px;color:var(--text-dim);margin-top:2px">${sub}</div>` : ''}
     </div>`;
 
-  grid.innerHTML = `<div style="display:flex;gap:8px">
-    ${stat('🚑','Atendimentos',total,'','0.8')}
-    ${stat('💊','Mais usados',topMed,'','2')}
+  grid.innerHTML = `<div style="display:flex;gap:8px;align-items:stretch">
+    <div style="flex:0 0 90px">
+      ${stat('🚑','Atendimentos',total,'','1')}
+    </div>
+    <div style="flex:1;min-width:0">
+      ${stat('💊','Mais usados',topMed,'','1')}
+    </div>
   </div>`;
 }
 
