@@ -3273,12 +3273,12 @@ function calcularStats(atds) {
   });
   const medsOrdenados = Object.entries(medsCount).sort((a,b) => b[1]-a[1]);
   const top4 = medsOrdenados.slice(0,4);
-  const linhas = top4.map(([n,c],i)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:${i<top4.length-1?'1px solid var(--border)':'none'}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i+1}. ${n}</span><strong>${c}x</strong></div>`).join('')||'—';
+  const linhas = top4.length ? top4.map(([n,c],i)=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:${i<top4.length-1?'1px solid var(--border)':'none'}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i+1}. ${n}</span><strong>${c}x</strong></div>`).join('') : '<div>—</div>';
 
-  grid.innerHTML=`<div style="display:grid;grid-template-columns:95px minmax(0,1fr);gap:10px;width:100%">
-<div style="background:var(--surface3);border-radius:10px;padding:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:170px">
-<div style="font-size:30px">🚑</div><div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-top:8px">ATENDIMENTOS</div><div style="font-size:54px;font-weight:800;line-height:1;margin-top:10px">${total}</div></div>
-<div style="background:var(--surface3);border-radius:10px;padding:14px;width:100%;min-width:0"><div style="font-size:14px;font-weight:800;margin-bottom:12px">💊 Medicamentos mais usados</div>${linhas}</div></div>`;
+  grid.innerHTML=`<div style="display:flex;gap:10px;width:100%;align-items:stretch">
+<div style="flex:0 0 120px;background:var(--surface3);border-radius:10px;padding:12px;display:flex;flex-direction:column;justify-content:center;align-items:center">
+<div style="font-size:22px">🚑</div><div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:6px 0">Atendimentos</div><div style="font-size:34px;font-weight:800">${total}</div></div>
+<div style="flex:1;min-width:0;background:var(--surface3);border-radius:10px;padding:12px"><div style="font-size:12px;font-weight:800;margin-bottom:8px">💊 Medicamentos mais usados</div>${linhas}</div></div>`;
 }
 
 // ── FAVORITOS ─────────────────────────────
