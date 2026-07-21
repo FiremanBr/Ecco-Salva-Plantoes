@@ -292,7 +292,7 @@
     </div>
     <div id="statsPlantao" style="display:none;margin-bottom:12px;padding:12px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
       <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:10px">📊 Estatísticas do Plantão</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="statsGrid"></div>
+      <div style="display:grid;grid-template-columns:90px minmax(0,1fr);gap:8px" id="statsGrid"></div>
     </div>
     <div id="listaAtd"></div>
   </div>
@@ -3272,22 +3272,21 @@ function calcularStats(atds) {
     });
   });
   const medsOrdenados = Object.entries(medsCount).sort((a,b) => b[1]-a[1]);
-  const top4 = medsOrdenados.slice(0,4);
-  const lista = top4.length ? top4.map(([n,c],i)=>`<div style="padding:4px 0;border-bottom:1px solid var(--border)"><b>${i+1}.</b> ${n} <span style="color:var(--accent)">(${c}x)</span></div>`).join('') : '—';
+  const top3 = medsOrdenados.slice(0,3);
+  const topMed = top3.length ? top3.map(([n,c])=>`${n} (${c}x)`).join(', ') : '—';
 
-  grid.innerHTML=`<div style="display:flex;gap:8px;align-items:stretch">
-  <div style="flex:0 0 110px;background:var(--surface3);border-radius:8px;padding:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
-    <div style="font-size:26px">🚑</div>
-    <div style="font-size:11px;font-weight:800;text-transform:uppercase;margin-top:4px">Atendimentos</div>
-    <div style="font-size:42px;font-weight:800;color:var(--accent);line-height:1.1;margin-top:8px">${total}</div>
-  </div>
-  <div style="flex:1;background:var(--surface3);border-radius:8px;padding:10px">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <div style="font-size:24px">💊</div>
-      <div style="font-size:11px;font-weight:800;text-transform:uppercase">Medicamentos mais usados</div>
-    </div>
-    ${lista}
-  </div>
+
+  const stat = (icone, label, valor, sub, flex='1') => `
+    <div style="flex:${flex};background:var(--surface3);border-radius:8px;padding:10px;text-align:center;min-height:110px;display:flex;flex-direction:column;justify-content:center">
+      <div style="font-size:18px;margin-bottom:2px">${icone}</div>
+      <div style="font-size:${label==='Mais usados'?'11px':'18px'};font-weight:800;color:var(--text);white-space:normal;word-break:break-word;line-height:1.3">${valor}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-top:4px">${label}</div>
+      ${sub ? `<div style="font-size:10px;color:var(--text-dim);margin-top:2px">${sub}</div>` : ''}
+    </div>`;
+
+  grid.innerHTML = `<div style="display:flex;gap:8px">
+    ${stat('🚑','Atendimentos',total,'','0.8')}
+    ${stat('💊','Mais usados',topMed,'','2')}
   </div>`;
 }
 
