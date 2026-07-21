@@ -3252,19 +3252,42 @@ function verificarInteracoes() {
 
 // ── ESTATÍSTICAS DO PLANTÃO ──────────────
 function calcularStats(atds) {
-  const painel=document.getElementById("statsPlantao");
-  const grid=document.getElementById("statsGrid");
-  if(!painel||!grid||!atds.length){if(painel)painel.style.display="none";return;}
-  painel.style.display="block";
-  const total=atds.length;
-  const cnt={};
-  atds.forEach(a=>{(a.meds||"").split(",").map(s=>s.trim()).filter(Boolean).forEach(m=>cnt[m]=(cnt[m]||0)+1)});
-  const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,4);
-  grid.style.display='block';
-  grid.innerHTML=`<div style="display:flex;width:100%;background:var(--surface3);border-radius:10px;overflow:hidden">
-  <div style="flex:0 0 120px;padding:14px;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center">
-  <div style="font-size:24px">🚑</div><div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">Atendimentos</div><div style="font-size:34px;font-weight:800">${total}</div></div>
-  <div style="flex:1;min-width:0;padding:12px 14px"><div style="font-size:12px;font-weight:800;color:var(--accent);margin-bottom:8px">💊 Medicamentos mais usados</div>${top.map(([n,c],i)=>`<div style='display:flex;justify-content:space-between;padding:7px 0;${i<top.length-1?"border-bottom:1px solid var(--border);":""}'><span style='overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>${i+1}. ${n}</span><strong>${c}x</strong></div>`).join('')}</div></div>`;
+  const painel = document.getElementById('statsPlantao');
+  const grid = document.getElementById('statsGrid');
+  if (!painel || !grid || !atds.length) {
+    if (painel) painel.style.display = 'none';
+    return;
+  }
+  painel.style.display = 'block';
+
+  // Total
+  const total = atds.length;
+
+  // Medicamentos mais usados
+  const medsCount = {};
+  atds.forEach(a => {
+    if (!a.meds) return;
+    a.meds.split(',').map(m => m.trim()).filter(Boolean).forEach(m => {
+      medsCount[m] = (medsCount[m] || 0) + 1;
+    });
+  });
+  const medsOrdenados = Object.entries(medsCount).sort((a,b) => b[1]-a[1]);
+  const top3 = medsOrdenados.slice(0,3);
+  const topMed = top3.length ? top3.map(([n,c])=>`${n} (${c}x)`).join(', ') : '—';
+
+
+  const stat = (icone, label, valor, sub, flex='1') => `
+    <div style="flex:${flex};background:var(--surface3);border-radius:8px;padding:10px;text-align:center;min-height:110px;display:flex;flex-direction:column;justify-content:center">
+      <div style="font-size:18px;margin-bottom:2px">${icone}</div>
+      <div style="font-size:${label==='Mais usados'?'11px':'18px'};font-weight:800;color:var(--text);white-space:normal;word-break:break-word;line-height:1.3">${valor}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-top:4px">${label}</div>
+      ${sub ? `<div style="font-size:10px;color:var(--text-dim);margin-top:2px">${sub}</div>` : ''}
+    </div>`;
+
+  grid.innerHTML = `<div style="display:flex;gap:8px">
+    ${stat('🚑','Atendimentos',total,'','0.8')}
+    ${stat('💊','Mais usados',topMed,'','2')}
+  </div>`;
 }
 
 // ── FAVORITOS ─────────────────────────────
