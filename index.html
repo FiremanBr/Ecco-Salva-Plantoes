@@ -3275,7 +3275,6 @@ function calcularStats(atds) {
   const topMed = medsOrdenados[0] ? medsOrdenados[0][0] : '—';
   const topMedCount = medsOrdenados[0] ? medsOrdenados[0][1] : 0;
 
-  // Hora de pico
   const horaCount = {};
   atds.forEach(a => {
     if (!a.hora) return;
@@ -3303,8 +3302,6 @@ function calcularStats(atds) {
   grid.innerHTML =
     stat('🚑', 'Atendimentos', total, '') +
     stat('💊', 'Med. mais usado', topMed.length > 12 ? topMed.substring(0,12)+'…' : topMed, topMedCount > 0 ? topMedCount + 'x' : '') +
-    stat('⏰', 'Hora de pico', horaPicoStr, horaPico ? horaPico[1] + ' atd' : '') +
-    stat('📋', 'Média meds/atd', mediaMeds, '');
 }
 
 // ── FAVORITOS ─────────────────────────────
