@@ -3275,21 +3275,6 @@ function calcularStats(atds) {
   const topMed = medsOrdenados[0] ? medsOrdenados[0][0] : '—';
   const topMedCount = medsOrdenados[0] ? medsOrdenados[0][1] : 0;
 
-  const horaCount = {};
-  atds.forEach(a => {
-    if (!a.hora) return;
-    const h = a.hora.split(':')[0] + 'h';
-    horaCount[h] = (horaCount[h] || 0) + 1;
-  });
-  const horaPico = Object.entries(horaCount).sort((a,b) => b[1]-a[1])[0];
-  const horaPicoStr = horaPico ? horaPico[0] : '—';
-
-  // Média de meds por atendimento
-  const totalMeds = atds.reduce((acc, a) => {
-    if (!a.meds) return acc;
-    return acc + a.meds.split(',').filter(m => m.trim()).length;
-  }, 0);
-  const mediaMeds = total > 0 ? (totalMeds / total).toFixed(1) : '0';
 
   const stat = (icone, label, valor, sub) => `
     <div style="background:var(--surface3);border-radius:8px;padding:10px;text-align:center">
@@ -3301,7 +3286,7 @@ function calcularStats(atds) {
 
   grid.innerHTML =
     stat('🚑', 'Atendimentos', total, '') +
-    stat('💊', 'Med. mais usado', topMed.length > 12 ? topMed.substring(0,12)+'…' : topMed, topMedCount > 0 ? topMedCount + 'x' : '') +
+    stat('💊', 'Med. mais usado', topMed.length > 12 ? topMed.substring(0,12)+'…' : topMed, topMedCount > 0 ? topMedCount + 'x' : '');
 }
 
 // ── FAVORITOS ─────────────────────────────
