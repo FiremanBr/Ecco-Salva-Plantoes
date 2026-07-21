@@ -3264,7 +3264,7 @@ function calcularStats(atds) {
   grid.innerHTML=`<div style="display:flex;width:100%;background:var(--surface3);border-radius:10px;overflow:hidden">
   <div style="flex:0 0 120px;padding:14px;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center">
   <div style="font-size:24px">🚑</div><div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">Atendimentos</div><div style="font-size:34px;font-weight:800">${total}</div></div>
-  <div style="flex:1;min-width:0;padding:12px 14px"><div style="font-size:12px;font-weight:800;margin-bottom:8px">💊 Medicamentos mais usados</div>${top.map(([n,c],i)=>`<div style='display:flex;justify-content:space-between;padding:7px 0;${i<top.length-1?"border-bottom:1px solid var(--border);":""}'><span style='overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>${i+1}. ${n}</span><strong>${c}x</strong></div>`).join('')}</div></div>`;
+  <div style="flex:1;min-width:0;padding:12px 14px"><div style="font-size:12px;font-weight:800;color:var(--accent);margin-bottom:8px">💊 Medicamentos mais usados</div>${top.map(([n,c],i)=>`<div style='display:flex;justify-content:space-between;padding:7px 0;${i<top.length-1?"border-bottom:1px solid var(--border);":""}'><span style='overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>${i+1}. ${n}</span><strong>${c}x</strong></div>`).join('')}</div></div>`;
 }
 
 // ── FAVORITOS ─────────────────────────────
