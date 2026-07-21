@@ -292,7 +292,7 @@
     </div>
     <div id="statsPlantao" style="display:none;margin-bottom:12px;padding:12px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
       <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:10px">📊 Estatísticas do Plantão</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="statsGrid"></div>
+      <div style="display:flex;gap:8px;align-items:stretch" id="statsGrid"></div>
     </div>
     <div id="listaAtd"></div>
   </div>
@@ -3284,13 +3284,9 @@ function calcularStats(atds) {
       ${sub ? `<div style="font-size:10px;color:var(--text-dim);margin-top:2px">${sub}</div>` : ''}
     </div>`;
 
-  grid.innerHTML = `<div style="display:flex;gap:8px;align-items:stretch">
-    <div style="flex:0 0 90px">
-      ${stat('🚑','Atendimentos',total,'','1')}
-    </div>
-    <div style="flex:1;min-width:0">
-      ${stat('💊','Mais usados',topMed,'','1')}
-    </div>
+  grid.innerHTML = `<div style="display:flex;gap:8px">
+    ${stat('🚑','Atendimentos',total,'','0 0 90px')}
+    ${stat('💊','Mais usados',topMed,'','1 1 auto')}
   </div>`;
 }
 
