@@ -1,3 +1,4 @@
+<!-- SPRINT26: botão Comparar garantidamente visível ao lado do Modo Estudo, com quebra de linha responsiva -->
 <!-- SPRINT25: novo modo Comparar para dados, interações e compatibilidade no mesmo soro/frasco -->
 <!-- SPRINT24: Modo Estudo - interações por tabela + ficha MEDS_DB, com normalização de nomes -->
 <!-- SPRINT23: Qwen non-thinking + robust JSON parsing + Retry-After -->
@@ -1079,10 +1080,10 @@ function renderMaleta() {
   });
   grid.innerHTML = `<div class="med-grid">${html}</div>
     <div style="margin-top:12px;padding:8px 4px 0;display:flex;align-items:center;justify-content:space-between;gap:8px;background:transparent">
-      <div style="font-size:11px;color:var(--text-muted);line-height:1.4">Toque para ver a ficha<br><span style="color:var(--blue)">Modo Estudo</span> para comparar interações</div>
-      <div style="display:flex;gap:6px;flex-shrink:0">
+      <div style="font-size:11px;color:var(--text-muted);line-height:1.4">Toque para ver a ficha<br><span style="color:var(--blue)">Modo Estudo</span> para comparar interações<br><span style="color:var(--blue)">🔎 Comparar</span> para ficha, interações e compatibilidade</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0">
         <button id="btnModoEstudo" onclick="toggleModoEstudo()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap">📚 Modo Estudo</button>
-        <button id="btnCompararMeds" onclick="toggleModoComparacao()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap">🔎 Comparar</button>
+        <button id="btnCompararMeds" type="button" onclick="toggleModoComparacao(); return false;" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap">🔎 Comparar</button>
         <button onclick="abrirTabelaInteracoes()" style="background:rgba(232,50,60,0.1);border:1px solid rgba(232,50,60,0.35);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap">⚠️ Interações</button>
       </div>
     </div>
