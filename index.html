@@ -1,3 +1,4 @@
+<!-- SPRINT30: stats render corrigido; cards agora ocupam toda a largura do painel -->
 <!-- SPRINT29: filtro Hoje restaurado -->
 <!-- SPRINT28: caixa de medicamentos mais usados ocupa o espaço restante -->
 <!-- SPRINT27: instruções dos modos movidas para uma única linha acima dos botões -->
@@ -242,29 +243,10 @@
   .an-conduta-body { padding: 11px 13px; font-size: 13px; color: var(--text); line-height: 1.6; }
   .an-disclaimer { font-size: 10px; color: var(--text-dim); text-align:center; padding: 8px 12px; border-top: 1px solid var(--border); margin-top: 6px; }
 </style>
-<style id="sprint28-stats-width">
-.stats-executive,
-.stats-panel,
-.statistics-panel {
-  width: 100%;
-  box-sizing: border-box;
-}
-.stats-executive .stats-grid,
-.stats-panel .stats-grid,
-.statistics-panel .stats-grid {
-  grid-template-columns: 78px minmax(0, 1fr) !important;
-  width: 100%;
-}
-.stats-executive .meds-card,
-.stats-panel .meds-card,
-.statistics-panel .meds-card,
-.stats-executive .medications-card,
-.stats-panel .medications-card,
-.statistics-panel .medications-card {
-  width: 100% !important;
-  min-width: 0 !important;
-  box-sizing: border-box;
-}
+<style id="sprint30-stats-width">
+#statsPlantao { width:100%; box-sizing:border-box; }
+#statsGrid { width:100%; box-sizing:border-box; }
+#statsGrid > div { min-width:0; }
 </style>
 </head>
 <body>
@@ -3475,9 +3457,13 @@ function calcularStats(atds) {
       ${sub ? `<div style="font-size:10px;color:var(--text-dim);margin-top:2px">${sub}</div>` : ''}
     </div>`;
 
-  grid.innerHTML = `<div style="display:flex;gap:8px">
-    ${stat('🚑','Atendimentos',total,'','0.8')}
-    ${stat('💊','Mais usados',topMed,'','2')}
+  grid.innerHTML = `<div style="grid-column:1 / -1;display:flex;gap:8px;width:100%;min-width:0;box-sizing:border-box">
+    <div style="flex:0 0 78px;min-width:78px">
+      ${stat('🚑','Atendimentos',total,'','1')}
+    </div>
+    <div style="flex:1 1 auto;min-width:0;width:100%">
+      ${stat('💊','Mais usados',topMed,'','1')}
+    </div>
   </div>`;
 }
 
