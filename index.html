@@ -1,3 +1,4 @@
+<!-- SPRINT22: Groq JSON mode enabled for clinical analysis; Qwen reasoning hidden -->
 <!-- SPRINT21: Groq model set to qwen/qwen3.6-27b -->
 <!-- SPRINT20: Groq model updated to qwen/qwen3.6-27b -->
 <!DOCTYPE html>
@@ -2694,6 +2695,8 @@ async function rodarAnalise() {
         model: 'qwen/qwen3.6-27b',
         max_tokens: 4000,
         temperature: 0.3,
+        reasoning_format: 'hidden',
+        response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: SYSTEM_ANALISE },
           { role: 'user', content: groqUserText }
