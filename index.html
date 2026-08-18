@@ -1,3 +1,4 @@
+<!-- SPRINT23: Qwen non-thinking + robust JSON parsing + Retry-After -->
 <!-- SPRINT22: Groq JSON mode enabled for clinical analysis; Qwen reasoning hidden -->
 <!-- SPRINT21: Groq model set to qwen/qwen3.6-27b -->
 <!-- SPRINT20: Groq model updated to qwen/qwen3.6-27b -->
@@ -2693,10 +2694,12 @@ async function rodarAnalise() {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
       body: JSON.stringify({
         model: 'qwen/qwen3.6-27b',
-        max_tokens: 4000,
-        temperature: 0.3,
+        max_completion_tokens: 4000,
+        temperature: 0.2,
+        reasoning_effort: 'none',
         reasoning_format: 'hidden',
         response_format: { type: 'json_object' },
+        stream: false,
         messages: [
           { role: 'system', content: SYSTEM_ANALISE },
           { role: 'user', content: groqUserText }
@@ -2709,8 +2712,11 @@ async function rodarAnalise() {
       throw new Error('Chave Groq inválida ou expirada. Gere uma nova chave e tente novamente.');
     }
     if (resp.status === 429) {
-      res.innerHTML = '<div class="error-box">⏳ Limite de requisições atingido. Aguarde 30 segundos e tente novamente.</div>';
-      btn.disabled = false;
+      const retryAfter = Number(resp.headers.get('retry-after') || 30);
+      const espera = Math.max(1, Math.ceil(retryAfter));
+      res.innerHTML = `<div class="error-box">⏳ Limite da Groq atingido. Aguarde ${espera} segundos antes de tentar novamente.</div>`;
+      btn.disabled = true;
+      setTimeout(() => { btn.disabled = false; }, espera * 1000);
       return;
     }
     if (!resp.ok) {
@@ -2735,11 +2741,22 @@ async function rodarAnalise() {
     }
     let d;
     try {
-      d = JSON.parse(cleanJson.slice(fb, lb + 1));
+      const parsed = JSON.parse(cleanJson.slice(fb, lb + 1));
+      // Algumas respostas compatíveis podem encapsular o JSON como string.
+      d = (typeof parsed === 'string') ? JSON.parse(parsed) : parsed;
+      if (!d || typeof d !== 'object' || Array.isArray(d)) throw new Error('JSON não é um objeto');
     } catch(parseErr) {
-      res.innerHTML = `<div class="error-box">❌ Erro ao interpretar resposta da IA. Tente novamente.</div>`;
-      btn.disabled = false;
-      return;
+      // Última tentativa: usar diretamente o conteúdo integral caso ele já seja JSON válido.
+      try {
+        const parsedDirect = JSON.parse(raw);
+        d = (typeof parsedDirect === 'string') ? JSON.parse(parsedDirect) : parsedDirect;
+        if (!d || typeof d !== 'object' || Array.isArray(d)) throw new Error('JSON não é um objeto');
+      } catch(parseErr2) {
+        console.error('Resposta Groq não interpretada:', raw, parseErr, parseErr2);
+        res.innerHTML = `<div class="error-box">❌ A IA respondeu, mas o formato retornado não pôde ser interpretado. Tente novamente.</div>`;
+        btn.disabled = false;
+        return;
+      }
     }
 
     // Extrair dados do texto livre para exibição organizada
