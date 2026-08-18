@@ -1,3 +1,4 @@
+<!-- SPRINT25: novo modo Comparar para dados, interações e compatibilidade no mesmo soro/frasco -->
 <!-- SPRINT24: Modo Estudo - interações por tabela + ficha MEDS_DB, com normalização de nomes -->
 <!-- SPRINT23: Qwen non-thinking + robust JSON parsing + Retry-After -->
 <!-- SPRINT22: Groq JSON mode enabled for clinical analysis; Qwen reasoning hidden -->
@@ -1058,6 +1059,7 @@ JSON:
 // ── ESTADO ───────────────────────────────
 let selecionados = new Set();
 let _modoEstudo = false;
+let _modoComparacao = false;
 let _favoritos = new Set(); // inicializado após localStorage_safe_get
 
 // ── RENDER MALETA (dados locais, sem IA) ──
@@ -1080,6 +1082,7 @@ function renderMaleta() {
       <div style="font-size:11px;color:var(--text-muted);line-height:1.4">Toque para ver a ficha<br><span style="color:var(--blue)">Modo Estudo</span> para comparar interações</div>
       <div style="display:flex;gap:6px;flex-shrink:0">
         <button id="btnModoEstudo" onclick="toggleModoEstudo()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap">📚 Modo Estudo</button>
+        <button id="btnCompararMeds" onclick="toggleModoComparacao()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap">🔎 Comparar</button>
         <button onclick="abrirTabelaInteracoes()" style="background:rgba(232,50,60,0.1);border:1px solid rgba(232,50,60,0.35);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap">⚠️ Interações</button>
       </div>
     </div>
@@ -1150,6 +1153,17 @@ function toggleMed(nome, el) {
 }
 
 function _continuarToggle(nome, el) {
+  if (_modoComparacao) {
+    if (selecionados.has(nome)) {
+      selecionados.delete(nome); _maletaExtras.delete(nome);
+      if (el) el.classList.remove('selected');
+    } else {
+      selecionados.add(nome); _maletaExtras.add(nome);
+      if (el) el.classList.add('selected');
+    }
+    renderComparacaoPainel();
+    return;
+  }
   if (_modoEstudo) {
     if (selecionados.has(nome)) {
       selecionados.delete(nome); _maletaExtras.delete(nome);
@@ -3460,13 +3474,241 @@ function toggleFavorito(nome, e) {
   document.body.appendChild(t); setTimeout(() => t.remove(), 1500);
 }
 
+
+// ── MODO COMPARAÇÃO DE MEDICAMENTOS ──────
+function _normalizarNomeComparacao(nome) {
+  return String(nome || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\(.*?\)/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+
+function _interacaoEntreComparados(a, b) {
+  const na = _normalizarNomeComparacao(a);
+  const nb = _normalizarNomeComparacao(b);
+  const achados = [];
+
+  (typeof INTERACOES_MAP === 'undefined' ? [] : INTERACOES_MAP).forEach(x => {
+    const x1 = _normalizarNomeComparacao(x.meds[0]);
+    const x2 = _normalizarNomeComparacao(x.meds[1]);
+    if ((na === x1 && nb === x2) || (na === x2 && nb === x1) ||
+        na.includes(x1) && nb.includes(x2) || na.includes(x2) && nb.includes(x1)) {
+      achados.push({
+        gravidade: x.gravidade || 'moderada',
+        efeito: x.efeito || 'Interação registrada na base.'
+      });
+    }
+  });
+
+  const ma = MEDS_DB[a];
+  const mb = MEDS_DB[b];
+  if (ma && Array.isArray(ma.interacoes)) {
+    ma.interacoes.forEach(i => {
+      const ni = _normalizarNomeComparacao(i.med);
+      if (nb.includes(ni.split('/')[0].trim()) || ni.includes(nb.split(' ')[0])) {
+        achados.push({ gravidade:'grave', efeito:i.risco });
+      }
+    });
+  }
+  if (mb && Array.isArray(mb.interacoes)) {
+    mb.interacoes.forEach(i => {
+      const ni = _normalizarNomeComparacao(i.med);
+      if (na.includes(ni.split('/')[0].trim()) || ni.includes(na.split(' ')[0])) {
+        achados.push({ gravidade:'grave', efeito:i.risco });
+      }
+    });
+  }
+
+  return achados.filter((x,i,arr) =>
+    i === arr.findIndex(y => y.gravidade === x.gravidade && y.efeito === x.efeito)
+  );
+}
+
+function _compararCompatibilidadeDetalhada(nomes) {
+  if (nomes.length < 2) return {
+    status: 'info',
+    titulo: 'Selecione pelo menos 2 medicamentos',
+    texto: 'A compatibilidade no mesmo soro/frasco só pode ser avaliada quando houver uma combinação para comparar.'
+  };
+
+  const incompat = [];
+  for (let i = 0; i < nomes.length; i++) {
+    for (let j = i + 1; j < nomes.length; j++) {
+      const a = nomes[i], b = nomes[j];
+      const motivo = INCOMPAT_FRASCO[a + '|' + b] || INCOMPAT_FRASCO[b + '|' + a];
+      if (motivo) incompat.push({a,b,motivo});
+    }
+  }
+
+  if (incompat.length) {
+    return {
+      status: 'nao',
+      titulo: '❌ Não colocar juntos no mesmo soro/frasco',
+      texto: incompat.map(x => '<strong>' + x.a + ' + ' + x.b + ':</strong> ' + x.motivo).join('<br><br>') +
+        '<br><br><span style="opacity:.85">Administre separadamente e confirme a compatibilidade específica da apresentação/diluente antes da administração.</span>'
+    };
+  }
+
+  return {
+    status: 'sim',
+    titulo: '🟢 Sem incompatibilidade conhecida na base local',
+    texto: 'Não foi encontrada uma incompatibilidade cadastrada para esta combinação. Isso <strong>não significa compatibilidade universal</strong>: confirme a compatibilidade físico-química da apresentação, concentração e diluente antes de misturar no mesmo soro/frasco.'
+  };
+}
+
+function renderComparacaoPainel() {
+  let panel = document.getElementById('comparacaoMedsPanel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'comparacaoMedsPanel';
+    const grid = document.getElementById('maletaGrid');
+    if (grid && grid.parentNode) grid.parentNode.insertBefore(panel, grid.nextSibling);
+  }
+  if (!panel) return;
+
+  const nomes = [...selecionados];
+  if (!nomes.length) {
+    panel.innerHTML = '';
+    panel.style.display = 'none';
+    return;
+  }
+
+  const cards = nomes.map(nome => {
+    const m = MEDS_DB[nome];
+    if (!m) {
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px;margin-bottom:7px">
+        <div style="font-weight:800;color:var(--text)">💊 ${nome}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:5px">Ficha local não disponível para este medicamento.</div>
+      </div>`;
+    }
+
+    const inter = (m.interacoes || []).map(i =>
+      `<div style="font-size:11px;line-height:1.45;margin-top:4px"><strong style="color:#F5C842">${i.med}</strong> — ${i.risco}</div>`
+    ).join('');
+
+    return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+        <div style="font-size:13px;font-weight:800;color:var(--text)">💊 ${nome}</div>
+        <button onclick="removerComparado('${nome.replace(/'/g,"\\'")}')" style="border:0;background:rgba(232,50,60,.12);color:#E8323C;border-radius:6px;padding:3px 7px;cursor:pointer">✕</button>
+      </div>
+      <div style="font-size:10px;font-weight:800;color:var(--blue);margin-top:8px">📦 APRESENTAÇÃO</div>
+      <div style="font-size:11px;color:var(--text);margin-top:2px">${m.apresentacao || 'Não informado'}</div>
+      <div style="font-size:10px;font-weight:800;color:var(--blue);margin-top:7px">📌 INDICAÇÃO</div>
+      <div style="font-size:11px;color:var(--text);margin-top:2px">${m.indicacao || 'Não informado'}</div>
+      <div style="font-size:10px;font-weight:800;color:var(--blue);margin-top:7px">💉 VIA / DILUIÇÃO</div>
+      <div style="font-size:11px;color:var(--text);margin-top:2px">${m.via || 'Não informado'}${m.diluicao ? '<br>' + m.diluicao : ''}</div>
+      ${m.cuidados ? `<div style="font-size:10px;font-weight:800;color:#F5C842;margin-top:7px">⚠️ CUIDADOS</div><div style="font-size:11px;color:var(--text);margin-top:2px">${m.cuidados}</div>` : ''}
+      <div style="font-size:10px;font-weight:800;color:${inter ? '#F5C842' : 'var(--blue)'};margin-top:7px">⚠️ INTERAÇÕES</div>
+      <div style="font-size:11px;color:var(--text);margin-top:2px">${inter || 'Nenhuma interação cadastrada na ficha.'}</div>
+    </div>`;
+  }).join('');
+
+  let interacoes = '';
+  for (let i = 0; i < nomes.length; i++) {
+    for (let j = i + 1; j < nomes.length; j++) {
+      const achados = _interacaoEntreComparados(nomes[i], nomes[j]);
+      achados.forEach(x => {
+        const cor = x.gravidade === 'grave' ? '#E8323C' : '#F5C842';
+        interacoes += `<div style="border-left:3px solid ${cor};padding:7px 9px;margin:5px 0;background:rgba(255,255,255,.025);font-size:11px;line-height:1.4">
+          <strong style="color:${cor}">${nomes[i]} + ${nomes[j]}</strong><br>${x.efeito}
+        </div>`;
+      });
+    }
+  }
+
+  const comp = _compararCompatibilidadeDetalhada(nomes);
+  const compCor = comp.status === 'nao' ? '#E8323C' : comp.status === 'sim' ? '#22C97A' : '#7A92B0';
+
+  panel.style.display = 'block';
+  panel.style.marginTop = '12px';
+  panel.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:800;color:var(--text)">🔎 Comparação de medicamentos</div>
+        <button onclick="limparComparacao()" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:7px;padding:5px 8px;font-size:10px;cursor:pointer">Limpar</button>
+      </div>
+      <div style="font-size:10px;color:var(--text-muted);margin-bottom:9px">${nomes.length} medicamento(s) selecionado(s)</div>
+      ${cards}
+      <div style="margin-top:10px;padding:10px;border-radius:9px;background:${comp.status === 'nao' ? 'rgba(232,50,60,.08)' : 'rgba(34,201,122,.06)'};border:1px solid ${compCor}55">
+        <div style="font-size:11px;font-weight:800;color:${compCor}">🧪 COMPATIBILIDADE NO MESMO SORO/FRASCO</div>
+        <div style="font-size:12px;font-weight:800;color:${compCor};margin-top:5px">${comp.titulo}</div>
+        <div style="font-size:11px;line-height:1.45;color:var(--text);margin-top:5px">${comp.texto}</div>
+      </div>
+      ${nomes.length > 1 ? `<div style="margin-top:10px">
+        <div style="font-size:11px;font-weight:800;color:var(--blue)">⚠️ INTERAÇÕES ENTRE OS SELECIONADOS</div>
+        ${interacoes || '<div style="font-size:11px;color:var(--text-muted);padding:7px 0">Nenhuma interação conhecida encontrada na base local.</div>'}
+      </div>` : ''}
+    </div>`;
+}
+
+function removerComparado(nome) {
+  selecionados.delete(nome);
+  _maletaExtras.delete(nome);
+  const chip = document.querySelector(`.med-chip[data-med="${nome}"]`);
+  if (chip) chip.classList.remove('selected');
+  renderComparacaoPainel();
+}
+
+function limparComparacao() {
+  selecionados.clear();
+  _maletaExtras.clear();
+  document.querySelectorAll('.med-chip').forEach(c => c.classList.remove('selected'));
+  renderComparacaoPainel();
+}
+
+function toggleModoComparacao() {
+  _modoComparacao = !_modoComparacao;
+  const btn = document.getElementById('btnCompararMeds');
+  const btnEstudo = document.getElementById('btnModoEstudo');
+
+  if (_modoComparacao) {
+    if (_modoEstudo) toggleModoEstudo();
+    if (btn) {
+      btn.textContent = '🔎 Comparar Ativo';
+      btn.style.background = 'rgba(59,155,232,0.15)';
+      btn.style.borderColor = 'rgba(59,155,232,0.5)';
+      btn.style.color = 'var(--blue)';
+    }
+    selecionados.clear(); _maletaExtras.clear();
+    document.querySelectorAll('.med-chip').forEach(c => c.classList.remove('selected'));
+    const box = document.getElementById('interacoesAlertBox'); if (box) box.innerHTML = '';
+    renderComparacaoPainel();
+    const dica = document.createElement('div');
+    dica.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--blue);color:white;border-radius:8px;padding:10px 16px;font-size:12px;font-weight:700;z-index:999;white-space:nowrap';
+    dica.textContent = '🔎 Toque nos medicamentos para ver dados, interações e compatibilidade';
+    document.body.appendChild(dica); setTimeout(() => dica.remove(), 3000);
+  } else {
+    if (btn) {
+      btn.textContent = '🔎 Comparar';
+      btn.style.background = 'var(--surface2)';
+      btn.style.borderColor = 'var(--border)';
+      btn.style.color = 'var(--text-muted)';
+    }
+    limparComparacao();
+    const panel = document.getElementById('comparacaoMedsPanel');
+    if (panel) { panel.innerHTML = ''; panel.style.display = 'none'; }
+  }
+}
+
 // ── MODO ESTUDO ───────────────────────────
 function toggleModoEstudo() {
   _modoEstudo = !_modoEstudo;
   const btn = document.getElementById('btnModoEstudo');
   if (!btn) return;
   if (_modoEstudo) {
-    btn.textContent = '✅ Modo Estudo ativo';
+    if (_modoComparacao) {
+      _modoComparacao = false;
+      const cmpBtn = document.getElementById('btnCompararMeds');
+      if (cmpBtn) {
+        cmpBtn.textContent = '🔎 Comparar';
+        cmpBtn.style.background = 'var(--surface2)';
+        cmpBtn.style.borderColor = 'var(--border)';
+        cmpBtn.style.color = 'var(--text-muted)';
+      }
+      const cmpPanel = document.getElementById('comparacaoMedsPanel');
+      if (cmpPanel) { cmpPanel.innerHTML = ''; cmpPanel.style.display = 'none'; }
+    }
+    btn.textContent = '✅ Modo Estudo Ativo';
     btn.style.cssText += ';background:rgba(59,155,232,0.15);border-color:rgba(59,155,232,0.5);color:var(--blue)';
     selecionados.clear(); _maletaExtras.clear(); _recsMarcaradas.clear();
     document.querySelectorAll('.med-chip').forEach(c => c.classList.remove('selected'));
