@@ -1,3 +1,4 @@
+<!-- SPRINT35: estatísticas corrigidas + Histórico forçado no botão da aba -->
 <!-- SPRINT34: aba visível Pacientes renomeada para Histórico -->
 <!-- SPRINT33: label ATENDIMENTOS contida exclusivamente na primeira caixa -->
 <!-- SPRINT32: medicamentos mais usados exibidos verticalmente, um abaixo do outro -->
@@ -3468,17 +3469,18 @@ function calcularStats(atds) {
     </div>`;
 
   grid.innerHTML = `<div style="grid-column:1 / -1;display:flex;align-items:stretch;gap:8px;width:100%;min-width:0;box-sizing:border-box;overflow:hidden">
-    <div style="flex:0 0 78px;min-width:78px">
-      <div style="height:100%;min-width:0;box-sizing:border-box;background:var(--surface2);border-radius:10px;padding:12px 7px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden">
-      <div style="font-size:10px;line-height:1.15;font-weight:800;color:var(--text-muted);text-transform:uppercase;text-align:center;max-width:100%;overflow-wrap:anywhere">🚑<br><span style="display:block;margin-top:5px">ATENDIMENTOS</span></div>
-      <div style="font-size:20px;line-height:1;font-weight:800;color:var(--text);margin-top:8px">${total}</div>
+    <div style="flex:0 0 96px;width:96px;min-width:96px;box-sizing:border-box">
+      <div style="height:100%;width:100%;box-sizing:border-box;background:var(--surface2);border-radius:10px;padding:10px 5px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden">
+        <div style="font-size:18px;line-height:1;margin-bottom:7px">🚑</div>
+        <div style="font-size:20px;line-height:1;font-weight:800;color:var(--text)">${total}</div>
+        <div style="font-size:8px;line-height:1.1;font-weight:800;color:#E8323C;text-transform:uppercase;text-align:center;white-space:nowrap;margin-top:6px">ATENDIMENTOS</div>
+      </div>
     </div>
-    </div>
-    <div style="flex:1 1 auto;min-width:0;width:100%">
-      <div style="height:100%;min-width:0;box-sizing:border-box;background:var(--surface2);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column">
-      <div style="font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;margin-bottom:7px">💊 MAIS USADOS</div>
-      <div style="font-size:12px;color:var(--text);line-height:1.25;min-width:0">${topMed}</div>
-    </div>
+    <div style="flex:1 1 0;min-width:0;box-sizing:border-box">
+      <div style="height:100%;width:100%;box-sizing:border-box;background:var(--surface2);border-radius:10px;padding:10px 14px;display:flex;flex-direction:column;min-width:0;overflow:hidden">
+        <div style="font-size:10px;font-weight:800;color:#E8323C;text-transform:uppercase;margin-bottom:7px">💊 MAIS USADOS</div>
+        <div style="font-size:11px;color:var(--text);line-height:1.25;min-width:0">${topMed}</div>
+      </div>
     </div>
   </div>`;
 }
@@ -4137,5 +4139,24 @@ function switchTab(tab, el) {
 })();
 
 </script>
+
+<script id="sprint35-history-label">
+(function(){
+  function fixHistoricoLabel(){
+    document.querySelectorAll('button.tab, [role="tab"], button').forEach(function(btn){
+      var fn = btn.getAttribute('onclick') || '';
+      if (/switchTab\(\s*['"]historico['"]/.test(fn)) {
+        btn.textContent = '📋 Histórico';
+      }
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fixHistoricoLabel);
+  } else {
+    fixHistoricoLabel();
+  }
+})();
+</script>
+
 </body>
 </html>
