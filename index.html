@@ -1,3 +1,4 @@
+<!-- SPRINT24: Modo Estudo - interações por tabela + ficha MEDS_DB, com normalização de nomes -->
 <!-- SPRINT23: Qwen non-thinking + robust JSON parsing + Retry-After -->
 <!-- SPRINT22: Groq JSON mode enabled for clinical analysis; Qwen reasoning hidden -->
 <!-- SPRINT21: Groq model set to qwen/qwen3.6-27b -->
@@ -3275,19 +3276,99 @@ const INTERACOES_MAP = [
   {meds:['Furosemida','Cloreto de Potássio (KCL)'],gravidade:'moderada',efeito:'Furosemida elimina potássio — monitorar níveis'},
 ];
 
+function _normalizarNomeMedInteracao(nome) {
+  return String(nome || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\(.*?\)/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\b(ev|im|iv)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function _mesmoMedicamentoInteracao(a, b) {
+  const na = _normalizarNomeMedInteracao(a);
+  const nb = _normalizarNomeMedInteracao(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+
+  // Evita falso positivo em nomes muito curtos; para nomes maiores,
+  // aceita correspondência por nome-base quando a apresentação muda.
+  const baseA = na.replace(/\b(injetavel|injetavel|comprimido|solucao|ampola)\b/g, '').trim();
+  const baseB = nb.replace(/\b(injetavel|injetavel|comprimido|solucao|ampola)\b/g, '').trim();
+  return baseA === baseB;
+}
+
 function verificarInteracoes() {
   const sels = [...selecionados];
   const alertas = [];
+
+  if (sels.length < 2) {
+    const box = document.getElementById('interacoesAlertBox');
+    if (box) box.innerHTML = '';
+    return;
+  }
+
+  const adicionarAlerta = (item, medA, medB) => {
+    if (!item) return;
+    const assinatura = [
+      _normalizarNomeMedInteracao(medA),
+      _normalizarNomeMedInteracao(medB)
+    ].sort().join('|') + '|' + String(item.efeito || item.risco || '');
+    if (!alertas.some(a => a._assinatura === assinatura)) {
+      alertas.push({
+        meds: item.meds || [medA, medB],
+        gravidade: item.gravidade || 'moderada',
+        efeito: item.efeito || item.risco || 'Interação medicamentosa identificada.',
+        _assinatura: assinatura
+      });
+    }
+  };
+
   for (let i = 0; i < sels.length; i++) {
     for (let j = i + 1; j < sels.length; j++) {
-      const par = [sels[i], sels[j]];
+      const a = sels[i];
+      const b = sels[j];
+
+      // 1) Tabela específica de interações.
       const inter = INTERACOES_MAP.find(x =>
-        (x.meds[0] === par[0] && x.meds[1] === par[1]) ||
-        (x.meds[0] === par[1] && x.meds[1] === par[0])
+        (_mesmoMedicamentoInteracao(x.meds[0], a) && _mesmoMedicamentoInteracao(x.meds[1], b)) ||
+        (_mesmoMedicamentoInteracao(x.meds[0], b) && _mesmoMedicamentoInteracao(x.meds[1], a))
       );
-      if (inter) alertas.push(inter);
+      if (inter) adicionarAlerta(inter, a, b);
+
+      // 2) Interações cadastradas na ficha de cada medicamento.
+      // Isso cobre medicamentos cuja interação existe na MEDS_DB,
+      // mas não está repetida na INTERACOES_MAP.
+      const fichaA = MEDS_DB[a];
+      if (fichaA && Array.isArray(fichaA.interacoes)) {
+        fichaA.interacoes.forEach(x => {
+          if (_mesmoMedicamentoInteracao(x.med, b)) {
+            adicionarAlerta({
+              meds: [a, b],
+              gravidade: 'grave',
+              efeito: x.risco
+            }, a, b);
+          }
+        });
+      }
+
+      const fichaB = MEDS_DB[b];
+      if (fichaB && Array.isArray(fichaB.interacoes)) {
+        fichaB.interacoes.forEach(x => {
+          if (_mesmoMedicamentoInteracao(x.med, a)) {
+            adicionarAlerta({
+              meds: [a, b],
+              gravidade: 'grave',
+              efeito: x.risco
+            }, a, b);
+          }
+        });
+      }
     }
   }
+
   let box = document.getElementById('interacoesAlertBox');
   if (!box) {
     box = document.createElement('div');
@@ -3295,13 +3376,19 @@ function verificarInteracoes() {
     box.style.cssText = 'position:fixed;bottom:70px;right:14px;left:14px;z-index:88;display:flex;flex-direction:column;gap:5px;max-width:452px;margin:0 auto;border-radius:12px;padding:0';
     document.body.appendChild(box);
   }
-  if (!alertas.length) { box.innerHTML = ''; return; }
+
+  if (!alertas.length) {
+    box.innerHTML = '';
+    return;
+  }
+
   box.innerHTML = alertas.map(a => {
     const cor = a.gravidade === 'grave' ? '#E8323C' : '#F5C842';
-    const bg  = a.gravidade === 'grave' ? 'rgba(232,50,60,0.12)' : 'rgba(245,200,66,0.12)';
+    const bg = a.gravidade === 'grave' ? 'rgba(232,50,60,0.12)' : 'rgba(245,200,66,0.12)';
     const icon = a.gravidade === 'grave' ? '🚨' : '⚠️';
     return '<div style="background:' + bg + ';border:1.5px solid ' + cor + ';border-radius:9px;padding:8px 11px">' +
-      '<div style="font-size:11px;font-weight:800;color:' + cor + ';margin-bottom:2px">' + icon + ' ' + a.meds[0] + ' + ' + a.meds[1] + '</div>' +
+      '<div style="font-size:11px;font-weight:800;color:' + cor + ';margin-bottom:2px">' +
+      icon + ' ' + a.meds[0] + ' + ' + a.meds[1] + '</div>' +
       '<div style="font-size:11px;color:var(--text);line-height:1.4">' + a.efeito + '</div></div>';
   }).join('');
 }
