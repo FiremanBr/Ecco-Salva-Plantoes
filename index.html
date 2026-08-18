@@ -1,3 +1,6 @@
+<!-- SPRINT29: filtro Hoje restaurado -->
+<!-- SPRINT28: caixa de medicamentos mais usados ocupa o espaço restante -->
+<!-- SPRINT27: instruções dos modos movidas para uma única linha acima dos botões -->
 <!-- SPRINT26: botão Comparar garantidamente visível ao lado do Modo Estudo, com quebra de linha responsiva -->
 <!-- SPRINT25: novo modo Comparar para dados, interações e compatibilidade no mesmo soro/frasco -->
 <!-- SPRINT24: Modo Estudo - interações por tabela + ficha MEDS_DB, com normalização de nomes -->
@@ -239,6 +242,30 @@
   .an-conduta-body { padding: 11px 13px; font-size: 13px; color: var(--text); line-height: 1.6; }
   .an-disclaimer { font-size: 10px; color: var(--text-dim); text-align:center; padding: 8px 12px; border-top: 1px solid var(--border); margin-top: 6px; }
 </style>
+<style id="sprint28-stats-width">
+.stats-executive,
+.stats-panel,
+.statistics-panel {
+  width: 100%;
+  box-sizing: border-box;
+}
+.stats-executive .stats-grid,
+.stats-panel .stats-grid,
+.statistics-panel .stats-grid {
+  grid-template-columns: 78px minmax(0, 1fr) !important;
+  width: 100%;
+}
+.stats-executive .meds-card,
+.stats-panel .meds-card,
+.statistics-panel .meds-card,
+.stats-executive .medications-card,
+.stats-panel .medications-card,
+.statistics-panel .medications-card {
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box;
+}
+</style>
 </head>
 <body>
 <div class="header">
@@ -292,7 +319,7 @@
       <button onclick="document.getElementById('buscaHistorico').value='';filtrarHistorico()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text-dim);font-size:12px;cursor:pointer">✕</button>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap" id="filtrosRapidos">
-      <button onclick="filtroRapido('ontem')" class="filtro-btn" data-filtro="ontem" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif">Ontem</button>
+      <button onclick="filtroRapido('ontem')" class="filtro-btn" data-filtro="ontem" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif" onclick="filtrarPeriodo('hoje')">Hoje</button><button onclick="filtroRapido('ontem')" class="filtro-btn" data-filtro="ontem" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif">Ontem</button>
       <button onclick="filtroRapido('semana')" class="filtro-btn" data-filtro="semana" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif">Esta semana</button>
       <button onclick="filtroRapido('mes')" class="filtro-btn" data-filtro="mes" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif">Este mês</button>
       <button onclick="filtroRapido('todos')" class="filtro-btn" data-filtro="todos" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif">Todos</button>
@@ -1079,9 +1106,15 @@ function renderMaleta() {
     html += `<div class="med-chip${isNovaLetra ? ' new-letter' : ''}${isFav ? ' favorito' : ''}" data-med="${med}" onclick="toggleMed('${med}',this)"><span class="ck">✓</span>${nomeExibido}${isFav ? '<span class="star">⭐</span>' : ''}</div>`;
   });
   grid.innerHTML = `<div class="med-grid">${html}</div>
+</div>
     <div style="margin-top:12px;padding:8px 4px 0;display:flex;align-items:center;justify-content:space-between;gap:8px;background:transparent">
       <div style="font-size:11px;color:var(--text-muted);line-height:1.4">Toque para ver a ficha<br><span style="color:var(--blue)">Modo Estudo</span> para comparar interações<br><span style="color:var(--blue)">🔎 Comparar</span> para ficha, interações e compatibilidade</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0">
+      <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;flex-shrink:0;min-width:0">
+        <div style="width:100%;font-size:9px;line-height:1.2;color:var(--text-muted);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+          <span style="color:var(--blue)">Modo Estudo</span> = comparar interações &nbsp;•&nbsp;
+          <span style="color:var(--blue)">🔎 Comparar</span> = ficha, interações e compatibilidade
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end">
         <button id="btnModoEstudo" onclick="toggleModoEstudo()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap">📚 Modo Estudo</button>
         <button id="btnCompararMeds" type="button" onclick="toggleModoComparacao(); return false;" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap">🔎 Comparar</button>
         <button onclick="abrirTabelaInteracoes()" style="background:rgba(232,50,60,0.1);border:1px solid rgba(232,50,60,0.35);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap">⚠️ Interações</button>
