@@ -1,3 +1,6 @@
+<!-- SPRINT34: aba visível Pacientes renomeada para Histórico -->
+<!-- SPRINT33: label ATENDIMENTOS contida exclusivamente na primeira caixa -->
+<!-- SPRINT32: medicamentos mais usados exibidos verticalmente, um abaixo do outro -->
 <!-- SPRINT31: aba Pacientes renomeada para Histórico, mantendo IDs e funções -->
 <!-- SPRINT30: stats render corrigido; cards agora ocupam toda a largura do painel -->
 <!-- SPRINT29: filtro Hoje restaurado -->
@@ -266,7 +269,7 @@
   <div class="tabs">
     <button class="tab active" data-color="#3B9BE8" onclick="switchTab('analise',this)">🔬 Análise</button>
     <button class="tab" data-color="#22C97A" onclick="switchTab('maleta',this)">💊 Maleta</button>
-    <button class="tab" data-color="#A78BFA" onclick="switchTab('historico',this)">📋 Pacientes</button>
+    <button class="tab" data-color="#A78BFA" onclick="switchTab('historico',this)">📋 Histórico</button>
     <button class="tab" data-color="#F5C842" onclick="switchTab('sintoma',this)">🎯 Sintoma</button>
     <button class="tab" data-color="#E8323C" onclick="switchTab('seguranca',this)">☠️ Segurança</button>
   </div>
@@ -3447,7 +3450,13 @@ function calcularStats(atds) {
   });
   const medsOrdenados = Object.entries(medsCount).sort((a,b) => b[1]-a[1]);
   const top3 = medsOrdenados.slice(0,3);
-  const topMed = top3.length ? top3.map(([n,c])=>`${n} (${c}x)`).join(', ') : '—';
+  const topMed = top3.length
+    ? top3.map(([n,c],i) =>
+        `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:${i ? '5px 0' : '0 0 5px'};border-top:${i ? '1px solid var(--border)' : '0'}">
+           <span style="font-weight:700;min-width:0;overflow-wrap:anywhere">${i+1}. ${n}</span>
+           <strong style="flex:0 0 auto">${c}x</strong>
+         </div>`).join('')
+    : '<span style="color:var(--text-muted)">—</span>';
 
 
   const stat = (icone, label, valor, sub, flex='1') => `
@@ -3458,12 +3467,18 @@ function calcularStats(atds) {
       ${sub ? `<div style="font-size:10px;color:var(--text-dim);margin-top:2px">${sub}</div>` : ''}
     </div>`;
 
-  grid.innerHTML = `<div style="grid-column:1 / -1;display:flex;gap:8px;width:100%;min-width:0;box-sizing:border-box">
+  grid.innerHTML = `<div style="grid-column:1 / -1;display:flex;align-items:stretch;gap:8px;width:100%;min-width:0;box-sizing:border-box;overflow:hidden">
     <div style="flex:0 0 78px;min-width:78px">
-      ${stat('🚑','Atendimentos',total,'','1')}
+      <div style="height:100%;min-width:0;box-sizing:border-box;background:var(--surface2);border-radius:10px;padding:12px 7px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden">
+      <div style="font-size:10px;line-height:1.15;font-weight:800;color:var(--text-muted);text-transform:uppercase;text-align:center;max-width:100%;overflow-wrap:anywhere">🚑<br><span style="display:block;margin-top:5px">ATENDIMENTOS</span></div>
+      <div style="font-size:20px;line-height:1;font-weight:800;color:var(--text);margin-top:8px">${total}</div>
+    </div>
     </div>
     <div style="flex:1 1 auto;min-width:0;width:100%">
-      ${stat('💊','Mais usados',topMed,'','1')}
+      <div style="height:100%;min-width:0;box-sizing:border-box;background:var(--surface2);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column">
+      <div style="font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;margin-bottom:7px">💊 MAIS USADOS</div>
+      <div style="font-size:12px;color:var(--text);line-height:1.25;min-width:0">${topMed}</div>
+    </div>
     </div>
   </div>`;
 }
