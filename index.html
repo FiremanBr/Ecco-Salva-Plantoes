@@ -1,3 +1,4 @@
+<!-- SPRINT20: Groq model updated to qwen/qwen3-32b -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -2000,7 +2001,7 @@ async function callClaude(query, tentativa = 1) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
       body: JSON.stringify({
-        model: 'qwen/qwen3.6-27b', max_tokens: 4000, temperature: 0.3,
+        model: 'qwen/qwen3-32b', max_tokens: 4000, temperature: 0.3,
         messages: [{ role: 'system', content: SYSTEM_BUSCA }, { role: 'user', content: 'Consulta: ' + query }]
       })
     });
@@ -2558,7 +2559,7 @@ function anFotoSelecionada(input) {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
               body: JSON.stringify({
-                model: 'qwen/qwen3.6-27b', max_tokens: 100, temperature: 0,
+                model: 'qwen/qwen3-32b', max_tokens: 100, temperature: 0,
                 messages: [
                   { role: 'system', content: 'Você é um assistente farmacêutico especializado em identificar medicamentos. O texto OCR pode vir de diferentes fontes: embalagem de remédio, lista num celular, papel escrito à mão, receita médica, ou tela de app. Extraia TODOS os nomes de medicamentos encontrados no texto (nomes comerciais e/ou genéricos). Ignore dosagens, posologia, datas, números, fabricante e textos que não sejam nomes de medicamentos. Retorne os medicamentos separados por vírgula. Exemplos de resposta: "Losartana, Insulina NPH, Propranolol, Rosuvastatina" ou "Dramin B6" ou "Captopril, Furosemida, AAS". Responda SOMENTE com os nomes dos medicamentos separados por vírgula, sem explicações.' },
                   { role: 'user', content: 'Texto OCR: ' + textoOCR }
@@ -2689,7 +2690,7 @@ async function rodarAnalise() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
       body: JSON.stringify({
-        model: 'qwen/qwen3.6-27b',
+        model: 'qwen/qwen3-32b',
         max_tokens: 4000,
         temperature: 0.3,
         messages: [
