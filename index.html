@@ -1,3 +1,5 @@
+<!-- SPRINT48: efetivação da integração OCR → maleta → medicamentos_pacientes -->
+<!-- SPRINT47: OCR multi-medicamentos + cadastro automático da base de medicamentos de pacientes -->
 <!-- SPRINT46: logo oficial Ecco Salva na tela de acesso -->
 <!-- SPRINT45: Groq movido para Supabase Edge Function; nenhuma chave Groq no navegador -->
 <!-- SPRINT44: configuração da Groq em modal próprio + botão 🔑 no cabeçalho -->
@@ -2853,6 +2855,99 @@ function mostrarErroOCR(msg) {
   setTimeout(() => t.remove(), 4000);
 }
 
+
+// ── BASE DE MEDICAMENTOS ENCONTRADOS EM PACIENTES (SPRINT47) ──
+// A base é separada da MEDS_DB (maleta). Novos medicamentos fora da maleta
+// são cadastrados automaticamente após a identificação por OCR + IA.
+function normalizarNomeMedicamentoBase(nome) {
+  return String(nome || '')
+    .trim()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s.+-]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function medicamentoEstaNaMaleta(nome) {
+  const alvo = normalizarNomeMedicamentoBase(nome);
+  if (!alvo) return false;
+  return Object.keys(MEDS_DB || {}).some(k => {
+    const nk = normalizarNomeMedicamentoBase(k);
+    return nk === alvo || nk.includes(alvo) || alvo.includes(nk);
+  });
+}
+
+function deduplicarMedicamentosIdentificados(lista) {
+  const mapa = new Map();
+  (Array.isArray(lista) ? lista : []).forEach(item => {
+    const obj = typeof item === 'string' ? { nome_comercial: item } : (item || {});
+    const nome = String(obj.nome_comercial || obj.nome || obj.medicamento || obj.principio_ativo || '').trim();
+    if (nome.length < 2) return;
+    const chave = normalizarNomeMedicamentoBase(obj.principio_ativo || nome);
+    if (!chave) return;
+    if (!mapa.has(chave)) {
+      mapa.set(chave, {
+        nome_comercial: nome,
+        principio_ativo: String(obj.principio_ativo || '').trim(),
+        apresentacao: String(obj.apresentacao || '').trim(),
+        chave
+      });
+    } else {
+      const atual = mapa.get(chave);
+      if (!atual.principio_ativo && obj.principio_ativo) atual.principio_ativo = String(obj.principio_ativo).trim();
+      if (!atual.apresentacao && obj.apresentacao) atual.apresentacao = String(obj.apresentacao).trim();
+    }
+  });
+  return [...mapa.values()];
+}
+
+async function registrarMedicamentosBasePacientes(medicamentos) {
+  const lista = deduplicarMedicamentosIdentificados(medicamentos)
+    .filter(m => !medicamentoEstaNaMaleta(m.nome_comercial) &&
+                 !medicamentoEstaNaMaleta(m.principio_ativo));
+
+  if (!lista.length) return { inseridos: 0, ignoradosMaleta: medicamentos?.length || 0 };
+
+  // Se a tabela/RPC ainda não existir, não interrompe o atendimento:
+  // o preenchimento do campo de medicamentos continua normalmente.
+  if (!window._supabaseClient || !_authUser) {
+    console.warn('Base de medicamentos: usuário/Supabase indisponível.');
+    return { inseridos: 0, indisponivel: true };
+  }
+
+  const payload = lista.map(m => ({
+    nome_comercial: m.nome_comercial || null,
+    principio_ativo: m.principio_ativo || m.nome_comercial || null,
+    apresentacao: m.apresentacao || null,
+    origem: 'ocr_smart'
+  }));
+
+  const { data, error } = await window._supabaseClient.rpc(
+    'registrar_medicamentos_pacientes',
+    { p_medicamentos: payload }
+  );
+
+  if (error) {
+    console.warn('Base de medicamentos não atualizada:', error);
+    return { inseridos: 0, erro: error.message || 'Erro na base.' };
+  }
+
+  return {
+    inseridos: Number(data?.[0]?.inseridos || lista.length),
+    ignoradosMaleta: Number(data?.[0]?.ignorados_maleta || 0)
+  };
+}
+
+function mostrarAvisoBaseMedicamentos(texto, tipo='ok') {
+  const t = document.createElement('div');
+  const bg = tipo === 'erro' ? '#E8323C' : '#22C97A';
+  t.style.cssText = `position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:${bg};color:white;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;z-index:999;max-width:330px;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.25)`;
+  t.textContent = texto;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
 function anFotoSelecionada(input) {
   const file = input.files[0];
   if (!file) return;
@@ -2868,80 +2963,171 @@ function anFotoSelecionada(input) {
         if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
         else { w = Math.round(w * MAX / h); h = MAX; }
       }
+
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
-      // Aumentar contraste para melhorar OCR de telas e textos
+
+      // Aumentar contraste para melhorar OCR de telas do SMART.
       const imageData = ctx.getImageData(0, 0, w, h);
       const data = imageData.data;
-      const contrast = 1.3; const brightness = 10;
+      const contrast = 1.3;
+      const brightness = 10;
       for (let i = 0; i < data.length; i += 4) {
         data[i]   = Math.min(255, Math.max(0, (data[i]   - 128) * contrast + 128 + brightness));
         data[i+1] = Math.min(255, Math.max(0, (data[i+1] - 128) * contrast + 128 + brightness));
         data[i+2] = Math.min(255, Math.max(0, (data[i+2] - 128) * contrast + 128 + brightness));
       }
       ctx.putImageData(imageData, 0, 0);
+
       const base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
       _anFotos.push({ base64, mime });
       renderThumbs();
 
-      // OCR — extrair texto da foto e filtrar apenas nome do medicamento
       const campoMeds = document.getElementById('anMedsContinuos');
-      if (campoMeds) {
-        const fotoTxt = document.getElementById('anFotoTxt');
-        if (fotoTxt) fotoTxt.textContent = 'Lendo medicamentos...';
-        const textoOCR = await extrairTextoVision(base64);
-        if (textoOCR) {
-          // Usar Groq para extrair apenas o nome comercial/genérico do medicamento
-          try {
-            const groqData = await callGroqServer(
-                [
-                  { role: 'system', content: 'Você é um assistente farmacêutico especializado em identificar medicamentos. Responda apenas com o nome genérico/comercial mais provável, sem explicações.' },
-                  { role: 'user', content: 'Texto OCR: ' + textoOCR }
-                ],
-                { model: 'qwen/qwen3.6-27b', max_tokens: 100, temperature: 0 }
-              );
-            const nomeMed = (groqData?.choices?.[0]?.message?.content || '').trim().replace(/['"]/g, '');
-            if (nomeMed) {
-              // Evitar duplicatas entre fotos
-              const medsAtual = campoMeds.value.trim();
-              const listaAtual = medsAtual ? medsAtual.split(",").map(m => m.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")) : [];
-              const novos = nomeMed.split(",").map(m => m.trim()).filter(m => {
-                if (m.length < 2) return false;
-                const mLow = m.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-                return !listaAtual.some(a => a.includes(mLow.substring(0,5)) || mLow.includes(a.substring(0,5)));
-              });
-              if (novos.length > 0) {
-                campoMeds.value = medsAtual ? medsAtual + ", " + novos.join(", ") : novos.join(", ");
-                _campoPaciente.medsContinuos = campoMeds.value;
-              }
-            }
-          } catch(e) {
-            // Fallback: usar texto OCR bruto sem duplicar
-            const medsAtual = campoMeds.value.trim();
-            const primeiraLinha = textoOCR.split("\n")[0];
-            const pLow = primeiraLinha.toLowerCase().substring(0,5);
-            if (!medsAtual.toLowerCase().includes(pLow)) {
-              campoMeds.value = medsAtual ? medsAtual + ", " + primeiraLinha : primeiraLinha;
-              _campoPaciente.medsContinuos = campoMeds.value;
-            }
-          }
-          if (fotoTxt) fotoTxt.textContent = '+ Adicionar mais foto';
-          const t = document.createElement('div');
-          t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#22C97A;color:white;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;z-index:999;white-space:nowrap';
-          t.textContent = '✅ Medicamento identificado!';
-          document.body.appendChild(t);
-          setTimeout(() => t.remove(), 2500);
-        } else {
-          if (fotoTxt) fotoTxt.textContent = '+ Adicionar mais foto';
-        }
+      if (!campoMeds) return;
+
+      const fotoTxt = document.getElementById('anFotoTxt');
+      if (fotoTxt) fotoTxt.textContent = 'Lendo medicamentos...';
+
+      const textoOCR = await extrairTextoVision(base64);
+
+      if (!textoOCR) {
+        if (fotoTxt) fotoTxt.textContent = '+ Adicionar mais foto';
+        return;
       }
+
+      try {
+        // A IA agora devolve TODOS os medicamentos identificados em JSON,
+        // em vez de tentar retornar apenas um nome.
+        const groqData = await callGroqServer(
+          [
+            {
+              role: 'system',
+              content:
+                'Você é um assistente farmacêutico especializado em identificar medicamentos a partir de OCR. ' +
+                'Analise todo o texto recebido e identifique TODOS os medicamentos que estiverem realmente presentes. ' +
+                'Ignore nomes de pacientes, médicos, endereços, datas, diagnósticos, posologias soltas e outros textos que não sejam medicamentos. ' +
+                'Para cada medicamento, retorne nome comercial quando identificável, princípio ativo quando identificável e apresentação/dose quando identificável. ' +
+                'Não invente informações. Se houver dúvida, use apenas o que estiver sustentado pelo OCR. ' +
+                'Responda exclusivamente em JSON no formato {"medicamentos":[{"nome_comercial":"...","principio_ativo":"...","apresentacao":"..."}]}.'
+            },
+            { role: 'user', content: 'Texto OCR do SMART:\n' + textoOCR }
+          ],
+          {
+            model: 'qwen/qwen3.6-27b',
+            max_tokens: 500,
+            temperature: 0,
+            response_format: { type: 'json_object' }
+          }
+        );
+
+        const bruto = groqData?.choices?.[0]?.message?.content || '{}';
+        let parsed = {};
+        try { parsed = JSON.parse(bruto); }
+        catch (_) {
+          // Tolerância caso o modelo retorne JSON cercado por texto.
+          const trecho = bruto.match(/\{[\s\S]*\}/);
+          if (trecho) parsed = JSON.parse(trecho[0]);
+        }
+
+        const identificados = deduplicarMedicamentosIdentificados(parsed?.medicamentos || []);
+
+        if (!identificados.length) {
+          if (fotoTxt) fotoTxt.textContent = '+ Adicionar mais foto';
+          mostrarAvisoBaseMedicamentos('⚠️ Nenhum medicamento foi identificado com segurança.', 'erro');
+          return;
+        }
+
+        // 1) Mantém o comportamento atual: os medicamentos identificados
+        // são transcritos para o campo do paciente.
+        const medsAtual = campoMeds.value.trim();
+        const listaAtual = medsAtual
+          ? medsAtual.split(',')
+              .map(m => m.trim())
+              .filter(Boolean)
+          : [];
+
+        const normalizadosAtuais = listaAtual.map(normalizarNomeMedicamentoBase);
+        const novosParaCampo = [];
+
+        identificados.forEach(m => {
+          const candidatos = [m.nome_comercial, m.principio_ativo].filter(Boolean);
+          const jaExiste = candidatos.some(c => {
+            const nc = normalizarNomeMedicamentoBase(c);
+            return normalizadosAtuais.some(a =>
+              a === nc || a.includes(nc.substring(0, Math.min(8, nc.length))) ||
+              nc.includes(a.substring(0, Math.min(8, a.length)))
+            );
+          });
+
+          if (!jaExiste) {
+            novosParaCampo.push(m.nome_comercial || m.principio_ativo);
+            normalizadosAtuais.push(normalizarNomeMedicamentoBase(m.nome_comercial || m.principio_ativo));
+          }
+        });
+
+        if (novosParaCampo.length) {
+          campoMeds.value = medsAtual
+            ? medsAtual + ', ' + novosParaCampo.join(', ')
+            : novosParaCampo.join(', ');
+          _campoPaciente.medsContinuos = campoMeds.value;
+        }
+
+        // 2) Nova etapa: tudo que NÃO pertence à maleta entra automaticamente
+        // na base de medicamentos encontrados em pacientes.
+        const resultadoBase = await registrarMedicamentosBasePacientes(identificados);
+
+        const foraDaMaleta = identificados.filter(m =>
+          !medicamentoEstaNaMaleta(m.nome_comercial) &&
+          !medicamentoEstaNaMaleta(m.principio_ativo)
+        ).length;
+
+        if (resultadoBase.indisponivel) {
+          mostrarAvisoBaseMedicamentos(
+            `✅ ${identificados.length} medicamento(s) identificado(s). Base ainda não configurada.`,
+            'ok'
+          );
+        } else if (resultadoBase.erro) {
+          mostrarAvisoBaseMedicamentos(
+            `✅ ${identificados.length} identificado(s). Não foi possível atualizar a base agora.`,
+            'erro'
+          );
+        } else if (foraDaMaleta > 0) {
+          mostrarAvisoBaseMedicamentos(
+            `✅ ${identificados.length} identificado(s) • ${foraDaMaleta} fora da maleta adicionados/atualizados na base.`
+          );
+        } else {
+          mostrarAvisoBaseMedicamentos(
+            `✅ ${identificados.length} medicamento(s) identificado(s). Nenhum novo fora da maleta.`
+          );
+        }
+
+      } catch (e) {
+        console.error('Erro na identificação dos medicamentos:', e);
+
+        // Fallback: não perde o OCR e não bloqueia o atendimento.
+        const medsAtual = campoMeds.value.trim();
+        const primeiraLinha = textoOCR.split('\n').map(x => x.trim()).find(x => x.length >= 2) || '';
+        const pLow = normalizarNomeMedicamentoBase(primeiraLinha);
+        if (primeiraLinha && !normalizarNomeMedicamentoBase(medsAtual).includes(pLow)) {
+          campoMeds.value = medsAtual ? medsAtual + ', ' + primeiraLinha : primeiraLinha;
+          _campoPaciente.medsContinuos = campoMeds.value;
+        }
+
+        mostrarAvisoBaseMedicamentos('📷 Texto lido, mas a identificação automática dos medicamentos falhou.', 'erro');
+      }
+
+      if (fotoTxt) fotoTxt.textContent = '+ Adicionar mais foto';
     };
+
     img.src = e.target.result;
   };
+
   reader.readAsDataURL(file);
 }
+
 
 function iniciarCronometro() {
   _cronometroInicio = Date.now();
