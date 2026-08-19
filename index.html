@@ -1,3 +1,4 @@
+<!-- SPRINT49: medicamentos digitados também alimentam automaticamente a base de pacientes -->
 <!-- SPRINT48: efetivação da integração OCR → maleta → medicamentos_pacientes -->
 <!-- SPRINT47: OCR multi-medicamentos + cadastro automático da base de medicamentos de pacientes -->
 <!-- SPRINT46: logo oficial Ecco Salva na tela de acesso -->
@@ -452,6 +453,73 @@ function updateUserBadge(){
 #statsGrid > div { min-width:0; }
 </style>
 
+
+<style id="sprint48-busca-fora-maleta">
+  #anBuscaForaMaleta{
+    display:none;
+    margin-top:7px;
+    padding:8px;
+    background:rgba(59,155,232,.06);
+    border:1px solid rgba(59,155,232,.22);
+    border-radius:9px;
+  }
+  .an-busca-fora-title{
+    font-size:10px;
+    font-weight:800;
+    color:var(--blue);
+    margin-bottom:6px;
+  }
+  .an-busca-fora-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:6px 0;
+    border-top:1px solid rgba(255,255,255,.05);
+  }
+  .an-busca-fora-name{
+    min-width:0;
+    flex:1;
+    font-size:11px;
+    color:var(--text);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .an-busca-fora-btn{
+    flex:0 0 auto;
+    border:1px solid rgba(59,155,232,.35);
+    background:rgba(59,155,232,.12);
+    color:var(--blue);
+    border-radius:7px;
+    padding:5px 8px;
+    font:700 11px Inter,sans-serif;
+    cursor:pointer;
+  }
+  #buscaForaMaletaModal{
+    position:fixed;
+    inset:0;
+    z-index:10001;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:14px;
+    background:rgba(5,9,16,.82);
+    backdrop-filter:blur(4px);
+  }
+  #buscaForaMaletaCard{
+    width:100%;
+    max-width:620px;
+    max-height:88vh;
+    overflow:auto;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+    padding:12px;
+  }
+</style>
+
 <style id="sprint40-favoritos">
 /* Favoritos: nenhuma estrela ocupa espaço nos medicamentos.
    O favorito é indicado somente quando já marcado, com uma estrela dourada. */
@@ -612,6 +680,7 @@ function updateUserBadge(){
             <button onclick="abrirCamera()" title="Fotografar receita ou tela" style="position:absolute;bottom:8px;right:8px;background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:6px 8px;cursor:pointer;font-size:18px;line-height:1">📸</button>
             <input type="file" id="anFotoInput" accept="image/*" capture="camera" style="display:none" onchange="anFotoSelecionada(this)">
           </div>
+          <div id="anBuscaForaMaleta" aria-live="polite"></div>
           <div id="anPreviewGrid" style="display:none;margin-top:6px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
               <span id="anFotoCount" style="font-size:11px;font-weight:700;color:var(--green)"></span>
@@ -2339,6 +2408,182 @@ function voltarMaleta() {
 }
 
 // ── BUSCA LIVRE (usa IA — medicamentos fora da maleta) ──
+
+
+async function registrarMedicamentosDigitadosBase() {
+  const campo = document.getElementById('anMedsContinuos');
+  if (!campo) return { total: 0, processados: 0 };
+
+  const texto = String(campo.value || '').trim();
+  if (!texto) return { total: 0, processados: 0 };
+
+  // Aceita vírgulas, ponto e vírgula e quebras de linha.
+  const nomes = [...new Set(
+    texto.split(/[,;\n]+/)
+      .map(s => s.trim())
+      .filter(s => s.length >= 2)
+  )];
+
+  if (!nomes.length) return { total: 0, processados: 0 };
+
+  const medicamentos = nomes.map(nome => ({
+    nome_comercial: nome,
+    principio_ativo: nome,
+    apresentacao: ''
+  }));
+
+  const fora = medicamentos.filter(m =>
+    !medicamentoEstaNaMaleta(m.nome_comercial) &&
+    !medicamentoEstaNaMaleta(m.principio_ativo)
+  );
+
+  if (!fora.length) {
+    renderBuscaForaMaleta(medicamentos);
+    return { total: nomes.length, processados: 0 };
+  }
+
+  const resultado = await registrarMedicamentosBasePacientes(fora);
+  renderBuscaForaMaleta(medicamentos);
+
+  return {
+    total: nomes.length,
+    processados: Number(resultado?.inseridos || 0),
+    erro: resultado?.erro || null
+  };
+}
+
+let _timerMedicamentosDigitados = null;
+
+function ativarBaseParaMedicamentosDigitados() {
+  const campo = document.getElementById('anMedsContinuos');
+  if (!campo || campo.dataset.basePacientesAtiva === '1') return;
+  campo.dataset.basePacientesAtiva = '1';
+
+  campo.addEventListener('input', programarRegistroMedicamentosDigitados);
+  campo.addEventListener('change', programarRegistroMedicamentosDigitados);
+  campo.addEventListener('blur', () => {
+    clearTimeout(_timerMedicamentosDigitados);
+    registrarMedicamentosDigitadosBase().catch(e =>
+      console.warn('Erro ao registrar medicamento digitado:', e)
+    );
+  });
+}
+
+function programarRegistroMedicamentosDigitados() {
+  clearTimeout(_timerMedicamentosDigitados);
+  _timerMedicamentosDigitados = setTimeout(async () => {
+    try {
+      await registrarMedicamentosDigitadosBase();
+    } catch (e) {
+      console.warn('Não foi possível atualizar a base a partir dos medicamentos digitados:', e);
+    }
+  }, 900);
+}
+
+function renderBuscaForaMaleta(medicamentos) {
+  const box = document.getElementById('anBuscaForaMaleta');
+  if (!box) return;
+
+  const fora = deduplicarMedicamentosIdentificados(medicamentos).filter(m =>
+    !medicamentoEstaNaMaleta(m.nome_comercial) &&
+    !medicamentoEstaNaMaleta(m.principio_ativo)
+  );
+
+  if (!fora.length) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+    return;
+  }
+
+  box.style.display = 'block';
+  box.innerHTML =
+    `<div class="an-busca-fora-title">🔎 Medicamentos fora da maleta — pesquisar ficha</div>` +
+    fora.map(m => {
+      const nome = m.nome_comercial || m.principio_ativo || 'Medicamento não identificado';
+      return `<div class="an-busca-fora-item">
+        <span class="an-busca-fora-name" title="${escHtmlAuth(nome)}">${escHtmlAuth(nome)}</span>
+        <button class="an-busca-fora-btn" onclick="abrirBuscaForaMaleta('${String(nome).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">🔎 Pesquisar</button>
+      </div>`;
+    }).join('');
+}
+
+function abrirBuscaForaMaleta(nome) {
+  const modal = document.getElementById('buscaForaMaletaModal');
+  const input = document.getElementById('buscaForaMaletaInput');
+  const result = document.getElementById('buscaForaMaletaResult');
+  if (!modal || !input || !result) return;
+
+  input.value = nome || '';
+  result.innerHTML = '';
+  modal.style.display = 'flex';
+  setTimeout(() => {
+    input.focus();
+    executarBuscaForaMaleta();
+  }, 30);
+}
+
+function fecharBuscaForaMaleta() {
+  const modal = document.getElementById('buscaForaMaletaModal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function executarBuscaForaMaleta() {
+  const input = document.getElementById('buscaForaMaletaInput');
+  const btn = document.getElementById('buscaForaMaletaBtn');
+  const result = document.getElementById('buscaForaMaletaResult');
+  if (!input || !btn || !result) return;
+
+  const q = input.value.trim();
+  if (!q) return;
+
+  btn.disabled = true;
+  result.innerHTML = `<div class="loading-wrap"><div class="pulse-ring"></div><p class="loading-text">Consultando medicamento...</p></div>`;
+
+  try {
+    const data = await callClaude(q);
+    let html = '';
+
+    (Array.isArray(data?.medicamentos) ? data.medicamentos : []).forEach(med => {
+      const fonteLabel = med.fonte || 'Literatura geral';
+      const fonteIcon = fonteLabel.toLowerCase().includes('einstein') ? '🏥' :
+                        fonteLabel.toLowerCase().includes('anvisa') ? '🇧🇷' :
+                        fonteLabel.toLowerCase().includes('cofen') ? '📋' :
+                        fonteLabel.toLowerCase().includes('aha') || fonteLabel.toLowerCase().includes('ilcor') || fonteLabel.toLowerCase().includes('acls') ? '❤️' :
+                        fonteLabel.toLowerCase().includes('sbc') ? '🫀' :
+                        fonteLabel.toLowerCase().includes('micromedex') || fonteLabel.toLowerCase().includes('uptodate') ? '📚' : '📖';
+
+      html += `
+        <div class="med-card">
+          <div class="med-card-header">
+            <div class="med-card-name">💊 ${escHtmlAuth(med.nome || q)}</div>
+            <span class="med-badge" style="background:rgba(59,155,232,0.15);color:var(--blue);border-color:rgba(59,155,232,0.3)">${fonteIcon} ${escHtmlAuth(fonteLabel)}</span>
+          </div>
+          <div class="med-card-body">
+            <div><div class="row-lbl">📦 Apresentação</div><div class="row-val">${escHtmlAuth(med.apresentacao || 'Não identificada')}</div></div>
+            <div class="divider"></div>
+            <div><div class="row-lbl">📌 Para que serve</div><div class="row-val">${escHtmlAuth(med.para_que_serve || 'Não informado')}</div></div>
+            <div><div class="row-lbl">💉 Via</div><div class="row-val">${escHtmlAuth(med.via || 'Não informada')}</div></div>
+            <div><div class="row-lbl">🧪 Diluente e preparo</div><div class="row-val">${escHtmlAuth(med.diluente || 'Não informado')}</div></div>
+            <div><div class="row-lbl">🔄 Flush</div><div class="row-val">${escHtmlAuth(med.flush || 'Não informado')}</div></div>
+            <div class="divider"></div>
+            <div class="interacao-box"><div class="interacao-title">⚠️ Efeitos no organismo</div><div class="interacao-item">${escHtmlAuth(med.efeitos_corpo || 'Não informado')}</div></div>
+          </div>
+        </div>`;
+    });
+
+    if (!html) {
+      html = `<div class="error-box">⚠️ Não foi possível obter uma ficha para "${escHtmlAuth(q)}".</div>`;
+    }
+
+    result.innerHTML = html;
+  } catch (e) {
+    console.error('Busca de medicamento fora da maleta:', e);
+    result.innerHTML = `<div class="error-box">❌ Erro na pesquisa: ${escHtmlAuth(e.message || e)}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 async function callClaude(query, tentativa = 1) {
   try {
     const data = await callGroqServer(
@@ -2785,7 +3030,17 @@ function abrirCamera() {
   input.click();
 }
 
+
+function limparBuscaForaMaletaUI() {
+  const box = document.getElementById('anBuscaForaMaleta');
+  if (box) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+  }
+}
+
 function limparFotos() {
+  limparBuscaForaMaletaUI();
   _anFotos = [];
   document.getElementById('anImgGrid').innerHTML = '';
   document.getElementById('anPreviewGrid').style.display = 'none';
@@ -3033,6 +3288,9 @@ function anFotoSelecionada(input) {
         }
 
         const identificados = deduplicarMedicamentosIdentificados(parsed?.medicamentos || []);
+
+        // Mostra a lupa somente para os medicamentos identificados que não pertencem à maleta.
+        renderBuscaForaMaleta(identificados);
 
         if (!identificados.length) {
           if (fotoTxt) fotoTxt.textContent = '+ Adicionar mais foto';
@@ -4641,6 +4899,21 @@ function switchTab(tab, el) {
   }
 })();
 </script>
+
+
+<div id="buscaForaMaletaModal" onclick="if(event.target===this) fecharBuscaForaMaleta()">
+  <div id="buscaForaMaletaCard">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+      <div style="font-size:13px;font-weight:800;color:var(--text)">🔎 Pesquisar medicamento</div>
+      <button onclick="fecharBuscaForaMaleta()" style="background:transparent;border:1px solid var(--border);border-radius:7px;padding:5px 8px;color:var(--text-dim);cursor:pointer">✕</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:9px">
+      <input id="buscaForaMaletaInput" type="text" placeholder="Nome do medicamento..." style="flex:1;min-width:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font:12px Inter,sans-serif;outline:none">
+      <button id="buscaForaMaletaBtn" onclick="executarBuscaForaMaleta()" style="background:var(--blue);border:none;border-radius:8px;padding:8px 11px;color:#fff;font:700 11px Inter,sans-serif;cursor:pointer">🔎 Pesquisar</button>
+    </div>
+    <div id="buscaForaMaletaResult"></div>
+  </div>
+</div>
 
 </body>
 </html>
