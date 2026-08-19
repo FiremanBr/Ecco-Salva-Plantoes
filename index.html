@@ -1,3 +1,5 @@
+<!-- SPRINT39: autenticação Supabase + favoritos/histórico sincronizados por usuário; remoção do Firebase legado -->
+<!-- SPRINT38: favoritos com botão clicável em desktop + filtro ⭐ Favoritos -->
 <!-- SPRINT37: remover texto duplicado à esquerda e tornar controles responsivos no celular -->
 <!-- SPRINT36: corrigido conflito Hoje/Ontem; Hoje agora chama filtroRapido('hoje') -->
 <!-- SPRINT35: estatísticas corrigidas + Histórico forçado no botão da aba -->
@@ -22,56 +24,234 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Ecco Salva Meds</title>
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyDsrHYbdbOBlowVtKMWyuLNO9PbZPQRnAg",
-    authDomain: "ecco-salva-atendimentos.firebaseapp.com",
-    projectId: "ecco-salva-atendimentos",
-    storageBucket: "ecco-salva-atendimentos.firebasestorage.app",
-    messagingSenderId: "572863021194",
-    appId: "1:572863021194:web:e9564cf1703b4edc996d73",
-    measurementId: "G-GW37J7H2NK"
-  };
+// ── AUTENTICAÇÃO + SINCRONIZAÇÃO SUPABASE (SPRINT39) ──
+let _authUser = null;
+let _authReady = false;
+let _authMode = 'login';
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+function escHtmlAuth(s){
+  return String(s ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+}
 
-  // Expor funções globais para o app usar
-  window._db = db;
-  window._fbCollection = collection;
-  window._fbAddDoc = addDoc;
-  window._fbGetDocs = getDocs;
-  window._fbDeleteDoc = deleteDoc;
-  window._fbDoc = doc;
-  window._fbQuery = query;
-  window._fbWhere = where;
-  window._fbOrderBy = orderBy;
-  window._firebaseReady = true;
-  console.log("Firebase conectado!");
-
-  // Carregar atendimentos do Firebase ao iniciar
-  try {
-    const q = query(collection(db, 'atendimentos'));
-    const snap = await getDocs(q);
-    const fbAtds = [];
-    snap.forEach(d => fbAtds.push({ ...d.data(), _id: d.id }));
-    fbAtds.sort((a,b) => (b.ts||0) - (a.ts||0));
-    // Salvar no localStorage para o app ler
-    localStorage.setItem('ecco_atendimentos', JSON.stringify(fbAtds));
-    // Disparar evento customizado para o script principal capturar
-    localStorage.setItem('ecco_atendimentos', JSON.stringify(fbAtds));
-    document.dispatchEvent(new CustomEvent('firebase-loaded', { detail: fbAtds }));
-  } catch(e) {
-    console.log('Firebase load error:', e.message);
-    const toastErr = document.createElement('div');
-    toastErr.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#E8323C;color:white;border-radius:8px;padding:6px 14px;font-size:11px;font-weight:700;z-index:9999';
-    toastErr.textContent = 'Firebase erro: ' + e.message;
-    document.body.appendChild(toastErr);
-    setTimeout(() => toastErr.remove(), 5000);
+function showAuthOverlay(mode='login', msg='') {
+  _authMode = mode;
+  let ov = document.getElementById('authOverlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'authOverlay';
+    document.body.appendChild(ov);
   }
+  const isLogin = mode === 'login';
+  ov.innerHTML = `<div id="authCard">
+    <img class="auth-logo" src="data:image/png;base64,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" alt="Ecco Salva">\n    <div class="auth-title">Acesso ao Ecco Salva</div>\n    <div class="auth-sub">Favoritos e histórico sincronizados por usuário</div>\n    <div class="auth-mode">\n      <button type="button" class="${isLogin?'active':''}" onclick="showAuthOverlay('login')">Entrar</button>\n      <button type="button" class="${!isLogin?'active':''}" onclick="showAuthOverlay('signup')">Criar conta</button>\n    </div>\n    ${!isLogin ? `<label class="auth-label">Nome</label><input id="authNome" class="auth-input" autocomplete="name" placeholder="Seu nome">` : ''}\n    <label class="auth-label">E-mail</label>\n    <input id="authEmail" class="auth-input" type="email" autocomplete="email" placeholder="seu@email.com">\n    <label class="auth-label">Senha</label>\n    <input id="authSenha" class="auth-input" type="password" autocomplete="${isLogin?'current-password':'new-password'}" placeholder="••••••••">\n    <button class="auth-btn" onclick="submitAuth()">${isLogin?'Entrar':'Criar conta'}</button>\n    <button class="auth-secondary" onclick="showAuthOverlay('${isLogin?'signup':'login'}')">${isLogin?'Ainda não tenho conta':'Já tenho uma conta'}</button>\n    <div id="authMsg" class="auth-msg">${escHtmlAuth(msg)}</div>\n  </div>`;
+  ov.style.display='flex';
+  setTimeout(()=>{ const e=document.getElementById('authEmail'); if(e)e.focus(); },50);
+}
+
+function hideAuthOverlay(){ const ov=document.getElementById('authOverlay'); if(ov) ov.remove(); }
+
+async function submitAuth(){
+  const email=(document.getElementById('authEmail')?.value||'').trim();
+  const senha=document.getElementById('authSenha')?.value||'';
+  const nome=(document.getElementById('authNome')?.value||'').trim();
+  const msg=document.getElementById('authMsg');
+  if(!email || !senha){ if(msg) msg.textContent='Informe e-mail e senha.'; return; }
+  if(senha.length<6){ if(msg) msg.textContent='A senha deve ter pelo menos 6 caracteres.'; return; }
+  if(msg) msg.textContent='Aguarde...';
+  try{
+    if(_authMode==='login'){
+      const {error}=await window._supabaseClient.auth.signInWithPassword({email,password:senha});
+      if(error) throw error;
+    }else{
+      const {data,error}=await window._supabaseClient.auth.signUp({email,password:senha,options:{data:{nome}}});
+      if(error) throw error;
+      if(!data.session){
+        if(msg) msg.style.color='var(--green)', msg.textContent='Conta criada. Verifique seu e-mail para confirmar o acesso.';
+        return;
+      }
+    }
+  }catch(e){
+    if(msg){msg.style.color='var(--accent)'; msg.textContent='Não foi possível entrar: '+(e.message||'erro desconhecido');}
+  }
+}
+
+async function supabaseLogout(){
+  if(!window._supabaseClient) return;
+  await window._supabaseClient.auth.signOut();
+}
+
+function currentUser(){ return _authUser; }
+
+function parseDataBR(s){
+  const m=String(s||'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : new Date().toISOString().slice(0,10);
+}
+
+function formatDateBRFromISO(s){
+  if(!s) return dataHoje();
+  const m=String(s).slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : String(s);
+}
+
+function normalizeCloudAtd(row){
+  return {
+    _id: row.id,
+    num: row.numero_atendimento || 0,
+    data: formatDateBRFromISO(row.data_atendimento),
+    hora: row.hora_atendimento ? String(row.hora_atendimento).slice(0,5) : '',
+    nome: row.nome_paciente || 'Não identificado',
+    idade: row.idade || '',
+    queixa: row.queixa_principal || '',
+    meds: row.meds || '',
+    analise: row.analise || null,
+    ts: row.created_at ? new Date(row.created_at).getTime() : Date.now()
+  };
+}
+
+async function loadCloudHistory(){
+  if(!_authUser) return [];
+  const {data,error}=await window._supabaseClient.from('atendimentos').select('*').order('created_at',{ascending:false});
+  if(error) throw error;
+  return (data||[]).map(normalizeCloudAtd);
+}
+
+async function syncFavoritesFromCloud(){
+  if(!_authUser) return;
+  const local = new Set(JSON.parse(localStorage_safe_get('ecco_favoritos')||'[]'));
+  const {data,error}=await window._supabaseClient.from('favoritos').select('medicamento').order('medicamento');
+  if(error) throw error;
+  const cloud = new Set((data||[]).map(x=>x.medicamento));
+  const merged = new Set([...cloud,...local]);
+  const novos = [...merged].filter(x=>!cloud.has(x));
+  if(novos.length){
+    const {error:insErr}=await window._supabaseClient.from('favoritos').insert(novos.map(m=>({user_id:_authUser.id,medicamento:m})));
+    if(insErr && insErr.code!=='23505') throw insErr;
+  }
+  _favoritos=merged;
+  localStorage_safe_set('ecco_favoritos',JSON.stringify([...merged]));
+}
+
+async function cloudToggleFavorito(nome, ativo){
+  if(!_authUser) return;
+  if(ativo){
+    const {error}=await window._supabaseClient.from('favoritos').upsert({user_id:_authUser.id,medicamento:nome},{onConflict:'user_id,medicamento'});
+    if(error) throw error;
+  }else{
+    const {error}=await window._supabaseClient.from('favoritos').delete().eq('user_id',_authUser.id).eq('medicamento',nome);
+    if(error) throw error;
+  }
+}
+
+async function saveAtendimentoCloud(atd){
+  if(!_authUser) throw new Error('Usuário não autenticado.');
+  const payload={
+    user_id:_authUser.id,
+    numero_atendimento:atd.num,
+    data_atendimento:parseDataBR(atd.data),
+    hora_atendimento:atd.hora ? atd.hora+':00' : null,
+    nome_paciente:atd.nome||null,
+    idade:atd.idade ? Number(atd.idade)||null : null,
+    queixa_principal:atd.queixa||null,
+    anamnese:atd.anamnese||null,
+    observacoes:atd.observacoes||null,
+    analise:atd.analise||null,
+    meds:atd.meds||''
+  };
+  const {data,error}=await window._supabaseClient.from('atendimentos').insert(payload).select().single();
+  if(error) throw error;
+  atd._id=data.id;
+  const meds=(atd.meds||'').split(',').map(x=>x.trim()).filter(Boolean);
+  if(meds.length){
+    const rows=meds.map(m=>({atendimento_id:data.id,user_id:_authUser.id,medicamento:m}));
+    const {error:medErr}=await window._supabaseClient.from('atendimento_medicamentos').insert(rows);
+    if(medErr) console.warn('Medicamentos do atendimento não foram detalhados:',medErr);
+  }
+  return atd;
+}
+
+async function updateAtendimentoCloud(atd){
+  if(!_authUser || !atd._id) return;
+  const {error}=await window._supabaseClient.from('atendimentos').update({nome_paciente:atd.nome,queixa_principal:atd.queixa,updated_at:new Date().toISOString()}).eq('id',atd._id);
+  if(error) throw error;
+}
+
+async function deleteAtendimentoCloud(id){
+  if(!_authUser || !id) return;
+  const {error}=await window._supabaseClient.from('atendimentos').delete().eq('id',id);
+  if(error) throw error;
+}
+
+async function migrateLocalHistory(){
+  if(!_authUser || localStorage_safe_get('ecco_sb_history_migrated')==='1') return;
+  const local=JSON.parse(localStorage_safe_get('ecco_atendimentos')||'[]');
+  if(!Array.isArray(local)||!local.length){ localStorage_safe_set('ecco_sb_history_migrated','1'); return; }
+  try{
+    const cloud=await loadCloudHistory();
+    const keys=new Set(cloud.map(a=>`${a.data}|${a.hora}|${a.nome}|${a.meds}`));
+    const missing=local.filter(a=>!keys.has(`${a.data}|${a.hora}|${a.nome}|${a.meds}`));
+    for(const a of missing){
+      try{ await saveAtendimentoCloud(a); }catch(e){ console.warn('Falha ao migrar atendimento:',e); }
+    }
+    localStorage_safe_set('ecco_sb_history_migrated','1');
+  }catch(e){ console.warn('Migração do histórico adiada:',e); }
+}
+
+async function initializeAuthenticatedApp(){
+  try{
+    await syncFavoritesFromCloud();
+    await migrateLocalHistory();
+    atendimentos=await loadCloudHistory();
+    localStorage_safe_set('ecco_atendimentos',JSON.stringify(atendimentos));
+    if(typeof renderMaleta==='function') renderMaleta();
+    atualizarContadorAtd();
+    if(document.getElementById('panel-historico')?.classList.contains('active')) await renderHistorico();
+  }catch(e){
+    console.warn('Falha ao sincronizar Supabase:',e);
+    const t=document.createElement('div');
+    t.style.cssText='position:fixed;top:58px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:7px 12px;font-size:11px;font-weight:700;z-index:9999;max-width:90%;text-align:center';
+    t.textContent='Não foi possível sincronizar com a nuvem. Os dados locais continuam disponíveis.';
+    document.body.appendChild(t); setTimeout(()=>t.remove(),4500);
+  }
+}
+
+async function initSupabaseAuth(){
+  if(!window._supabaseClient) return;
+  const {data:{session}}=await window._supabaseClient.auth.getSession();
+  _authUser=session?.user||null; _authReady=true;
+  updateUserBadge();
+  if(_authUser){ hideAuthOverlay(); await initializeAuthenticatedApp(); }
+  else showAuthOverlay('login');
+
+  window._supabaseClient.auth.onAuthStateChange(async (_event,session2)=>{
+    _authUser=session2?.user||null;
+    updateUserBadge();
+    if(_authUser){
+      hideAuthOverlay();
+      setTimeout(()=>initializeAuthenticatedApp(),0);
+    }else{
+      showAuthOverlay('login');
+      atendimentos=[];
+      localStorage_safe_set('ecco_atendimentos','[]');
+    }
+  });
+}
+
+function updateUserBadge(){
+  const b=document.getElementById('userBadge');
+  if(!b) return;
+  if(_authUser){ b.style.display='block'; b.textContent='👤 '+((_authUser.email||'').split('@')[0]); b.title='Sair de '+(_authUser.email||''); }
+  else b.style.display='none';
+}
+
+  // SUPABASE — credenciais públicas do projeto Ecco Salva
+  const SUPABASE_URL = "https://pfyxwxnixijpfhnbkthm.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_NOW-RdUnFoknBT4WeoQJkw_12wIFx8s";
+  window._supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  window._supabaseReady = true;
+  console.log("Supabase conectado!");
 </script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -255,6 +435,45 @@
 #statsGrid { width:100%; box-sizing:border-box; }
 #statsGrid > div { min-width:0; }
 </style>
+
+<style id="sprint40-favoritos">
+/* Favoritos: nenhuma estrela ocupa espaço nos medicamentos.
+   O favorito é indicado somente quando já marcado, com uma estrela dourada. */
+.med-chip.favorito{
+  box-shadow:inset 0 0 0 1px rgba(245,200,66,.18);
+}
+.med-fav-mark{
+  display:inline-block;
+  margin-left:5px;
+  color:#F5C842;
+  font-size:13px;
+  line-height:1;
+  vertical-align:middle;
+}
+</style>
+
+
+<style id="sprint39-auth">
+  #authOverlay{position:fixed;inset:0;background:rgba(5,9,16,.96);z-index:10000;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(5px)}
+  #authCard{width:100%;max-width:360px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+  .auth-logo{display:block;height:38px;width:auto;margin:0 auto 10px}
+  .auth-title{text-align:center;font-size:18px;font-weight:800;margin-bottom:4px;color:var(--text)}
+  .auth-sub{text-align:center;font-size:11px;color:var(--text-muted);margin-bottom:18px}
+  .auth-label{display:block;font-size:10px;font-weight:800;text-transform:uppercase;color:var(--blue);margin:10px 0 5px}
+  .auth-input{width:100%;padding:11px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:Inter,sans-serif;font-size:13px;outline:none;box-sizing:border-box}
+  .auth-input:focus{border-color:var(--blue)}
+  .auth-btn{width:100%;padding:11px;border-radius:9px;border:none;background:var(--accent);color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:800;cursor:pointer;margin-top:14px}
+  .auth-secondary{width:100%;padding:9px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);font-family:Inter,sans-serif;font-size:12px;font-weight:700;cursor:pointer;margin-top:8px}
+  .auth-msg{min-height:17px;margin-top:10px;text-align:center;font-size:11px;line-height:1.4;color:var(--accent)}
+  .auth-mode{display:flex;gap:6px;margin-bottom:12px}
+  .auth-mode button{flex:1;padding:7px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);font:700 11px Inter,sans-serif;cursor:pointer}
+  .auth-mode button.active{border-color:var(--blue);color:var(--blue);background:rgba(59,155,232,.10)}
+  #userBadge{display:none;max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 7px;color:var(--text-muted);font:700 9px Inter,sans-serif;cursor:pointer}
+  @media(max-width:360px){#userBadge{display:none!important}}
+</style>
+
+
+<!-- SPRINT41: long-press por Pointer Events para PC + celular; estrela dourada apenas nos favoritos -->
 </head>
 <body>
 <div class="header">
@@ -265,6 +484,7 @@
       <span id="atdCounter" style="display:none;background:var(--accent);color:white;font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px;letter-spacing:.3px"></span>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
+      <button id="userBadge" onclick="supabaseLogout()" title="Sair da conta">👤 Conta</button>
       <span id="onlineIndicator" title="Status de conexão" style="font-size:10px;font-weight:700;padding:3px 7px;border-radius:8px;background:rgba(34,201,122,0.15);color:var(--green);border:1px solid rgba(34,201,122,0.3)">🟢</span>
       <button onclick="toggleTema()" id="btnTema" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:14px;cursor:pointer;color:var(--text-muted)">☀️</button>
     </div>
@@ -1078,30 +1298,50 @@ let selecionados = new Set();
 let _modoEstudo = false;
 let _modoComparacao = false;
 let _favoritos = new Set(); // inicializado após localStorage_safe_get
+let _mostrarFavoritos = false;
 
 // ── RENDER MALETA (dados locais, sem IA) ──
 function renderMaleta() {
   const grid = document.getElementById('maletaGrid');
+  if (!grid) return;
+
+  const medsParaExibir = _mostrarFavoritos
+    ? MEDS.filter(med => _favoritos.has(med))
+    : MEDS;
+
   let html = '';
   let letraAtual = '';
-  MEDS.forEach(med => {
-    const letra = med[0].toUpperCase();
-    const isNovaLetra = letra !== letraAtual;
-    if (isNovaLetra) letraAtual = letra;
-    const nomeExibido = isNovaLetra
-      ? `<span class="first-letter">${med[0]}</span>${med.slice(1)}`
-      : med;
-    const isFav = _favoritos.has(med);
-    html += `<div class="med-chip${isNovaLetra ? ' new-letter' : ''}${isFav ? ' favorito' : ''}" data-med="${med}" onclick="toggleMed('${med}',this)"><span class="ck">✓</span>${nomeExibido}${isFav ? '<span class="star">⭐</span>' : ''}</div>`;
-  });
+
+  if (!medsParaExibir.length) {
+    html = `<div style="padding:18px 8px;text-align:center;color:var(--text-muted);font-size:12px">
+      ⭐ Nenhum medicamento favoritado ainda.<br>
+      <span style="font-size:11px">Toque e segure o medicamento para adicioná-lo aos favoritos.</span>
+    </div>`;
+  } else {
+    medsParaExibir.forEach(med => {
+      const letra = med[0].toUpperCase();
+      const isNovaLetra = letra !== letraAtual;
+      if (isNovaLetra) letraAtual = letra;
+
+      const nomeExibido = isNovaLetra
+        ? `<span class="first-letter">${med[0]}</span>${med.slice(1)}`
+        : med;
+
+      const isFav = _favoritos.has(med);
+      html += `<div class="med-chip${isNovaLetra ? ' new-letter' : ''}${isFav ? ' favorito' : ''}" data-med="${med}" onclick="toggleMed('${med}',this)">
+        <span class="ck">✓</span>${nomeExibido}${isFav ? '<span class="med-fav-mark" title="Favorito">⭐</span>' : ''}
+      </div>`;
+    });
+  }
+
   grid.innerHTML = `<div class="med-grid">${html}</div>
-</div>
     <div id="maletaControls" style="margin-top:12px;padding:8px 4px 0;width:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;gap:7px;background:transparent;overflow:visible">
       <div style="width:100%;box-sizing:border-box;font-size:9px;line-height:1.25;color:var(--text-muted);text-align:center;white-space:normal;overflow:visible">
         <span style="color:var(--blue)">Modo Estudo</span> = comparar interações &nbsp;•&nbsp;
         <span style="color:var(--blue)">🔎 Comparar</span> = ficha, interações e compatibilidade
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;width:100%;box-sizing:border-box;overflow:visible">
+        <button id="btnFavoritos" type="button" onclick="toggleFiltroFavoritos(); return false;" style="background:${_mostrarFavoritos ? 'rgba(245,200,66,.14)' : 'var(--surface2)'};border:1px solid ${_mostrarFavoritos ? 'rgba(245,200,66,.55)' : 'var(--border)'};border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:${_mostrarFavoritos ? '#F5C842' : 'var(--text-muted)'};cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;flex:0 0 auto">⭐ Favoritos</button>
         <button id="btnModoEstudo" onclick="toggleModoEstudo()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;flex:0 0 auto">📚 Modo Estudo</button>
         <button id="btnCompararMeds" type="button" onclick="toggleModoComparacao(); return false;" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;flex:0 0 auto">🔎 Comparar</button>
         <button onclick="abrirTabelaInteracoes()" style="background:rgba(232,50,60,0.1);border:1px solid rgba(232,50,60,0.35);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;flex:0 0 auto">⚠️ Interações</button>
@@ -1109,32 +1349,63 @@ function renderMaleta() {
     </div>
 `;
 
-  // Long press para favoritar (mobile)
+  // Pressionar e segurar para favoritar — funciona no PC (mouse) e no celular (toque).
+  // O clique curto continua com a função normal de selecionar o medicamento.
   let _lpTimer = null;
-  grid.addEventListener('touchstart', e => {
+  let _lpChip = null;
+
+  const cancelarLongPress = () => {
+    if (_lpTimer) {
+      clearTimeout(_lpTimer);
+      _lpTimer = null;
+    }
+    _lpChip = null;
+  };
+
+  grid.addEventListener('pointerdown', e => {
     const chip = e.target.closest('.med-chip');
     if (!chip) return;
     const med = chip.getAttribute('data-med');
     if (!med) return;
+
+    cancelarLongPress();
+    _lpChip = chip;
+
     _lpTimer = setTimeout(() => {
       _lpTimer = null;
+      const alvo = _lpChip;
+      _lpChip = null;
+      if (!alvo) return;
+
+      alvo.dataset.skipClick = '1';
       toggleFavorito(med, e);
       if (navigator.vibrate) navigator.vibrate(50);
+      setTimeout(() => delete alvo.dataset.skipClick, 450);
     }, 600);
-  }, { passive: true });
-  grid.addEventListener('touchend', () => { if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; } });
-  grid.addEventListener('touchmove', () => { if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; } });
+  });
 
-  // Marcar chips que já estão selecionados (da análise ou maleta)
-  // Recombinar selecionados com _recsMarcaradas + _maletaExtras antes de marcar
+  grid.addEventListener('pointerup', cancelarLongPress);
+  grid.addEventListener('pointercancel', cancelarLongPress);
+  grid.addEventListener('pointerleave', cancelarLongPress);
+
+  // Bloqueia somente o clique gerado imediatamente após um long-press.
+  grid.addEventListener('click', e => {
+    const chip = e.target.closest('.med-chip');
+    if (chip && chip.dataset.skipClick === '1') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+
+  // Marcar chips que já estão selecionados.
   selecionados.clear();
   _recsMarcaradas.forEach(n => selecionados.add(n));
   _maletaExtras.forEach(n => selecionados.add(n));
+
   if (selecionados.size > 0) {
     grid.querySelectorAll('.med-chip').forEach(c => {
-      const onclick = c.getAttribute('onclick') || '';
-      const match = onclick.match(/toggleMed\(['"]([^'"]+)['"]/);
-      if (match && selecionados.has(match[1])) c.classList.add('selected');
+      const med = c.getAttribute('data-med');
+      if (med && selecionados.has(med)) c.classList.add('selected');
     });
     atualizarBar();
   }
@@ -1452,7 +1723,7 @@ function analisar() {
 
 // ── HISTÓRICO DE PACIENTES (numeração automática por dia) ──
 window.atendimentos = JSON.parse(localStorage_safe_get('ecco_atendimentos') || '[]');
-window._fbCarregado = undefined; // Firebase ainda não carregou
+window._cloudCarregado = undefined; // Supabase ainda não carregou
 let atendimentos = window.atendimentos;
 
 function localStorage_safe_get(key) {
@@ -1565,14 +1836,17 @@ async function salvarAtd() {
   atendimentos.unshift(atd);
   localStorage_safe_set('ecco_atendimentos', JSON.stringify(atendimentos));
 
-  // Salvar no Firebase (nuvem)
-  if (window._firebaseReady) {
-    try {
-      await window._fbAddDoc(window._fbCollection(window._db, 'atendimentos'), atd);
-      console.log("Salvo na nuvem!");
-    } catch(e) {
-      console.warn("Erro ao salvar na nuvem:", e);
-    }
+  // Salvar no Supabase (nuvem)
+  try {
+    await saveAtendimentoCloud(atd);
+    localStorage_safe_set('ecco_atendimentos', JSON.stringify(atendimentos));
+    console.log("Atendimento salvo no Supabase!");
+  } catch(e) {
+    console.warn("Erro ao salvar no Supabase:", e);
+    const t=document.createElement('div');
+    t.style.cssText='position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:8px 12px;font-size:11px;font-weight:700;z-index:9999;max-width:90%;text-align:center';
+    t.textContent='⚠️ Atendimento salvo localmente, mas não foi sincronizado com a nuvem.';
+    document.body.appendChild(t); setTimeout(()=>t.remove(),3500);
   }
 
   voltarMaleta();
@@ -1646,11 +1920,10 @@ async function deletarAtd(idx) {
   const atd = atdHoje[idx];
   if (!confirm(`Deletar atendimento de ${atd.nome}?`)) return;
 
-  // Deletar do Firebase se tiver ID
-  if (window._firebaseReady && atd._id) {
-    try {
-      await window._fbDeleteDoc(window._fbDoc(window._db, 'atendimentos', atd._id));
-    } catch(e) { console.warn("Erro ao deletar da nuvem:", e); }
+  // Deletar do Supabase
+  if (atd._id) {
+    try { await deleteAtendimentoCloud(atd._id); }
+    catch(e) { console.warn("Erro ao deletar da nuvem:", e); }
   }
 
   // Sempre deleta do local independente do Firebase
@@ -1695,24 +1968,13 @@ async function renderHistorico() {
   const lista = document.getElementById('listaAtd');
   lista.innerHTML = '<div class="empty-txt">Carregando...</div>';
 
-  // Firebase com timeout de 4s — se não responder usa local
-  if (window._firebaseReady) {
+  // Supabase: carregar somente os atendimentos do usuário autenticado
+  if (_authUser) {
     try {
-      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000));
-      const snap = await Promise.race([
-        window._fbGetDocs(window._fbCollection(window._db, 'atendimentos')),
-        timeout
-      ]);
-      const docsNuvem = [];
-      snap.forEach(d => docsNuvem.push({ _id: d.id, ...d.data() }));
-      atendimentos = docsNuvem.sort((a,b) => {
-        if (a.data < b.data) return 1;
-        if (a.data > b.data) return -1;
-        return a.hora < b.hora ? 1 : -1;
-      });
+      atendimentos = await loadCloudHistory();
       localStorage_safe_set('ecco_atendimentos', JSON.stringify(atendimentos));
     } catch(e) {
-      console.warn("Firebase indisponível — usando dados locais");
+      console.warn("Supabase indisponível — usando dados locais", e);
     }
   }
 
@@ -1935,14 +2197,10 @@ async function editarAtdKey(key) {
 
     localStorage_safe_set('ecco_atendimentos', JSON.stringify(atendimentos));
 
-    // Atualizar no Firebase
-    if (window._firebaseReady && atd._id) {
-      try {
-        const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-        await updateDoc(window._fbDoc(window._db, 'atendimentos', atd._id), {
-          nome: novoNome, queixa: novoQueixaFull
-        });
-      } catch(e) { console.warn('Erro ao atualizar no Firebase:', e); }
+    // Atualizar no Supabase
+    if (atd._id) {
+      try { await updateAtendimentoCloud(atd); }
+      catch(e) { console.warn('Erro ao atualizar no Supabase:', e); }
     }
 
     overlay.remove();
@@ -1972,11 +2230,10 @@ async function deletarAtdKey(key) {
     overlay.querySelector('#_btnNao').onclick = () => { document.body.removeChild(overlay); resolve(false); };
   });
   if (!confirmado) return;
-  // Deleta local PRIMEIRO — Firebase em background
+  // Deleta local PRIMEIRO — Supabase em background
   atendimentos = atendimentos.filter(x => (x._id || x.hora + x.nome) !== key);
-  if (window._firebaseReady && atd._id) {
-    window._fbDeleteDoc(window._fbDoc(window._db, 'atendimentos', atd._id))
-      .catch(e => console.warn("Erro ao deletar da nuvem:", e));
+  if (atd._id) {
+    deleteAtendimentoCloud(atd._id).catch(e => console.warn("Erro ao deletar da nuvem:", e));
   }
   localStorage_safe_set('ecco_atendimentos', JSON.stringify(atendimentos));
   atualizarContadorAtd();
@@ -2010,15 +2267,10 @@ async function limparHistorico() {
   localStorage_safe_set('ecco_atendimentos', JSON.stringify(atendimentos));
   document.getElementById('listaAtd').innerHTML = '<div class="empty-txt">Nenhum atendimento registrado hoje.</div>';
 
-  // Deletar do Firebase em background (não bloqueia UI)
-  if (window._firebaseReady) {
-    atdHoje.forEach(atd => {
-      if (atd._id) {
-        window._fbDeleteDoc(window._fbDoc(window._db, 'atendimentos', atd._id))
-          .catch(e => console.warn("Erro ao deletar da nuvem:", e));
-      }
-    });
-  }
+  // Deletar do Supabase em background (não bloqueia UI)
+  atdHoje.forEach(atd => {
+    if (atd._id) deleteAtendimentoCloud(atd._id).catch(e => console.warn("Erro ao deletar da nuvem:", e));
+  });
 }
 
 function voltarMaleta() {
@@ -3485,30 +3737,53 @@ function calcularStats(atds) {
   </div>`;
 }
 
+
+function toggleFiltroFavoritos() {
+  _mostrarFavoritos = !_mostrarFavoritos;
+  renderMaleta();
+
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid #F5C842;color:#F5C842;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;z-index:999;white-space:nowrap';
+  t.textContent = _mostrarFavoritos ? '⭐ Mostrando favoritos' : '💊 Mostrando todos os medicamentos';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 1200);
+}
+
 // ── FAVORITOS ─────────────────────────────
 function toggleFavorito(nome, e) {
   if (e) { e.preventDefault(); e.stopPropagation(); }
   const eraFav = _favoritos.has(nome);
-  if (eraFav) { _favoritos.delete(nome); } else { _favoritos.add(nome); }
+  const novoEstado = !eraFav;
+  if (novoEstado) _favoritos.add(nome); else _favoritos.delete(nome);
   localStorage_safe_set('ecco_favoritos', JSON.stringify([..._favoritos]));
-  // Atualizar visual do chip
-  const chip = document.querySelector(`.med-chip[data-med="${nome}"]`);
+
+  // Persistir na nuvem quando autenticado.
+  if (_authUser) {
+    cloudToggleFavorito(nome, novoEstado).catch(err => {
+      console.warn('Erro ao sincronizar favorito:', err);
+      // Mantém a alteração local; uma próxima sincronização poderá reenviar.
+    });
+  }
+
+  const chip = [...document.querySelectorAll('.med-chip')].find(c => c.getAttribute('data-med') === nome);
   if (chip) {
-    chip.classList.toggle('favorito', !eraFav);
-    // Adicionar ou remover estrela
-    const starExist = chip.querySelector('.star');
-    if (!eraFav && !starExist) {
-      const s = document.createElement('span');
-      s.className = 'star'; s.textContent = '⭐';
-      chip.appendChild(s);
-    } else if (eraFav && starExist) {
-      starExist.remove();
+    chip.classList.toggle('favorito', novoEstado);
+    const oldMark = chip.querySelector('.med-fav-mark');
+    if (oldMark) oldMark.remove();
+    if (novoEstado) {
+      const mark = document.createElement('span');
+      mark.className = 'med-fav-mark';
+      mark.title = 'Favorito';
+      mark.textContent = '⭐';
+      chip.appendChild(mark);
     }
   }
-  // Toast
+
+  if (_mostrarFavoritos && !novoEstado) setTimeout(() => renderMaleta(), 0);
+
   const t = document.createElement('div');
   t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid #F5C842;color:#F5C842;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;z-index:999;white-space:nowrap';
-  t.textContent = !eraFav ? '⭐ Adicionado aos favoritos' : '☆ Removido dos favoritos';
+  t.textContent = novoEstado ? '⭐ Adicionado aos favoritos' : '☆ Removido dos favoritos';
   document.body.appendChild(t); setTimeout(() => t.remove(), 1500);
 }
 
@@ -4108,6 +4383,8 @@ function switchTab(tab, el) {
 
 // ── INIT ──────────────────────────────────────────
 (function() {
+  // Inicializa autenticação e sincronização por usuário.
+  initSupabaseAuth();
   document.querySelectorAll('.tab').forEach(t => {
     const cor = t.getAttribute('data-color') || '#fff';
     t.style.color = cor;
@@ -4128,14 +4405,6 @@ function switchTab(tab, el) {
   setTimeout(atualizarStatusOnline, 100);
   setTimeout(atualizarContadorAtd, 300);
 
-  // Aplicar dados do Firebase quando estiverem prontos
-  // Ouvir evento do Firebase e aplicar dados
-  document.addEventListener('firebase-loaded', (e) => {
-    const docs = e.detail;
-    atendimentos.splice(0, atendimentos.length, ...docs);
-    atualizarContadorAtd();
-    renderHistorico();
-  });
 })();
 
 </script>
