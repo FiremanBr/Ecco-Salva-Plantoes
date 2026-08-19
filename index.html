@@ -1,3 +1,5 @@
+<!-- SPRINT43: abreviação Cloreto de Potássio na Maleta -->
+<!-- SPRINT42: abreviações de medicamentos na Maleta -->
 <!-- SPRINT39: autenticação Supabase + favoritos/histórico sincronizados por usuário; remoção do Firebase legado -->
 <!-- SPRINT38: favoritos com botão clicável em desktop + filtro ⭐ Favoritos -->
 <!-- SPRINT37: remover texto duplicado à esquerda e tornar controles responsivos no celular -->
@@ -599,7 +601,7 @@ function updateUserBadge(){
 
 <script>
 const MEDS_DB = {
-  "Cloreto de Potássio (KCL)": {
+  "Cloreto de P. (KCL)": {
     apresentacao: "10% — 10 mL",
     indicacao: "Reposição de potássio (hipocalemia)",
     via: "EV diluído (250 mL SF/SG5%); nunca EV direto; infusão lenta",
@@ -801,7 +803,7 @@ const MEDS_DB = {
     doseMax24h: 'Máx. 24h: 200 mg IM (máx. 5 dias de uso)',
     repart: 3, cor: "#FF6B35"
   },
-  "Buscopan Composto": {
+  "Buscopan C.": {
     apresentacao: "Dipirona 500 mg + Escopolamina 20 mg — ampola 2,5 mL",
     indicacao: "Cólica intensa com componente álgico e espasmódico",
     via: "IM profunda ou EV lenta",
@@ -814,7 +816,7 @@ const MEDS_DB = {
     doseMax24h: 'Máx. 24h: 5 ampolas (dipirona 2,5 g + escopolamina 100 mg)',
     repart: 3, cor: "#FF6B35"
   },
-  "Buscopan Simples": {
+  "Buscopan S.": {
     apresentacao: "20 mg/mL — ampola 1 mL",
     indicacao: "Cólica leve; espasmo intestinal",
     via: "IM ou EV lenta",
@@ -979,7 +981,7 @@ const MEDS_DB = {
     doseMax24h: 'Máx. 24h: 1,5 g (ataque) | Manutenção: 300–400 mg/dia',
     repart: 5, cor: "#E8323C"
   },
-  "Diazepam Injetável": {
+  "Diazepam Inj.": {
     apresentacao: "10 mg/2 mL",
     indicacao: "Convulsão; agitação",
     via: "EV lenta — IM tem absorção errática (evitar)",
@@ -1081,7 +1083,7 @@ const MEDS_DB = {
     doseMax24h: 'Máx. 24h: 20 mg (uso agudo hospitalar)',
     repart: 6, cor: "#A78BFA"
   },
-  "Diazepam Comprimido": {
+  "Diazepam Comp.": {
     apresentacao: "Comprimido",
     indicacao: "Ansiedade; espasmos; convulsões",
     via: "VO — engolir (não mastigar, não SL)",
@@ -1165,7 +1167,7 @@ const SEGURANCA_DATA = [
   {
     repart: 2, titulo: "2ª Repartição",
     fatais: [
-      { texto: "Cloreto de Potássio (KCl) → NUNCA EV direto (parada cardíaca imediata)", detalhe: "O KCl administrado diretamente na veia, sem diluição, causa paralisia do músculo cardíaco e parada cardíaca imediata. Isso ocorre porque o potássio em alta concentração interrompe os sinais elétricos do coração. Por isso, SEMPRE dilua em soro fisiológico ou glicosado em grande volume (500 mL) e infunda lentamente, nunca em bolus. Alerta confirmado pela ANVISA e pelo Instituto para Práticas Seguras no Uso de Medicamentos (ISMP Brasil)." }
+      { texto: "Cloreto de P. (KCL) (KCl) → NUNCA EV direto (parada cardíaca imediata)", detalhe: "O KCl administrado diretamente na veia, sem diluição, causa paralisia do músculo cardíaco e parada cardíaca imediata. Isso ocorre porque o potássio em alta concentração interrompe os sinais elétricos do coração. Por isso, SEMPRE dilua em soro fisiológico ou glicosado em grande volume (500 mL) e infunda lentamente, nunca em bolus. Alerta confirmado pela ANVISA e pelo Instituto para Práticas Seguras no Uso de Medicamentos (ISMP Brasil)." }
     ],
     graves: [
       { texto: "Metoprolol EV rápido → bradicardia severa (frequência cardíaca muito baixa) e queda de pressão", detalhe: "O Metoprolol é um betabloqueador — ele reduz a frequência cardíaca e a força do coração. Administrado rápido na veia, pode baixar a frequência cardíaca perigosamente (abaixo de 40 batimentos por minuto) e causar queda de pressão grave. Sempre aplicar lentamente, com monitorização cardíaca contínua. Contraindicado em pacientes que já estão bradicárdicos ou com pressão baixa." }
@@ -1231,26 +1233,26 @@ const SINTOMAS_MAP = [
   { nome: "Anafilaxia / Alergia", cor: "#E8323C", meds: ["Adrenalina", "Dexametasona", "Hidrocortisona", "Prometazina", "Prednisona"] },
   { nome: "Dor leve/moderada", cor: "#FF6B35", meds: ["Dipirona", "Paracetamol", "Cetoprofeno IM", "Cetoprofeno EV", "Toragesic"] },
   { nome: "Dor intensa", cor: "#FF6B35", meds: ["Morfina", "Fentanila", "Tramadol"] },
-  { nome: "Convulsão / Epilepsia", cor: "#A78BFA", meds: ["Diazepam Injetável", "Diazepam Comprimido", "Fenitoína", "Clonazepam"] },
-  { nome: "Agitação psicomotora", cor: "#A78BFA", meds: ["Haloperidol", "Clorpromazina", "Diazepam Injetável"] },
+  { nome: "Convulsão / Epilepsia", cor: "#A78BFA", meds: ["Diazepam Inj.", "Diazepam Comp.", "Fenitoína", "Clonazepam"] },
+  { nome: "Agitação psicomotora", cor: "#A78BFA", meds: ["Haloperidol", "Clorpromazina", "Diazepam Inj."] },
   { nome: "Náusea / Vômito", cor: "#F5C842", meds: ["Ondansetrona", "Metoclopramida", "Prometazina"] },
   { nome: "Broncoespasmo / Asma", cor: "#22C97A", meds: ["Salbutamol", "Terbutalina", "Aminofilina", "Adrenalina"] },
   { nome: "Bradicardia", cor: "#E8323C", meds: ["Atropina"] },
   { nome: "Taquiarritmia", cor: "#E8323C", meds: ["Amiodarona", "Adenosina", "Metoprolol"] },
   { nome: "Hipertensão", cor: "#3B9BE8", meds: ["Captopril", "Clonidina", "Metoprolol"] },
   { nome: "Edema / ICC", cor: "#3B9BE8", meds: ["Furosemida", "Deslanosídeo"] },
-  { nome: "Cólica / Espasmo", cor: "#FF6B35", meds: ["Buscopan Simples", "Buscopan Composto"] },
+  { nome: "Cólica / Espasmo", cor: "#FF6B35", meds: ["Buscopan S.", "Buscopan C."] },
   { nome: "Reversão de opioide", cor: "#3B9BE8", meds: ["Naloxona"] },
   { nome: "Reversão de benzodiazepínico", cor: "#3B9BE8", meds: ["Flumazenil"] },
   { nome: "Sintomas extrapiramidais", cor: "#A78BFA", meds: ["Biperideno"] },
-  { nome: "Hipocalemia", cor: "#E8323C", meds: ["Cloreto de Potássio (KCL)"] },
+  { nome: "Hipocalemia", cor: "#E8323C", meds: ["Cloreto de P. (KCL)"] },
   { nome: "Hipocalcemia / Hipercalemia", cor: "#E8323C", meds: ["Gluconato de Cálcio"] },
   { nome: "Acidose metabólica", cor: "#E8323C", meds: ["Bicarbonato de Sódio"] },
   { nome: "Eclâmpsia / Torsades", cor: "#E8323C", meds: ["Sulfato de Magnésio"] },
   { nome: "Choque / Bradicardia instável", cor: "#E8323C", meds: ["Dopamina"] },
   { nome: "Angina", cor: "#3B9BE8", meds: ["Sustrate"] },
   { nome: "Antiagregante (SCA/AVE)", cor: "#22C97A", meds: ["AAS"] },
-  { nome: "Abstinência / Ansiedade", cor: "#A78BFA", meds: ["Clonidina", "Diazepam Comprimido", "Clonazepam"] }
+  { nome: "Abstinência / Ansiedade", cor: "#A78BFA", meds: ["Clonidina", "Diazepam Comp.", "Clonazepam"] }
 ];
 
 
@@ -2622,7 +2624,7 @@ FORMATO OBRIGATÓRIO:
 🚽 Urinário/Próstata — Tansulosina, Finasterida, Dutasterida, Oxibutinina, Solifenacina, Doxazosina
 👁️ Oftalmológico — Colírio, Timolol, Latanoprosta, Prednisolona oftálmica, Tobramicina
 🩺 Gastroprotetor/Digestivo — Omeprazol, Pantoprazol, Ranitidina, Sucralfato, Domperidona, Lactulose, Bisacodil
-🧪 Suplemento/Vitamina — Cloreto de Potássio, Sulfato de Magnésio, Gluconato de Cálcio, Vitamina D, Vitamina B12, Ácido Fólico, Ferro
+🧪 Suplemento/Vitamina — Cloreto de P. (KCL), Sulfato de Magnésio, Gluconato de Cálcio, Vitamina D, Vitamina B12, Ácido Fólico, Ferro
 💉 Vasoativo/Inotrópico — Dopamina, Dobutamina, Noradrenalina, Adrenalina, Vasopressina
 🩸 Hipolipemiante — Sinvastatina, Atorvastatina, Rosuvastatina, Ezetimiba, Bezafibrato
 💊 Outros — Qualquer medicamento que não se encaixe nas categorias acima
@@ -3194,30 +3196,30 @@ async function rodarAnalise() {
 
 // Mapa: termos de comorbidade → medicamentos que devem gerar alerta
 const CONTRAINDICACAO_MAP = {
-  'hemofil':    ['AAS','Cetoprofeno EV','Cetoprofeno IM','Toragesic','Dipirona','Buscopan Composto'],
-  'coagulação': ['AAS','Cetoprofeno EV','Cetoprofeno IM','Toragesic','Buscopan Composto'],
-  'anticoagul': ['AAS','Cetoprofeno EV','Cetoprofeno IM','Toragesic','Buscopan Composto'],
-  'ulcera':     ['AAS','Cetoprofeno EV','Cetoprofeno IM','Toragesic','Dipirona','Buscopan Composto'],
+  'hemofil':    ['AAS','Cetoprofeno EV','Cetoprofeno IM','Toragesic','Dipirona','Buscopan C.'],
+  'coagulação': ['AAS','Cetoprofeno EV','Cetoprofeno IM','Toragesic','Buscopan C.'],
+  'anticoagul': ['AAS','Cetoprofeno EV','Cetoprofeno IM','Toragesic','Buscopan C.'],
+  'ulcera':     ['AAS','Cetoprofeno EV','Cetoprofeno IM','Toragesic','Dipirona','Buscopan C.'],
   'renal':      ['Cetoprofeno EV','Cetoprofeno IM','Toragesic','Furosemida'],
   'asma':       ['AAS','Cetoprofeno EV','Cetoprofeno IM','Metoprolol','Salbutamol','Aminofilina'],
   'parkinson':  ['Haloperidol','Clorpromazina','Metoclopramida','Prometazina'],
-  'gestante':   ['AAS','Cetoprofeno EV','Cetoprofeno IM','Toragesic','Dipirona','Buscopan Composto'],
-  'gravidez':   ['AAS','Cetoprofeno EV','Cetoprofeno IM','Toragesic','Dipirona','Buscopan Composto'],
+  'gestante':   ['AAS','Cetoprofeno EV','Cetoprofeno IM','Toragesic','Dipirona','Buscopan C.'],
+  'gravidez':   ['AAS','Cetoprofeno EV','Cetoprofeno IM','Toragesic','Dipirona','Buscopan C.'],
   'epilep':     ['Tramadol','Clorpromazina'],
   'bradicard':  ['Metoprolol','Amiodarona','Deslanosídeo','Atropina'],
   'hipotens':   ['Metoprolol','Clorpromazina','Morfina','Fentanila','Furosemida'],
-  'hepat':      ['Paracetamol','Dipirona','Buscopan Composto'],
-  'alcool':     ['Haloperidol','Clorpromazina','Diazepam Injetável','Clonazepam','Morfina','Fentanila'],
+  'hepat':      ['Paracetamol','Dipirona','Buscopan C.'],
+  'alcool':     ['Haloperidol','Clorpromazina','Diazepam Inj.','Clonazepam','Morfina','Fentanila'],
   'diabetes':   ['Dexametasona','Hidrocortisona','Prednisona'],
   'dm':         ['Dexametasona','Hidrocortisona','Prednisona'],
-  'glaucoma':   ['Buscopan Simples','Buscopan Composto','Prometazina','Atropina'],
-  'prostata':   ['Buscopan Simples','Buscopan Composto','Prometazina','Atropina'],
+  'glaucoma':   ['Buscopan S.','Buscopan C.','Prometazina','Atropina'],
+  'prostata':   ['Buscopan S.','Buscopan C.','Prometazina','Atropina'],
 };
 
 // Mapa de composição: medicamentos que CONTÊM outros ativos relevantes
 const COMPOSICAO_MAP = {
-  'Buscopan Composto': ['Dipirona', 'Escopolamina'],
-  'Buscopan Simples':  ['Escopolamina'],
+  'Buscopan C.': ['Dipirona', 'Escopolamina'],
+  'Buscopan S.':  ['Escopolamina'],
   'Cetoprofeno EV':    ['Cetoprofeno'],
   'Cetoprofeno IM':    ['Cetoprofeno'],
 };
@@ -3225,7 +3227,7 @@ const COMPOSICAO_MAP = {
 // Mapa de explicação detalhada da contraindicação
 const CONTRA_EXPLICACAO = {
   'hemofil': {
-    'Buscopan Composto': 'Buscopan Composto contém Dipirona em sua composição. A Dipirona inibe a agregação plaquetária, aumentando risco de sangramento grave em pacientes hemofílicos.',
+    'Buscopan C.': 'Buscopan Composto contém Dipirona em sua composição. A Dipirona inibe a agregação plaquetária, aumentando risco de sangramento grave em pacientes hemofílicos.',
     'Dipirona': 'A Dipirona inibe a agregação plaquetária, aumentando risco de sangramento grave em pacientes hemofílicos.',
     'AAS': 'O AAS inibe irreversivelmente as plaquetas, potencializando o risco de hemorragia em pacientes hemofílicos.',
     'Cetoprofeno EV': 'AINEs como o Cetoprofeno inibem a COX-1, reduzindo a agregação plaquetária e aumentando risco de sangramento.',
@@ -3233,14 +3235,14 @@ const CONTRA_EXPLICACAO = {
     'Toragesic': 'O Cetorolaco (Toragesic) é um AINE potente que inibe as plaquetas — risco de hemorragia grave em hemofílicos.',
   },
   'coagulação': {
-    'Buscopan Composto': 'Buscopan Composto contém Dipirona. Em distúrbios de coagulação, a Dipirona pode aumentar o risco de sangramento.',
+    'Buscopan C.': 'Buscopan Composto contém Dipirona. Em distúrbios de coagulação, a Dipirona pode aumentar o risco de sangramento.',
     'AAS': 'O AAS inibe plaquetas irreversivelmente — contraindicado em distúrbios de coagulação.',
     'Cetoprofeno EV': 'AINEs inibem a função plaquetária — evitar em distúrbios de coagulação.',
     'Cetoprofeno IM': 'AINEs inibem a função plaquetária — evitar em distúrbios de coagulação.',
     'Toragesic': 'AINE potente com ação antiplaquetária — contraindicado em distúrbios de coagulação.',
   },
   'ulcera': {
-    'Buscopan Composto': 'Buscopan Composto contém Dipirona. Em pacientes com úlcera péptica, AINEs e derivados aumentam risco de sangramento gastrointestinal.',
+    'Buscopan C.': 'Buscopan Composto contém Dipirona. Em pacientes com úlcera péptica, AINEs e derivados aumentam risco de sangramento gastrointestinal.',
     'AAS': 'O AAS irrita diretamente a mucosa gástrica e aumenta risco de sangramento em pacientes com úlcera.',
     'Cetoprofeno EV': 'AINEs inibem prostaglandinas protetoras da mucosa gástrica — contraindicado em úlcera ativa.',
     'Cetoprofeno IM': 'AINEs inibem prostaglandinas protetoras da mucosa gástrica — contraindicado em úlcera ativa.',
@@ -3264,8 +3266,8 @@ const CONTRA_EXPLICACAO = {
     'Prometazina': 'Tem ação antidopaminérgica fraca — pode agravar quadros parkinsonianos.',
   },
   'glaucoma': {
-    'Buscopan Simples': 'A Escopolamina tem ação anticolinérgica que pode aumentar a pressão intraocular — contraindicada no glaucoma de ângulo fechado.',
-    'Buscopan Composto': 'Buscopan Composto contém Escopolamina (anticolinérgico) — pode aumentar pressão intraocular em pacientes com glaucoma.',
+    'Buscopan S.': 'A Escopolamina tem ação anticolinérgica que pode aumentar a pressão intraocular — contraindicada no glaucoma de ângulo fechado.',
+    'Buscopan C.': 'Buscopan Composto contém Escopolamina (anticolinérgico) — pode aumentar pressão intraocular em pacientes com glaucoma.',
     'Prometazina': 'Ação anticolinérgica pode elevar a pressão intraocular — cautela no glaucoma.',
     'Atropina': 'A Atropina é anticolinérgica e pode precipitar crise de glaucoma agudo de ângulo fechado.',
   },
@@ -3526,15 +3528,15 @@ const INTERACOES_MAP = [
   {meds:['Amiodarona','Adenosina'],gravidade:'moderada',efeito:'Potencialização do bloqueio AV — monitorar ritmo'},
   {meds:['Amiodarona','Deslanosídeo'],gravidade:'grave',efeito:'Toxicidade digitálica aumentada — risco de arritmias graves'},
   {meds:['Deslanosídeo','Furosemida'],gravidade:'grave',efeito:'Hipocalemia pela furosemida potencializa toxicidade digitálica'},
-  {meds:['Deslanosídeo','Cloreto de Potássio (KCL)'],gravidade:'moderada',efeito:'Potássio alto reduz eficácia do digital — monitorar ECG'},
+  {meds:['Deslanosídeo','Cloreto de P. (KCL)'],gravidade:'moderada',efeito:'Potássio alto reduz eficácia do digital — monitorar ECG'},
   {meds:['Dopamina','Metoprolol'],gravidade:'moderada',efeito:'Beta-bloqueador antagoniza efeitos cronotrópicos da dopamina'},
   {meds:['Dopamina','Amiodarona'],gravidade:'moderada',efeito:'Risco de arritmias ventriculares — monitorar ECG'},
-  {meds:['Captopril','Cloreto de Potássio (KCL)'],gravidade:'grave',efeito:'IECA retém potássio — hipercalemia grave com KCL'},
+  {meds:['Captopril','Cloreto de P. (KCL)'],gravidade:'grave',efeito:'IECA retém potássio — hipercalemia grave com KCL'},
   {meds:['Sulfato de Magnésio','Metoprolol'],gravidade:'moderada',efeito:'Hipotensão e bradicardia aditivas'},
   {meds:['Sulfato de Magnésio','Amiodarona'],gravidade:'grave',efeito:'Bloqueio neuromuscular e hipotensão severa'},
-  {meds:['Diazepam Injetável','Morfina'],gravidade:'grave',efeito:'Depressão respiratória grave — risco de apneia'},
-  {meds:['Diazepam Injetável','Fentanila'],gravidade:'grave',efeito:'Depressão respiratória grave — risco de apneia'},
-  {meds:['Diazepam Injetável','Tramadol'],gravidade:'moderada',efeito:'Sedação excessiva e depressão respiratória'},
+  {meds:['Diazepam Inj.','Morfina'],gravidade:'grave',efeito:'Depressão respiratória grave — risco de apneia'},
+  {meds:['Diazepam Inj.','Fentanila'],gravidade:'grave',efeito:'Depressão respiratória grave — risco de apneia'},
+  {meds:['Diazepam Inj.','Tramadol'],gravidade:'moderada',efeito:'Sedação excessiva e depressão respiratória'},
   {meds:['Clonazepam','Morfina'],gravidade:'grave',efeito:'Depressão respiratória grave — risco de apneia'},
   {meds:['Clonazepam','Fentanila'],gravidade:'grave',efeito:'Depressão respiratória grave — risco de apneia'},
   {meds:['Haloperidol','Prometazina'],gravidade:'moderada',efeito:'Prolongamento do QT — risco de Torsades de Pointes'},
@@ -3554,13 +3556,13 @@ const INTERACOES_MAP = [
   {meds:['Terbutalina','Aminofilina'],gravidade:'moderada',efeito:'Taquicardia e hipocalemia aditivas'},
   {meds:['Salbutamol','Metoprolol'],gravidade:'grave',efeito:'Beta-bloqueador antagoniza broncodilatação — contraindicado em asma'},
   {meds:['Terbutalina','Metoprolol'],gravidade:'grave',efeito:'Beta-bloqueador antagoniza broncodilatação — contraindicado'},
-  {meds:['Fenitoína','Diazepam Injetável'],gravidade:'moderada',efeito:'Depressão do SNC aditiva — monitorar consciência'},
+  {meds:['Fenitoína','Diazepam Inj.'],gravidade:'moderada',efeito:'Depressão do SNC aditiva — monitorar consciência'},
   {meds:['Fenitoína','Amiodarona'],gravidade:'grave',efeito:'Amiodarona aumenta níveis de fenitoína — toxicidade neurológica'},
   {meds:['Adrenalina','Metoprolol'],gravidade:'grave',efeito:'Beta-bloqueador bloqueia efeito da adrenalina — hipertensão paradoxal'},
   {meds:['Adrenalina','Amiodarona'],gravidade:'moderada',efeito:'Uso em PCR é protocolado — fora do PCR, risco de arritmias'},
-  {meds:['Gluconato de Cálcio','Cloreto de Potássio (KCL)'],gravidade:'grave',efeito:'Cálcio IV com potássio IV pode precipitar arritmias'},
-  {meds:['Bicarbonato de Sódio','Cloreto de Potássio (KCL)'],gravidade:'grave',efeito:'Precipitação — nunca misturar na mesma via'},
-  {meds:['Furosemida','Cloreto de Potássio (KCL)'],gravidade:'moderada',efeito:'Furosemida elimina potássio — monitorar níveis'},
+  {meds:['Gluconato de Cálcio','Cloreto de P. (KCL)'],gravidade:'grave',efeito:'Cálcio IV com potássio IV pode precipitar arritmias'},
+  {meds:['Bicarbonato de Sódio','Cloreto de P. (KCL)'],gravidade:'grave',efeito:'Precipitação — nunca misturar na mesma via'},
+  {meds:['Furosemida','Cloreto de P. (KCL)'],gravidade:'moderada',efeito:'Furosemida elimina potássio — monitorar níveis'},
 ];
 
 function _normalizarNomeMedInteracao(nome) {
