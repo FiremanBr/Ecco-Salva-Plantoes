@@ -1,3 +1,5 @@
+<!-- SPRINT45: Groq movido para Supabase Edge Function; nenhuma chave Groq no navegador -->
+<!-- SPRINT44: configuração da Groq em modal próprio + botão 🔑 no cabeçalho -->
 <!-- SPRINT43: abreviação Cloreto de Potássio na Maleta -->
 <!-- SPRINT42: abreviações de medicamentos na Maleta -->
 <!-- SPRINT39: autenticação Supabase + favoritos/histórico sincronizados por usuário; remoção do Firebase legado -->
@@ -431,6 +433,7 @@ function updateUserBadge(){
   .an-conduta-header { background: rgba(34,201,122,0.15); padding: 9px 13px; font-size: 12px; font-weight: 800; text-transform:uppercase; letter-spacing:.7px; color: var(--green); }
   .an-conduta-body { padding: 11px 13px; font-size: 13px; color: var(--text); line-height: 1.6; }
   .an-disclaimer { font-size: 10px; color: var(--text-dim); text-align:center; padding: 8px 12px; border-top: 1px solid var(--border); margin-top: 6px; }
+
 </style>
 <style id="sprint30-stats-width">
 #statsPlantao { width:100%; box-sizing:border-box; }
@@ -1732,27 +1735,41 @@ function localStorage_safe_get(key) {
   try { return localStorage.getItem(key); } catch(e) { return null; }
 }
 
-// ── CHAVE GROQ (não gravar chave no código publicado) ─────────────
-function getGroqKey() {
-  let key = localStorage_safe_get('ecco_groq_key');
-  if (key) return key.trim();
+// ── IA VIA SUPABASE EDGE FUNCTION ───────────────────────────────
+const GROQ_FUNCTION_NAME = 'groq-proxy';
 
-  key = prompt('Configuração da IA\n\nCole sua nova chave da Groq. Ela será armazenada somente neste navegador.');
-  key = (key || '').trim();
-  if (!key) throw new Error('Chave Groq não configurada. Gere uma nova chave e tente novamente.');
+async function callGroqServer(messages, options = {}) {
+  if (!window._supabaseClient) throw new Error('Supabase não está disponível.');
+  const { data, error } = await window._supabaseClient.functions.invoke(GROQ_FUNCTION_NAME, {
+    body: {
+      model: options.model || 'qwen/qwen3.6-27b',
+      messages,
+      max_completion_tokens: options.max_completion_tokens ?? options.max_tokens ?? 4000,
+      max_tokens: options.max_tokens,
+      temperature: options.temperature ?? 0.2,
+      reasoning_effort: options.reasoning_effort,
+      reasoning_format: options.reasoning_format,
+      response_format: options.response_format,
+      stream: false
+    }
+  });
 
-  localStorage_safe_set('ecco_groq_key', key);
-  return key;
+  if (error) {
+    let detail = error.message || 'Erro ao consultar a IA.';
+    try {
+      if (error.context?.json) {
+        const body = await error.context.json();
+        detail = body?.error || body?.message || detail;
+      }
+    } catch (_) {}
+    throw new Error(detail);
+  }
+  if (!data?.choices?.[0]?.message?.content) {
+    throw new Error('A IA não retornou conteúdo.');
+  }
+  return data;
 }
 
-function invalidarGroqKey() {
-  try { localStorage.removeItem('ecco_groq_key'); } catch(e) {}
-}
-function configurarGroq() {
-  invalidarGroqKey();
-  const key = getGroqKey();
-  return !!key;
-}
 function localStorage_safe_set(key, val) {
   try { localStorage.setItem(key, val); } catch(e) {}
 }
@@ -2287,36 +2304,33 @@ function voltarMaleta() {
 
 // ── BUSCA LIVRE (usa IA — medicamentos fora da maleta) ──
 async function callClaude(query, tentativa = 1) {
-  const GROQ_KEY = getGroqKey();
-  let res;
   try {
-    res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
-      body: JSON.stringify({
-        model: 'qwen/qwen3.6-27b', max_tokens: 4000, temperature: 0.3,
-        messages: [{ role: 'system', content: SYSTEM_BUSCA }, { role: 'user', content: 'Consulta: ' + query }]
-      })
-    });
-  } catch(netErr) {
-    throw new Error('Falha de conexão. Verifique sua internet.');
+    const data = await callGroqServer(
+      [
+        { role: 'system', content: SYSTEM_BUSCA },
+        { role: 'user', content: 'Consulta: ' + query }
+      ],
+      { model: 'qwen/qwen3.6-27b', max_tokens: 4000, temperature: 0.3 }
+    );
+
+    const raw = (data?.choices?.[0]?.message?.content || '').trim();
+    if (!raw) throw new Error('Resposta inválida');
+
+    let clean = raw.replace(/```[a-z]*\s*/gi, '').replace(/```/g, '').trim();
+    const fb = clean.indexOf('{'), lb = clean.lastIndexOf('}');
+    if (fb === -1 || lb === -1) throw new Error('JSON não encontrado na resposta');
+    return JSON.parse(clean.slice(fb, lb + 1));
+  } catch (err) {
+    const msg = String(err?.message || err);
+    if (/429|rate|limite|too many/i.test(msg) && tentativa <= 3) {
+      await new Promise(r => setTimeout(r, tentativa * 3000));
+      return callClaude(query, tentativa + 1);
+    }
+    if (/401|403|unauthorized|forbidden/i.test(msg)) {
+      throw new Error('Sessão não autorizada para usar a IA. Entre novamente no sistema.');
+    }
+    throw err;
   }
-  if (res.status === 401) {
-    invalidarGroqKey();
-    throw new Error('Chave Groq inválida ou expirada. Gere uma nova chave e tente novamente.');
-  }
-  if (res.status === 429) {
-    if (tentativa <= 3) { await new Promise(r => setTimeout(r, tentativa * 3000)); return callClaude(query, tentativa + 1); }
-    throw new Error('Muitas requisições. Aguarde alguns segundos e tente de novo.');
-  }
-  if (!res.ok) throw new Error('Erro HTTP ' + res.status);
-  const data = await res.json();
-  const raw = (data?.choices?.[0]?.message?.content || '').trim();
-  if (!raw) throw new Error('Resposta inválida');
-  let clean = raw.replace(/```[a-z]*\s*/gi, '').replace(/```/g, '').trim();
-  const fb = clean.indexOf('{'), lb = clean.lastIndexOf('}');
-  if (fb === -1 || lb === -1) throw new Error('JSON não encontrado na resposta');
-  return JSON.parse(clean.slice(fb, lb+1));
 }
 
 async function buscarLivre() {
@@ -2847,23 +2861,13 @@ function anFotoSelecionada(input) {
         if (textoOCR) {
           // Usar Groq para extrair apenas o nome comercial/genérico do medicamento
           try {
-            const GROQ_KEY = getGroqKey();
-            const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
-              body: JSON.stringify({
-                model: 'qwen/qwen3.6-27b', max_tokens: 100, temperature: 0,
-                messages: [
-                  { role: 'system', content: 'Você é um assistente farmacêutico especializado em identificar medicamentos. O texto OCR pode vir de diferentes fontes: embalagem de remédio, lista num celular, papel escrito à mão, receita médica, ou tela de app. Extraia TODOS os nomes de medicamentos encontrados no texto (nomes comerciais e/ou genéricos). Ignore dosagens, posologia, datas, números, fabricante e textos que não sejam nomes de medicamentos. Retorne os medicamentos separados por vírgula. Exemplos de resposta: "Losartana, Insulina NPH, Propranolol, Rosuvastatina" ou "Dramin B6" ou "Captopril, Furosemida, AAS". Responda SOMENTE com os nomes dos medicamentos separados por vírgula, sem explicações.' },
+            const groqData = await callGroqServer(
+                [
+                  { role: 'system', content: 'Você é um assistente farmacêutico especializado em identificar medicamentos. Responda apenas com o nome genérico/comercial mais provável, sem explicações.' },
                   { role: 'user', content: 'Texto OCR: ' + textoOCR }
-                ]
-              })
-            });
-            if (groqResp.status === 401) {
-              invalidarGroqKey();
-              throw new Error('Chave Groq inválida ou expirada.');
-            }
-            const groqData = await groqResp.json();
+                ],
+                { model: 'qwen/qwen3.6-27b', max_tokens: 100, temperature: 0 }
+              );
             const nomeMed = (groqData?.choices?.[0]?.message?.content || '').trim().replace(/['"]/g, '');
             if (nomeMed) {
               // Evitar duplicatas entre fotos
@@ -2973,48 +2977,37 @@ async function rodarAnalise() {
     userContent.push({ type: 'text', text: textPrompt });
 
     // Montar conteúdo para Groq (texto apenas — imagens via OCR separado)
-    const GROQ_KEY = getGroqKey();
     let groqUserText = '';
     for (const part of userContent) {
       if (part.type === 'text') groqUserText += part.text;
     }
 
-    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-      body: JSON.stringify({
-        model: 'qwen/qwen3.6-27b',
-        max_completion_tokens: 4000,
-        temperature: 0.2,
-        reasoning_effort: 'none',
-        reasoning_format: 'hidden',
-        response_format: { type: 'json_object' },
-        stream: false,
-        messages: [
+    let data;
+    try {
+      data = await callGroqServer(
+        [
           { role: 'system', content: SYSTEM_ANALISE },
           { role: 'user', content: groqUserText }
-        ]
-      })
-    });
-
-    if (resp.status === 401) {
-      invalidarGroqKey();
-      throw new Error('Chave Groq inválida ou expirada. Gere uma nova chave e tente novamente.');
+        ],
+        {
+          model: 'qwen/qwen3.6-27b',
+          max_completion_tokens: 4000,
+          temperature: 0.2,
+          reasoning_effort: 'none',
+          reasoning_format: 'hidden',
+          response_format: { type: 'json_object' }
+        }
+      );
+    } catch (edgeErr) {
+      const msg = String(edgeErr?.message || edgeErr);
+      if (/429|rate|limite|too many/i.test(msg)) {
+        res.innerHTML = `<div class="error-box">⏳ Limite da IA atingido. Aguarde alguns segundos antes de tentar novamente.</div>`;
+        btn.disabled = true;
+        setTimeout(() => { btn.disabled = false; }, 30000);
+        return;
+      }
+      throw edgeErr;
     }
-    if (resp.status === 429) {
-      const retryAfter = Number(resp.headers.get('retry-after') || 30);
-      const espera = Math.max(1, Math.ceil(retryAfter));
-      res.innerHTML = `<div class="error-box">⏳ Limite da Groq atingido. Aguarde ${espera} segundos antes de tentar novamente.</div>`;
-      btn.disabled = true;
-      setTimeout(() => { btn.disabled = false; }, espera * 1000);
-      return;
-    }
-    if (!resp.ok) {
-      const errBody = await resp.text().catch(() => '');
-      throw new Error(`Erro HTTP ${resp.status}${errBody ? ': ' + errBody.slice(0,120) : ''}`);
-    }
-
-    const data = await resp.json();
     const raw = (data?.choices?.[0]?.message?.content || '').trim();
     if (!raw) throw new Error('A IA não retornou conteúdo. Tente novamente.');
 
