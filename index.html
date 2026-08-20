@@ -1,3 +1,4 @@
+<!-- SPRINT50: Maleta mobile em largura total -->
 <!-- SPRINT49: medicamentos digitados também alimentam automaticamente a base de pacientes -->
 <!-- SPRINT48: efetivação da integração OCR → maleta → medicamentos_pacientes -->
 <!-- SPRINT47: OCR multi-medicamentos + cadastro automático da base de medicamentos de pacientes -->
@@ -612,6 +613,49 @@ function updateUserBadge(){
     height:auto;
     border-radius:12px;
   }
+</style>
+<style id="sprint50-maleta-mobile-fullwidth">
+
+/* SPRINT50 — Maleta ocupa toda a largura disponível no celular */
+@media (max-width: 600px) {
+  html, body {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+
+  #app, #main, main, .app, .container, .content, .page-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  /* Painel/lista da Maleta */
+  #maleta,
+  #maletaPanel,
+  .maleta,
+  .maleta-panel,
+  .meds-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Remove recuos laterais que deixam faixa vazia */
+  #maleta .card,
+  #maletaPanel .card,
+  .maleta .card,
+  .maleta-panel .card,
+  .meds-panel .card {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
+
 </style>
 </head>
 <body>
