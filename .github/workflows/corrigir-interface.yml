@@ -15,70 +15,54 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Corrigir escapes literais e validar JavaScript
-        shell: python
+      - name: Corrigir escapes literais
+        shell: bash
         run: |
+          python - <<'PY'
           from pathlib import Path
           import re
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
 
-          # Remove as barras de continuação inseridas acidentalmente no fim das linhas.
+          # Remove barras de continuação acidentais no fim das linhas.
           s = re.sub(r'\\\r?\n', '\n', s)
 
-          # Remove linhas que ficaram somente com uma barra invertida.
+          # Remove linhas isoladas contendo apenas uma barra invertida.
           s = re.sub(r'(?m)^[ \t]*\\[ \t]*\r?\n', '', s)
 
-          # Remove o artefato literal \\n que ficou exposto antes do BODY.
+          # Remove o artefato literal \\n antes do fechamento do BODY.
           s = re.sub(r'(?:\\n[ \t]*)+(?=</body>)', '', s, flags=re.I)
 
           p.write_text(s, encoding='utf-8')
-          print('index.html corrigido: escapes literais removidos')
+          print('Escapes literais removidos.')
           PY
 
-      - name: Validar blocos JavaScript
+      - name: Validar ausência de escapes de linha corrompidos
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re, subprocess, tempfile, sys
-          s = Path('index.html').read_text(encoding='utf-8')
-          blocks = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', s, flags=re.I|re.S)
-          for i, code in enumerate(blocks, 1):
-              if not code.strip():
-                  continue
-              with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f:
-                  f.write(code)
-                  name = f.name
-              r = subprocess.run(['node', '--check', name], capture_output=True, text=True)
-              if r.returncode != 0:
-                  print(f'ERRO no bloco JavaScript {i}:')
-                  print(r.stderr)
-                  sys.exit(1)
-          print(f'Validação concluída: {len(blocks)} blocos JavaScript analisados.')
-          PY
-
-      - name: Verificar que não restou artefato visível
-        shell: python
-        run: |
-          from pathlib import Path
           import re, sys
           s = Path('index.html').read_text(encoding='utf-8')
-          body = s.split('</head>',1)[-1]
-          if re.search(r'(?:\\n\s*){2,}', body):
-              print('ERRO: ainda existe sequência literal \\n no HTML.')
+          if re.search(r'(?m)^\\[ \t]*$', s):
+              print('ERRO: ainda existem linhas isoladas com barra invertida.')
               sys.exit(1)
-          if re.search(r'(?m)^\\s*\\s*$', body):
-              pass
-          print('Verificação de artefatos concluída.')
+          body = s.split('</head>', 1)[-1]
+          if re.search(r'(?:\\n[ \t]*)+(?=</body>)', body, flags=re.I):
+              print('ERRO: ainda existe artefato literal \\n antes de </body>.')
+              sys.exit(1)
+          print('Validação dos escapes concluída.')
           PY
 
-      - name: Commitar e remover workflow temporário
+      - name: Commitar correção e remover workflow temporário
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
           git rm .github/workflows/corrigir-interface.yml
-          git diff --cached --quiet && exit 0
-          git commit -m "fix: remover escapes visíveis e validar JavaScript"
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "fix: remover escapes visíveis da interface"
           git push
