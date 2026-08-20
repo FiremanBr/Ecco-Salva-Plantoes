@@ -1,3 +1,4 @@
+<!-- SPRINT56: camera somente na Analise + pesquisa somente na Maleta + parser JSON robusto -->
 <!-- SPRINT53: pesquisa fora da Maleta movida exclusivamente para a aba Maleta; câmera mantida na Análise -->
 <!-- SPRINT52: lupa de pesquisa garantidamente visível no campo de medicamentos -->
 <!-- SPRINT51: lupa de pesquisa de medicamentos disponível diretamente no campo de uso contínuo -->
@@ -626,22 +627,7 @@ function updateUserBadge(){
 
 </style>
 
-<style id="sprint52-lupa-visivel">
-#anMedsContinuos + div button[aria-label="Pesquisar medicamento"],
-button[aria-label="Pesquisar medicamento"]{
-  display:inline-flex !important;
-  align-items:center !important;
-  justify-content:center !important;
-  visibility:visible !important;
-  opacity:1 !important;
-  min-width:34px !important;
-  min-height:32px !important;
-  color:var(--text,#fff) !important;
-  background:var(--surface3,#263142) !important;
-  border:1px solid var(--border,#526070) !important;
-  z-index:5 !important;
-}
-</style>
+
 
 </head>
 <body>
@@ -2660,32 +2646,32 @@ async function executarBuscaForaMaleta() {
   }
 }
 
-async function callClaude(query, tentativa = 1) {
-  try {
-    const data = await callGroqServer(
-      [
-        { role: 'system', content: SYSTEM_BUSCA },
-        { role: 'user', content: 'Consulta: ' + query }
-      ],
-      { model: 'qwen/qwen3.6-27b', max_tokens: 4000, temperature: 0.3 }
-    );
-
-    const raw = (data?.choices?.[0]?.message?.content || '').trim();
-    if (!raw) throw new Error('Resposta inválida');
-
-    let clean = raw.replace(/```[a-z]*\s*/gi, '').replace(/```/g, '').trim();
-    const fb = clean.indexOf('{'), lb = clean.lastIndexOf('}');
-    if (fb === -1 || lb === -1) throw new Error('JSON não encontrado na resposta');
-    return JSON.parse(clean.slice(fb, lb + 1));
-  } catch (err) {
-    const msg = String(err?.message || err);
-    if (/429|rate|limite|too many/i.test(msg) && tentativa <= 3) {
-      await new Promise(r => setTimeout(r, tentativa * 3000));
-      return callClaude(query, tentativa + 1);
+function extrairJSONBuscaRobusto(raw){
+  var texto=String(raw||'').trim().replace(/```(?:json|javascript|js)?\s*/gi,'').replace(/```/g,'').trim();
+  try{return JSON.parse(texto)}catch(e){}
+  for(var inicio=0;inicio<texto.length;inicio++){
+    if(texto[inicio]!=='{')continue;
+    var profundidade=0, str=false, esc=false;
+    for(var i=inicio;i<texto.length;i++){
+      var ch=texto[i];
+      if(str){if(esc){esc=false;continue}if(ch==='\\') {esc=true;continue}if(ch==='"')str=false;continue}
+      if(ch==='"'){str=true;continue}
+      if(ch==='{')profundidade++; else if(ch==='}')profundidade--;
+      if(profundidade===0){try{return JSON.parse(texto.slice(inicio,i+1))}catch(e){break}}
     }
-    if (/401|403|unauthorized|forbidden/i.test(msg)) {
-      throw new Error('Sessão não autorizada para usar a IA. Entre novamente no sistema.');
-    }
+  }
+  throw new Error('JSON nao encontrado na resposta da IA');
+}
+async function callClaude(query,tentativa=1){
+  try{
+    const data=await callGroqServer([{role:'system',content:SYSTEM_BUSCA},{role:'user',content:'Consulta: '+query}],{model:'qwen/qwen3.6-27b',max_tokens:4000,temperature:0.3});
+    const raw=(data?.choices?.[0]?.message?.content||'').trim();
+    if(!raw)throw new Error('Resposta invalida');
+    return extrairJSONBuscaRobusto(raw);
+  }catch(err){
+    const msg=String(err?.message||err);
+    if(/429|rate|limite|too many/i.test(msg)&&tentativa<=3){await new Promise(r=>setTimeout(r,tentativa*3000));return callClaude(query,tentativa+1)}
+    if(/401|403|unauthorized|forbidden/i.test(msg))throw new Error('Sessao nao autorizada para usar a IA. Entre novamente no sistema.');
     throw err;
   }
 }
@@ -5033,5 +5019,26 @@ function switchTab(tab, el) {
 })();
 </script>
 
+<script id="sprint56-runtime">
+(function(){
+  function limparLupaAnalise(){
+    var campo=document.getElementById('anMedsContinuos');
+    if(!campo||!campo.parentElement)return;
+    var area=campo.parentElement;
+    area.querySelectorAll('button').forEach(function(b){
+      var t=((b.getAttribute('aria-label')||'')+' '+(b.getAttribute('title')||'')+' '+(b.getAttribute('onclick')||'')).toLowerCase();
+      if(t.indexOf('pesquisar medicamento')>=0||t.indexOf('abrirbuscaforamaleta')>=0)b.remove();
+    });
+    if(!area.querySelector('button[onclick*="abrirCamera"]')){
+      var d=document.createElement('div');d.style.cssText='position:absolute;bottom:8px;right:8px';
+      d.innerHTML='<button type="button" onclick="abrirCamera()" title="Fotografar receita ou tela" aria-label="Fotografar receita ou tela" style="background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:6px 8px;cursor:pointer;font-size:18px;line-height:1">📸</button>';
+      area.appendChild(d);
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',limparLupaAnalise);else limparLupaAnalise();
+  new MutationObserver(limparLupaAnalise).observe(document.body,{childList:true,subtree:true});
+  setInterval(limparLupaAnalise,1000);
+})();
+</script>
 </body>
 </html>
