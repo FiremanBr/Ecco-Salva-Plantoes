@@ -15,61 +15,70 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Aplicar correções definitivas
+      - name: Corrigir escapes literais e validar JavaScript
+        shell: python
         run: |
-          python - <<'PY'
           from pathlib import Path
+          import re
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
 
-          # Corrige sequências literais de escape que estavam aparecendo na tela.
-          marker = "// Formatar texto: siglas em maiúsculo, palavras com 1ª letra maiúscula\n"
-          if 'function limparSaidaGerada' not in s and marker in s:
-              patch = r'''function limparSaidaGerada(valor) {
-                return String(valor ?? '')
-                  .replace(/\\n+/g, ' ')
-                  .replace(/\\r+/g, ' ')
-                  .replace(/\\t+/g, ' ')
-                  .replace(/ {2,}/g, ' ')
-                  .trim();
-              }
+          # Remove as barras de continuação inseridas acidentalmente no fim das linhas.
+          s = re.sub(r'\\\r?\n', '\n', s)
 
-              function sanitizarHTMLGerado(html) {
-                return limparSaidaGerada(html);
-              }
+          # Remove linhas que ficaram somente com uma barra invertida.
+          s = re.sub(r'(?m)^[ \t]*\\[ \t]*\r?\n', '', s)
 
-              '''
-              s = s.replace(marker, patch + marker, 1)
-
-          # Expande as siglas clínicas pedidas.
-          old_sig = "const siglas = ['PA','FC','FR','SPO2','HGT','ECG','AVC','IAM','PCR','DM','HAS','ICC','DPOC','AVCI','TCE','TVP','TEP','SAMU','APH','SCA','EV','IM','SC','SL','VO','SF','SG','BPM','AAS','RCP','UTI','UPA','UBS','SSVV','GCS','SNS','AVCH','AVE','VM','O2','SAT'];"
-          if old_sig in s and 'const EXPANSOES_SIGLAS_CLINICAS' not in s:
-              expansoes = "\n  const EXPANSOES_SIGLAS_CLINICAS = {HAS:'HAS (Hipertensão Arterial Sistêmica)',DM:'DM (Diabetes Mellitus)',ICC:'ICC (Insuficiência Cardíaca Congestiva)',DPOC:'DPOC (Doença Pulmonar Obstrutiva Crônica)',AVC:'AVC (Acidente Vascular Cerebral)',IAM:'IAM (Infarto Agudo do Miocárdio)',PCR:'PCR (Parada Cardiorrespiratória)',HVE:'HVE (Hipertrofia Ventricular Esquerda)',SCA:'SCA (Síndrome Coronariana Aguda)',TCE:'TCE (Traumatismo Cranioencefálico)'};"
-              s = s.replace(old_sig, old_sig + expansoes, 1)
-              alvo = "  if (!str) return str;\n  const siglas = ['PA','FC','FR','SPO2','HGT','ECG','AVC','IAM','PCR','DM','HAS','ICC','DPOC','AVCI','TCE','TVP','TEP','SAMU','APH','SCA','EV','IM','SC','SL','VO','SF','SG','BPM','AAS','RCP','UTI','UPA','UBS','SSVV','GCS','SNS','AVCH','AVE','VM','O2','SAT'];"
-              if alvo in s:
-                  s = s.replace(alvo, "  if (!str) return str;\n  Object.entries(EXPANSOES_SIGLAS_CLINICAS).forEach(([sig, significado]) => {\n    const re = new RegExp('(?<![A-Za-zÀ-ÿ])' + sig + '(?![A-Za-zÀ-ÿ])', 'g');\n    str = str.replace(re, significado);\n  });\n  const siglas = ['PA','FC','FR','SPO2','HGT','ECG','AVC','IAM','PCR','DM','HAS','ICC','DPOC','AVCI','TCE','TVP','TEP','SAMU','APH','SCA','EV','IM','SC','SL','VO','SF','SG','BPM','AAS','RCP','UTI','UPA','UBS','SSVV','GCS','SNS','AVCH','AVE','VM','O2','SAT'];", 1)
-
-          # Ficha de medicamento fora da maleta: adicionar administração.
-          if '"administracao": "Como administrar' not in s:
-              s = s.replace('''      "via": "Vias disponíveis",\n      "diluente": "Diluente + mL na seringa + tempo",''', '''      "via": "Vias disponíveis",\n      "administracao": "Como administrar: dose, forma de administração e tempo/velocidade quando aplicável",\n      "diluente": "Diluente + mL na seringa + tempo",''')
-              s = s.replace('''            <div><div class="row-lbl">💉 Via</div><div class="row-val">${escHtmlAuth(med.via || 'Não informada')}</div></div>\n            <div><div class="row-lbl">🧪 Diluente e preparo</div>''', '''            <div><div class="row-lbl">💉 Via</div><div class="row-val">${escHtmlAuth(med.via || 'Não informada')}</div></div>\n            <div><div class="row-lbl">💊 Administração</div><div class="row-val">${escHtmlAuth(med.administracao || 'Não informada')}</div></div>\n            <div><div class="row-lbl">🧪 Diluente e preparo</div>''')
-              s = s.replace('''            <div><div class="row-lbl">💉 Via</div><div class="row-val">${med.via}</div></div>\n            <div><div class="row-lbl">🧪 Diluente e preparo</div>''', '''            <div><div class="row-lbl">💉 Via</div><div class="row-val">${med.via}</div></div>\n            <div><div class="row-lbl">💊 Administração</div><div class="row-val">${med.administracao || 'Não informada'}</div></div>\n            <div><div class="row-lbl">🧪 Diluente e preparo</div>''')
-
-          # Sanitiza os três pontos de renderização da IA.
-          s = s.replace('result.innerHTML = html;', 'result.innerHTML = sanitizarHTMLGerado(html);')
-          s = s.replace("document.getElementById('buscaResult').innerHTML = html;", "document.getElementById('buscaResult').innerHTML = sanitizarHTMLGerado(html);")
-          s = s.replace('res.innerHTML = html;', 'res.innerHTML = sanitizarHTMLGerado(html);')
+          # Remove o artefato literal \\n que ficou exposto antes do BODY.
+          s = re.sub(r'(?:\\n[ \t]*)+(?=</body>)', '', s, flags=re.I)
 
           p.write_text(s, encoding='utf-8')
+          print('index.html corrigido: escapes literais removidos')
           PY
 
-      - name: Commitar correções e remover este workflow
+      - name: Validar blocos JavaScript
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile, sys
+          s = Path('index.html').read_text(encoding='utf-8')
+          blocks = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', s, flags=re.I|re.S)
+          for i, code in enumerate(blocks, 1):
+              if not code.strip():
+                  continue
+              with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f:
+                  f.write(code)
+                  name = f.name
+              r = subprocess.run(['node', '--check', name], capture_output=True, text=True)
+              if r.returncode != 0:
+                  print(f'ERRO no bloco JavaScript {i}:')
+                  print(r.stderr)
+                  sys.exit(1)
+          print(f'Validação concluída: {len(blocks)} blocos JavaScript analisados.')
+          PY
+
+      - name: Verificar que não restou artefato visível
+        shell: python
+        run: |
+          from pathlib import Path
+          import re, sys
+          s = Path('index.html').read_text(encoding='utf-8')
+          body = s.split('</head>',1)[-1]
+          if re.search(r'(?:\\n\s*){2,}', body):
+              print('ERRO: ainda existe sequência literal \\n no HTML.')
+              sys.exit(1)
+          if re.search(r'(?m)^\\s*\\s*$', body):
+              pass
+          print('Verificação de artefatos concluída.')
+          PY
+
+      - name: Commitar e remover workflow temporário
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
           git rm .github/workflows/corrigir-interface.yml
           git diff --cached --quiet && exit 0
-          git commit -m "fix: corrigir escapes visíveis e completar ficha de medicamentos"
+          git commit -m "fix: remover escapes visíveis e validar JavaScript"
           git push
