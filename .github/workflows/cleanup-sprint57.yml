@@ -1,0 +1,34 @@
+name: Limpar SPRINT57
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remover override antigo da busca
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          s2 = re.sub(r'\\n?<!-- SPRINT57: camera exclusiva na Analise.*?<script id="sprint57-camera-busca">.*?</script>\\n?', '\\n', s, flags=re.S)
+          if s2 != s:
+              p.write_text(s2, encoding='utf-8')
+          PY
+      - name: Commitar limpeza
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html .github/workflows/cleanup-sprint57.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: remover override antigo da busca de medicamentos"
+          git push origin main
