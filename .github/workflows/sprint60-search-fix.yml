@@ -1,0 +1,110 @@
+name: Sprint60 - corrigir pesquisa de medicamentos
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar correção da pesquisa
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          marker = '<!-- SPRINT60: pesquisa robusta de medicamentos -->'
+          if marker not in s:
+              patch = r'''<!-- SPRINT60: pesquisa robusta de medicamentos -->
+<script id="sprint60-search-fix">
+(function(){
+  function limpar(v, fallback){
+    var s=String(v==null?'':v).trim();
+    if(!s || s==='...' || /^n[aã]o (informad[ao]|identificad[ao]|aplic[aá]vel)$/i.test(s)) return fallback;
+    return s;
+  }
+  function esc(v){
+    if(typeof escHtmlAuth==='function') return escHtmlAuth(v);
+    return String(v==null?'':v).replace(/[&<>\"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c];});
+  }
+  function promptBusca(q){
+    return 'Você é um assistente farmacêutico para uso profissional no APH. Consulte conhecimento farmacológico confiável e responda somente com informações sustentadas. Para o medicamento solicitado: '+q+'. Retorne EXCLUSIVAMENTE um objeto JSON válido no formato {"medicamentos":[{"nome":"...","apresentacao":"...","para_que_serve":"...","via":"...","administracao":"...","diluente":"...","flush":"...","efeitos_corpo":"...","fonte":"..."}]}. OBRIGATÓRIO: preencha TODOS os campos com informação concreta. NUNCA use "...", "não informado", "não identificada" ou texto vazio. Se um campo realmente não se aplicar, escreva "Não se aplica". Em apresentação informe concentração/apresentação usual; em via informe a via; em administração descreva como administrar a apresentação consultada; em diluente informe se há necessidade e qual; em flush informe quando aplicável. Não invente dose ou indicação que não possa sustentar. Não confunda administração com via. Não use Markdown.';
+  }
+  async function consultar(q){
+    var data=await callGroqServer([
+      {role:'system',content:'Responda somente JSON válido e completo. Todos os campos solicitados devem ser preenchidos com conteúdo clínico concreto.'},
+      {role:'user',content:promptBusca(q)}
+    ],{
+      model:'qwen/qwen3.6-27b',
+      max_tokens:4000,
+      temperature:0.1,
+      reasoning_effort:'none',
+      reasoning_format:'hidden',
+      response_format:{type:'json_object'}
+    });
+    var raw=(data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)||'';
+    var parsed=extrairJSONBuscaRobusto(raw);
+    var meds=Array.isArray(parsed.medicamentos)?parsed.medicamentos:[];
+    if(!meds.length) throw new Error('A IA não retornou uma ficha completa.');
+    var m=meds[0];
+    var incompleto=['apresentacao','para_que_serve','via','administracao','diluente','flush','efeitos_corpo'].some(function(k){return !m[k] || m[k]==='...';});
+    if(incompleto){
+      var retry=await callGroqServer([
+        {role:'system',content:'Responda exclusivamente JSON. Não deixe nenhum campo vazio ou com reticências.'},
+        {role:'user',content:'REFAÇA A FICHA COMPLETA de '+q+'. Retorne exatamente {"medicamentos":[{"nome":"'+q+'","apresentacao":"concentração e forma","para_que_serve":"indicações principais","via":"via(s)","administracao":"como administrar","diluente":"diluente/preparo ou Não se aplica","flush":"flush ou Não se aplica","efeitos_corpo":"principais efeitos/risco","fonte":"fonte de referência"}]}. Todos os campos são obrigatórios. Não use "...".'}
+      ],{model:'qwen/qwen3.6-27b',max_tokens:2500,temperature:0,response_format:{type:'json_object'}});
+      parsed=extrairJSONBuscaRobusto((retry.choices&&retry.choices[0]&&retry.choices[0].message&&retry.choices[0].message.content)||'{}');
+    }
+    return parsed;
+  }
+  window.executarBuscaForaMaleta=async function(){
+    var input=document.getElementById('buscaForaMaletaInput'),btn=document.getElementById('buscaForaMaletaBtn'),result=document.getElementById('buscaForaMaletaResult');
+    if(!input||!btn||!result)return;
+    var q=input.value.trim(); if(!q)return;
+    btn.disabled=true;
+    result.innerHTML='<div class="loading-wrap"><div class="pulse-ring"></div><p class="loading-text">Consultando medicamento...</p></div>';
+    try{
+      var data=await consultar(q), html='';
+      (Array.isArray(data.medicamentos)?data.medicamentos:[]).forEach(function(med){
+        var nome=limpar(med.nome,q);
+        html+='<div class="med-card">'+
+          '<div class="med-card-header"><div class="med-card-name">💊 '+esc(nome)+'</div><span class="med-badge" style="background:rgba(59,155,232,0.15);color:var(--blue);border-color:rgba(59,155,232,0.3)">📚 '+esc(limpar(med.fonte,'Referência farmacológica'))+'</span></div>'+
+          '<div class="med-card-body">'+
+          '<div><div class="row-lbl">📦 Apresentação</div><div class="row-val">'+esc(limpar(med.apresentacao,'Não informado na resposta'))+'</div></div><div class="divider"></div>'+
+          '<div><div class="row-lbl">📌 Para que serve</div><div class="row-val">'+esc(limpar(med.para_que_serve,'Não informado na resposta'))+'</div></div>'+
+          '<div><div class="row-lbl">💉 Via</div><div class="row-val">'+esc(limpar(med.via,'Não informada na resposta'))+'</div></div>'+
+          '<div><div class="row-lbl">💊 Administração</div><div class="row-val">'+esc(limpar(med.administracao,'Não informada na resposta'))+'</div></div>'+
+          '<div><div class="row-lbl">🧪 Diluente e preparo</div><div class="row-val">'+esc(limpar(med.diluente,'Não se aplica'))+'</div></div>'+
+          '<div><div class="row-lbl">🔄 Flush</div><div class="row-val">'+esc(limpar(med.flush,'Não se aplica'))+'</div></div>'+ 
+          '<div class="divider"></div><div class="interacao-box"><div class="interacao-title">⚠️ Efeitos no organismo</div><div class="interacao-item">'+esc(limpar(med.efeitos_corpo,'Não informado na resposta'))+'</div></div>'+ 
+          '</div></div>';
+      });
+      result.innerHTML=html||'<div class="error-box">⚠️ Não foi possível obter uma ficha completa para "'+esc(q)+'".</div>';
+    }catch(e){
+      console.error('Sprint60 pesquisa:',e);
+      result.innerHTML='<div class="error-box">❌ '+esc(e.message||e)+'</div>';
+    }finally{btn.disabled=false;}
+  };
+})();
+</script>
+'''
+              s=s.replace('</body>',patch+'</body>')
+              p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commitar correção e remover workflow temporário
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git rm .github/workflows/sprint60-search-fix.yml
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "SPRINT60: corrigir pesquisa de medicamentos"
+          git push origin main
