@@ -1,0 +1,30 @@
+name: Restaurar index anterior
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restaurar index.html do commit anterior
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout 41e22e7e695df8db7ea5d099174d3da45015bd6c -- index.html
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "Nada para restaurar."
+            exit 0
+          fi
+          git commit -m "chore: restaurar index.html após alteração acidental"
+          git push origin main
