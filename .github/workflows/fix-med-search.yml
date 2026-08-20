@@ -1,0 +1,163 @@
+name: Fix pesquisa de medicamentos e câmera
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Aplicar correções no index.html
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          marker = '<!-- SPRINT54: correção definitiva pesquisa JSON + câmera Análise -->'
+          if marker in s:
+              print('SPRINT54 já aplicado.')
+              raise SystemExit(0)
+
+          # 1) Substitui o parser da busca livre por um parser que encontra
+          # o primeiro objeto JSON completo e válido, ignorando texto extra,
+          # múltiplos blocos e markdown produzido pelo modelo.
+          start = s.find('async function callClaude(query, tentativa = 1) {')
+          end = s.find('\nasync function buscarLivre()', start)
+          if start == -1 or end == -1:
+              raise SystemExit('Não foi possível localizar callClaude/buscarLivre.')
+
+          new_call = r'''function extrairJSONRobusto(raw) {
+            let texto = String(raw || '').trim();
+            texto = texto.replace(/```(?:json|javascript|js)?\s*/gi, '').replace(/```/g, '').trim();
+
+            // Primeiro tenta a resposta inteira.
+            try { return JSON.parse(texto); } catch (_) {}
+
+            // Procura o primeiro objeto/array JSON completo e válido,
+            // respeitando strings, escapes e aninhamento.
+            const candidatos = [];
+            for (let i = 0; i < texto.length; i++) {
+              if (texto[i] === '{' || texto[i] === '[') candidatos.push(i);
+            }
+
+            for (const inicio of candidatos) {
+              const abertura = texto[inicio];
+              const fechamento = abertura === '{' ? '}' : ']';
+              let profundidade = 0;
+              let emString = false;
+              let escape = false;
+
+              for (let i = inicio; i < texto.length; i++) {
+                const ch = texto[i];
+                if (emString) {
+                  if (escape) { escape = false; continue; }
+                  if (ch === '\\') { escape = true; continue; }
+                  if (ch === '"') emString = false;
+                  continue;
+                }
+                if (ch === '"') { emString = true; continue; }
+                if (ch === abertura) profundidade++;
+                else if (ch === fechamento) profundidade--;
+
+                if (profundidade === 0) {
+                  const trecho = texto.slice(inicio, i + 1);
+                  try { return JSON.parse(trecho); } catch (_) { break; }
+                }
+              }
+            }
+
+            throw new Error('JSON não encontrado na resposta da IA');
+          }
+
+          async function callClaude(query, tentativa = 1) {
+            try {
+              const data = await callGroqServer(
+                [
+                  { role: 'system', content: SYSTEM_BUSCA },
+                  { role: 'user', content: 'Consulta: ' + query }
+                ],
+                { model: 'qwen/qwen3.6-27b', max_tokens: 4000, temperature: 0.3 }
+              );
+
+              const raw = (data?.choices?.[0]?.message?.content || '').trim();
+              if (!raw) throw new Error('Resposta inválida');
+              return extrairJSONRobusto(raw);
+            } catch (err) {
+              const msg = String(err?.message || err);
+              if (/429|rate|limite|too many/i.test(msg) && tentativa <= 3) {
+                await new Promise(r => setTimeout(r, tentativa * 3000));
+                return callClaude(query, tentativa + 1);
+              }
+              if (/401|403|unauthorized|forbidden/i.test(msg)) {
+                throw new Error('Sessão não autorizada para usar a IA. Entre novamente no sistema.');
+              }
+              throw err;
+            }
+          }
+'''
+          s = s[:start] + new_call + s[end:]
+
+          # 2) Garantia visual/funcional: na Análise, somente a câmera fica
+          # ao lado do campo de medicamentos. Qualquer lupa antiga injetada
+          # por versões anteriores é removida somente desse campo.
+          ui_patch = r'''
+<script id="sprint54-ui-fix">
+(function(){
+  function corrigirCameraAnalise(){
+    const campo = document.getElementById('anMedsContinuos');
+    if (!campo || !campo.parentElement) return;
+    const area = campo.parentElement;
+
+    area.querySelectorAll('[data-sprint52-lupa], button[aria-label="Pesquisar medicamento"]').forEach(function(el){
+      el.remove();
+    });
+
+    let camera = area.querySelector('button[aria-label="Fotografar receita ou tela"]');
+    if (!camera) {
+      const wrap = area.querySelector('div[style*="position:absolute"]');
+      if (wrap) {
+        camera = document.createElement('button');
+        camera.type = 'button';
+        camera.title = 'Fotografar receita ou tela';
+        camera.setAttribute('aria-label','Fotografar receita ou tela');
+        camera.textContent = '📸';
+        camera.style.cssText = 'background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:6px 8px;cursor:pointer;font-size:18px;line-height:1';
+        camera.onclick = function(){ if (typeof abrirCamera === 'function') abrirCamera(); };
+        wrap.appendChild(camera);
+      }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', corrigirCameraAnalise);
+  new MutationObserver(corrigirCameraAnalise).observe(document.documentElement,{childList:true,subtree:true});
+  setTimeout(corrigirCameraAnalise,300);
+  setTimeout(corrigirCameraAnalise,1200);
+})();
+</script>
+'''
+          s = s.replace('</body>', ui_patch + '\n</body>', 1)
+          s = s.replace(marker + '\n', '')
+          s = marker + '\n' + s
+          p.write_text(s, encoding='utf-8')
+          print('SPRINT54 aplicado com sucesso.')
+          PY
+
+      - name: Commit e remover workflow temporário
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html .github/workflows/fix-med-search.yml
+          git rm .github/workflows/fix-med-search.yml
+          git commit -m "SPRINT54: corrigir busca de medicamentos e câmera"
+          git push
