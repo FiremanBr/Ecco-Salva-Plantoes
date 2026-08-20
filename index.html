@@ -1,3 +1,4 @@
+<!-- SPRINT51: lupa de pesquisa de medicamentos disponível diretamente no campo de uso contínuo -->
 <!-- SPRINT50: Maleta mobile em largura total -->
 <!-- SPRINT49: medicamentos digitados também alimentam automaticamente a base de pacientes -->
 <!-- SPRINT48: efetivação da integração OCR → maleta → medicamentos_pacientes -->
@@ -757,10 +758,14 @@ function updateUserBadge(){
           <span class="pac-lbl">💊 Medicamentos de Uso Contínuo</span>
           <div style="position:relative">
             <textarea id="anMedsContinuos" rows="3" placeholder="Ex: Losartana, Metformina, AAS, Hidroclorotiazida..." oninput="_campoPaciente.medsContinuos=this.value" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 46px 10px 12px;color:var(--text);font-family:Inter,sans-serif;font-size:12px;outline:none;resize:none;line-height:1.6"></textarea>
-            <button onclick="abrirCamera()" title="Fotografar receita ou tela" style="position:absolute;bottom:8px;right:8px;background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:6px 8px;cursor:pointer;font-size:18px;line-height:1">📸</button>
+            <div style="position:absolute;bottom:8px;right:8px;display:flex;gap:5px;align-items:center">
+              <button onclick="abrirBuscaForaMaleta('')" title="Pesquisar medicamento" aria-label="Pesquisar medicamento" style="background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:6px 8px;cursor:pointer;font-size:17px;line-height:1">🔎</button>
+              <button onclick="abrirCamera()" title="Fotografar receita ou tela" aria-label="Fotografar receita ou tela" style="background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:6px 8px;cursor:pointer;font-size:18px;line-height:1">📸</button>
+            </div>
             <input type="file" id="anFotoInput" accept="image/*" capture="camera" style="display:none" onchange="anFotoSelecionada(this)">
           </div>
           <div id="anBuscaForaMaleta" aria-live="polite"></div>
+          <div style="margin-top:4px;font-size:10px;color:var(--text-dim)">🔎 Pesquise medicamentos que não estão na maleta.</div>
           <div id="anPreviewGrid" style="display:none;margin-top:6px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
               <span id="anFotoCount" style="font-size:11px;font-weight:700;color:var(--green)"></span>
@@ -1984,7 +1989,10 @@ function buildFormularioAnalise() {
         <span class="pac-lbl">💊 Medicamentos de Uso Contínuo</span>
         <div style="position:relative">
           <textarea id="anMedsContinuos" rows="3" placeholder="Ex: Losartana, Metformina, AAS, Hidroclorotiazida..." oninput="_campoPaciente.medsContinuos=this.value" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 46px 10px 12px;color:var(--text);font-family:Inter,sans-serif;font-size:12px;outline:none;resize:none;line-height:1.6"></textarea>
-          <button onclick="abrirCamera()" title="Fotografar receita ou tela" style="position:absolute;bottom:8px;right:8px;background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:6px 8px;cursor:pointer;font-size:18px;line-height:1">📸</button>
+          <div style="position:absolute;bottom:8px;right:8px;display:flex;gap:5px;align-items:center">
+              <button onclick="abrirBuscaForaMaleta('')" title="Pesquisar medicamento" aria-label="Pesquisar medicamento" style="background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:6px 8px;cursor:pointer;font-size:17px;line-height:1">🔎</button>
+              <button onclick="abrirCamera()" title="Fotografar receita ou tela" aria-label="Fotografar receita ou tela" style="background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:6px 8px;cursor:pointer;font-size:18px;line-height:1">📸</button>
+            </div>
           <input type="file" id="anFotoInput" accept="image/*" capture="camera" style="display:none" onchange="anFotoSelecionada(this)">
         </div>
         <div id="anPreviewGrid" style="display:none;margin-top:6px">
