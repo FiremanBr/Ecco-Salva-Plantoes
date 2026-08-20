@@ -1,3 +1,4 @@
+<!-- SPRINT52: lupa de pesquisa garantidamente visível no campo de medicamentos -->
 <!-- SPRINT51: lupa de pesquisa de medicamentos disponível diretamente no campo de uso contínuo -->
 <!-- SPRINT50: Maleta mobile em largura total -->
 <!-- SPRINT49: medicamentos digitados também alimentam automaticamente a base de pacientes -->
@@ -35,41 +36,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Ecco Salva Meds</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-// SPRINT49 FIX: captura digitação mesmo quando o campo é recriado dinamicamente.
-(function ativarBaseMedicamentosDigitadosGlobal() {
-  let timer = null;
-  document.addEventListener('input', function(e) {
-    if (!e.target || e.target.id !== 'anMedsContinuos') return;
-    clearTimeout(timer);
-    timer = setTimeout(function() {
-      registrarMedicamentosDigitadosBase().catch(err =>
-        console.warn('Base de medicamentos digitados:', err)
-      );
-    }, 700);
-  }, true);
-
-  document.addEventListener('change', function(e) {
-    if (!e.target || e.target.id !== 'anMedsContinuos') return;
-    registrarMedicamentosDigitadosBase().catch(err =>
-      console.warn('Base de medicamentos digitados:', err)
-    );
-  }, true);
-
-  document.addEventListener('blur', function(e) {
-    if (!e.target || e.target.id !== 'anMedsContinuos') return;
-    registrarMedicamentosDigitadosBase().catch(err =>
-      console.warn('Base de medicamentos digitados:', err)
-    );
-  }, true);
-})();
-
-
-setTimeout(function() {
-  if (typeof ativarBaseParaMedicamentosDigitados === 'function') {
-    ativarBaseParaMedicamentosDigitados();
-  }
-}, 1200);
-
 </script>
 <script>
 
@@ -658,6 +624,24 @@ function updateUserBadge(){
 }
 
 </style>
+
+<style id="sprint52-lupa-visivel">
+#anMedsContinuos + div button[aria-label="Pesquisar medicamento"],
+button[aria-label="Pesquisar medicamento"]{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  min-width:34px !important;
+  min-height:32px !important;
+  color:var(--text,#fff) !important;
+  background:var(--surface3,#263142) !important;
+  border:1px solid var(--border,#526070) !important;
+  z-index:5 !important;
+}
+</style>
+
 </head>
 <body>
 <div class="header">
@@ -5002,6 +4986,48 @@ function switchTab(tab, el) {
     <div id="buscaForaMaletaResult"></div>
   </div>
 </div>
+
+
+<script id="sprint52-lupa-guarantee">
+(function(){
+  function instalarLupaMedicamentos(){
+    const campos = document.querySelectorAll('#anMedsContinuos');
+    campos.forEach(function(campo){
+      const parent = campo.parentElement;
+      if (!parent) return;
+      if (parent.querySelector('[data-sprint52-lupa]')) return;
+
+      const wrap = document.createElement('div');
+      wrap.setAttribute('data-sprint52-lupa','1');
+      wrap.style.cssText='position:absolute;bottom:8px;right:8px;display:flex;gap:5px;align-items:center;z-index:10;';
+
+      const btn = document.createElement('button');
+      btn.type='button';
+      btn.setAttribute('aria-label','Pesquisar medicamento');
+      btn.title='Pesquisar medicamento';
+      btn.textContent='🔎';
+      btn.style.cssText='background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:6px 8px;cursor:pointer;font-size:17px;line-height:1;color:var(--text);';
+      btn.onclick=function(){
+        if(typeof abrirBuscaForaMaleta === 'function') abrirBuscaForaMaleta('');
+        else {
+          const modal=document.getElementById('buscaForaMaletaModal');
+          const input=document.getElementById('buscaForaMaletaInput');
+          if(modal){ modal.style.display='flex'; if(input) input.focus(); }
+        }
+      };
+
+      wrap.appendChild(btn);
+      parent.appendChild(wrap);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', instalarLupaMedicamentos);
+  const observer = new MutationObserver(instalarLupaMedicamentos);
+  observer.observe(document.documentElement,{childList:true,subtree:true});
+  setTimeout(instalarLupaMedicamentos,500);
+  setTimeout(instalarLupaMedicamentos,1500);
+})();
+</script>
 
 </body>
 </html>
