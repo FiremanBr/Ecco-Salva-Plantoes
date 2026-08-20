@@ -24,8 +24,10 @@ jobs:
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
 
-          # Remove o bloco SPRINT58 antigo, que foi gravado com \n literal.
-          s = re.sub(r'\\n<!-- SPRINT58:.*?</script>\\n', '', s, flags=re.S)
+          # Remove completamente o bloco SPRINT58 antigo e inválido.
+          s = re.sub(r'<!-- SPRINT58:.*?</script>', '', s, flags=re.S)
+
+          # Limpa escapes literais deixados por versões anteriores.
           s = re.sub(r'(?m)^([ \t]*)\\n', r'\1', s)
           s = re.sub(r'(?m)^([ \t]*)\\r', r'\1', s)
           s = re.sub(r'(?m)^([ \t]*)\\t', r'\1', s)
@@ -47,11 +49,11 @@ jobs:
           from pathlib import Path
           import re,sys
           s=Path('index.html').read_text(encoding='utf-8')
-          if re.search(r'(?m)^([ \t]*)\\n',s):
-              print('ERRO: \n literal no início de linha');sys.exit(1)
+          if 'SPRINT58: administração prática' in s:
+              print('ERRO: bloco SPRINT58 antigo ainda existe');sys.exit(1)
           if re.search(r'\\n(?=\s*(?:<!--|<script|</script>|</body>|</html>))',s,re.I):
-              print('ERRO: \n literal estrutural restante');sys.exit(1)
-          print('OK: artefatos literais removidos.')
+              print('ERRO: escape estrutural literal restante');sys.exit(1)
+          print('OK: SPRINT58 removido e escapes estruturais limpos.')
           PY
 
       - name: Commitar
@@ -61,5 +63,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "fix: limpar escapes e corrigir administração na pesquisa"
+          git commit -m "fix: remover SPRINT58 inválido e escapes literais"
           git push origin main
