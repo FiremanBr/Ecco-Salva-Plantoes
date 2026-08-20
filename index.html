@@ -32,7 +32,43 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Ecco Salva Meds</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+// SPRINT49 FIX: captura digitação mesmo quando o campo é recriado dinamicamente.
+(function ativarBaseMedicamentosDigitadosGlobal() {
+  let timer = null;
+  document.addEventListener('input', function(e) {
+    if (!e.target || e.target.id !== 'anMedsContinuos') return;
+    clearTimeout(timer);
+    timer = setTimeout(function() {
+      registrarMedicamentosDigitadosBase().catch(err =>
+        console.warn('Base de medicamentos digitados:', err)
+      );
+    }, 700);
+  }, true);
+
+  document.addEventListener('change', function(e) {
+    if (!e.target || e.target.id !== 'anMedsContinuos') return;
+    registrarMedicamentosDigitadosBase().catch(err =>
+      console.warn('Base de medicamentos digitados:', err)
+    );
+  }, true);
+
+  document.addEventListener('blur', function(e) {
+    if (!e.target || e.target.id !== 'anMedsContinuos') return;
+    registrarMedicamentosDigitadosBase().catch(err =>
+      console.warn('Base de medicamentos digitados:', err)
+    );
+  }, true);
+})();
+
+
+setTimeout(function() {
+  if (typeof ativarBaseParaMedicamentosDigitados === 'function') {
+    ativarBaseParaMedicamentosDigitados();
+  }
+}, 1200);
+
+</script>
 <script>
 
 // ── AUTENTICAÇÃO + SINCRONIZAÇÃO SUPABASE (SPRINT39) ──
