@@ -1,0 +1,161 @@
+name: Corrigir câmera da Análise e JSON da busca
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Aplicar correções definitivas
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          marker = '<!-- SPRINT55: câmera restaurada na Análise + parser JSON robusto na busca -->'
+          if marker in s:
+              print('SPRINT55 já aplicado.')
+              raise SystemExit(0)
+
+          # 1) Substituir apenas o parser da busca livre por um parser que
+          # localiza um objeto JSON completo e válido, mesmo quando a IA
+          # devolve mais de um bloco JSON ou texto extra.
+          start = s.find('async function callClaude(query, tentativa = 1) {')
+          end = s.find('\nasync function buscarLivre()', start)
+          if start != -1 and end != -1:
+              new_call = r'''function extrairJSONBuscaRobusto(raw) {
+            let texto = String(raw || '').trim();
+            texto = texto.replace(/```(?:json|javascript|js)?\s*/gi, '').replace(/```/g, '').trim();
+            try { return JSON.parse(texto); } catch (_) {}
+
+            for (let inicio = 0; inicio < texto.length; inicio++) {
+              const abertura = texto[inicio];
+              if (abertura !== '{' && abertura !== '[') continue;
+              const fechamento = abertura === '{' ? '}' : ']';
+              let profundidade = 0, emString = false, escape = false;
+              for (let i = inicio; i < texto.length; i++) {
+                const ch = texto[i];
+                if (emString) {
+                  if (escape) { escape = false; continue; }
+                  if (ch === '\\') { escape = true; continue; }
+                  if (ch === '"') emString = false;
+                  continue;
+                }
+                if (ch === '"') { emString = true; continue; }
+                if (ch === abertura) profundidade++;
+                else if (ch === fechamento) profundidade--;
+                if (profundidade === 0) {
+                  const trecho = texto.slice(inicio, i + 1);
+                  try { return JSON.parse(trecho); } catch (_) { break; }
+                }
+              }
+            }
+            throw new Error('JSON não encontrado na resposta da IA');
+          }
+
+          async function callClaude(query, tentativa = 1) {
+            try {
+              const data = await callGroqServer(
+                [
+                  { role: 'system', content: SYSTEM_BUSCA },
+                  { role: 'user', content: 'Consulta: ' + query }
+                ],
+                { model: 'qwen/qwen3.6-27b', max_tokens: 4000, temperature: 0.3 }
+              );
+              const raw = (data?.choices?.[0]?.message?.content || '').trim();
+              if (!raw) throw new Error('Resposta inválida');
+              return extrairJSONBuscaRobusto(raw);
+            } catch (err) {
+              const msg = String(err?.message || err);
+              if (/429|rate|limite|too many/i.test(msg) && tentativa <= 3) {
+                await new Promise(r => setTimeout(r, tentativa * 3000));
+                return callClaude(query, tentativa + 1);
+              }
+              if (/401|403|unauthorized|forbidden/i.test(msg)) {
+                throw new Error('Sessão não autorizada para usar a IA. Entre novamente no sistema.');
+              }
+              throw err;
+            }
+          }
+'''
+              s = s[:start] + new_call + s[end:]
+          else:
+              print('callClaude não localizado; mantendo parser atual.')
+
+          # 2) Na Análise, remover qualquer lupa antiga e garantir a câmera
+          # original no campo de medicamentos. A pesquisa livre permanece
+          # exclusivamente na aba Maleta.
+          patch = r'''
+<script id="sprint55-final-fix">
+(function(){
+  function corrigirAnaliseMeds(){
+    const campo = document.getElementById('anMedsContinuos');
+    if (!campo || !campo.parentElement) return;
+    const area = campo.parentElement;
+
+    // Remove somente controles de pesquisa inseridos por SPRINTs anteriores.
+    area.querySelectorAll('button').forEach(function(btn){
+      const fn = btn.getAttribute('onclick') || '';
+      const aria = btn.getAttribute('aria-label') || '';
+      const title = btn.getAttribute('title') || '';
+      if (/abrirBuscaForaMaleta|Pesquisar medicamento/i.test(fn + ' ' + aria + ' ' + title)) {
+        btn.remove();
+      }
+    });
+
+    // A câmera deve existir dentro do campo de medicamentos.
+    let camera = area.querySelector('button[data-sprint55-camera="1"]');
+    if (!camera) {
+      camera = area.querySelector('button[onclick*="abrirCamera"]');
+      if (camera) camera.setAttribute('data-sprint55-camera','1');
+    }
+    if (!camera) {
+      camera = document.createElement('button');
+      camera.type = 'button';
+      camera.setAttribute('data-sprint55-camera','1');
+      camera.setAttribute('aria-label','Fotografar receita ou tela');
+      camera.title = 'Fotografar receita ou tela';
+      camera.textContent = '📸';
+      camera.style.cssText = 'position:absolute;bottom:8px;right:8px;background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:6px 8px;cursor:pointer;font-size:18px;line-height:1';
+      camera.onclick = function(){ if (typeof abrirCamera === 'function') abrirCamera(); };
+      area.appendChild(camera);
+    }
+
+    // Espaço interno correto para o botão da câmera.
+    campo.style.paddingRight = '46px';
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', corrigirAnaliseMeds);
+  else corrigirAnaliseMeds();
+  setTimeout(corrigirAnaliseMeds, 100);
+  setTimeout(corrigirAnaliseMeds, 500);
+  setTimeout(corrigirAnaliseMeds, 1500);
+})();
+</script>
+'''
+          s = s.replace('</body>', patch + '\n</body>', 1)
+          s = marker + '\n' + s
+          p.write_text(s, encoding='utf-8')
+          print('SPRINT55 aplicado.')
+          PY
+
+      - name: Commit e remover workflow temporário
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html .github/workflows/fix-final-analise.yml
+          git rm .github/workflows/fix-final-analise.yml
+          git commit -m "SPRINT55: restaurar câmera na Análise e corrigir busca JSON"
+          git push
