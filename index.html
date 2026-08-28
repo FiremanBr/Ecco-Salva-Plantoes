@@ -3129,8 +3129,8 @@ function renderThumbs() {
   document.getElementById('anFotoCount').textContent = `${n} foto${n > 1 ? 's' : ''} adicionada${n > 1 ? 's' : ''}`;
   const _ft2 = document.getElementById('anFotoTxt'); if (_ft2) _ft2.textContent = '+ Adicionar mais foto';
   grid.innerHTML = _anFotos.map((f, i) => `
-    <div style="position:relative;width:195px;max-width:100%">
-      <img src="data:${f.mime};base64,${f.base64}" style="width:195px;max-width:100%;height:130px;object-fit:cover;background:var(--surface3);border-radius:8px;border:1px solid var(--border)">
+    <div style="position:relative;width:150px;max-width:100%">
+      <img src="data:${f.mime};base64,${f.base64}" style="width:150px;max-width:100%;height:100px;object-fit:contain;background:var(--surface3);border-radius:8px;border:1px solid var(--border)">
       <button onclick="removerFoto(${i})" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.7);border:none;border-radius:4px;color:white;font-size:10px;width:18px;height:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">✕</button>
     </div>`).join('');
 }
@@ -3143,7 +3143,7 @@ async function extrairTextoVision(base64) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        requests: [{ image: { content: base64 }, features: [{ type: 'TEXT_DETECTION', maxResults: 1 }] }]
+        requests: [{ image: { content: base64 }, features: [{ type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 }, { type: 'TEXT_DETECTION', maxResults: 1 }] }]
       })
     });
     const data = await resp.json();
@@ -3158,7 +3158,8 @@ async function extrairTextoVision(base64) {
       mostrarErroOCR('Erro: ' + data.responses[0].error.message);
       return '';
     }
-    const texto = data?.responses?.[0]?.fullTextAnnotation?.text || '';
+    const respostaOCR = data?.responses?.[0] || {};
+    const texto = respostaOCR?.fullTextAnnotation?.text || respostaOCR?.textAnnotations?.[0]?.description || '';
     return texto.trim();
   } catch(e) {
     console.error('Vision fetch error:', e);
@@ -3302,11 +3303,28 @@ function complementarMedicamentosDoOCR(lista, textoOCR) {
   return deduplicarMedicamentosIdentificados(candidatos);
 }
 
+function canonicalizarMedicamentoOCR(nome) {
+  const bruto = String(nome || '').trim();
+  const n = normalizarNomeMedicamentoBase(bruto);
+  if (!n) return bruto;
+
+  // Formas incompletas ou ruidosas vindas do OCR/IA.
+  if (n === 'buscopan c' || n === 'buscopan c.' || n === 'buscopan') return 'Buscopan';
+  if (n.includes('buscopan') && !n.includes('composto')) return 'Buscopan';
+  if (n === 'aas' || n === 'a a s') return 'AAS';
+  if (n.includes('dipirona')) return 'Dipirona';
+  if (n.includes('captopril') || n.includes('captropil') || n.includes('criptopril')) return 'Captopril';
+  if (n.includes('losartana') || n.includes('lozartana') || n === 'losartan') return 'Losartana';
+  if (n.includes('tramadol') || n.includes('tramodol')) return 'Tramadol';
+  if (n.includes('metformina') || n.includes('metformine')) return 'Metformina';
+  return bruto;
+}
+
 function deduplicarMedicamentosIdentificados(lista) {
   const mapa = new Map();
   (Array.isArray(lista) ? lista : []).forEach(item => {
     const obj = typeof item === 'string' ? { nome_comercial: item } : (item || {});
-    const nome = String(obj.nome_comercial || obj.nome || obj.medicamento || obj.principio_ativo || '').trim();
+    const nome = canonicalizarMedicamentoOCR(obj.nome_comercial || obj.nome || obj.medicamento || obj.principio_ativo || '');
     if (nome.length < 2) return;
     const chave = normalizarNomeMedicamentoBase(obj.principio_ativo || nome);
     if (!chave) return;
@@ -3458,8 +3476,11 @@ function anFotoSelecionada(input) {
 
         const primeiraPassagem = Array.isArray(parsed?.medicamentos) ? parsed.medicamentos : [];
         const encontradosNoOCR = identificarMedicamentosOCRRapido(textoOCR);
+
+        // O texto reconhecido diretamente tem prioridade para nomes exatos;
+        // a IA apenas complementa, sem substituir nem abreviar o que já foi lido.
         const identificados = complementarMedicamentosDoOCR(
-          [...primeiraPassagem, ...encontradosNoOCR],
+          [...encontradosNoOCR, ...primeiraPassagem],
           textoOCR
         );
 
