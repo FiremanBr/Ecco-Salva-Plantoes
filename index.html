@@ -5522,7 +5522,17 @@ function switchTab(tab, el) {
     if(palavras.length >= 2 && palavras.every(p => /^[a-z0-9]$/i.test(p))) return true;
 
     // Tokens isolados típicos de barras de formatação.
-    if(palavras.length === 1 && /^(?:a|aa|ui|rt|r|t|u|i)$/i.test(palavras[0])) return true;
+    if(palavras.length === 1 && /^(?:a|aa|ui|rt|r|t|u|i|we|yu)$/i.test(palavras[0])) return true;
+
+    // Fragmentos curtos do teclado podem vir agrupados pelo OCR:
+    // "we r", "yu", "q w", etc. Não são medicamentos.
+    // Siglas reais em maiúsculas, como AAS, continuam permitidas.
+    const ehSiglaCurtaValida=/^[A-ZÀ-Ý]{2,5}$/.test(t);
+    if(t.length <= 6 && !ehSiglaCurtaValida){
+      if(palavras.length >= 2 && palavras.every(p => p.length <= 2 && /^[a-z]+$/i.test(p))) return true;
+      if(palavras.length === 1 && /^[a-z]{1,3}$/i.test(palavras[0])) return true;
+    }
+
     if(/[0-9]/.test(t) && (t.match(/\p{L}/gu)||[]).length < 5) return true;
 
     // Se houver muitos símbolos em relação às letras, é interface, não medicamento.
