@@ -5219,28 +5219,31 @@ function switchTab(tab, el) {
 </script>
 
 
-<!-- SPRINT61: remoção definitiva de artefatos literais \\n -->
+<!-- SPRINT61: remoção definitiva de artefatos literais -->
 <script id="sprint61-remove-literal-newlines">
 (function(){
+  const token=String.fromCharCode(92,110);
+  function onlyLiteralNewlines(raw){
+    let s=String(raw||'').replace(/\s+/g,'');
+    if(!s) return false;
+    while(s.startsWith(token)) s=s.slice(2);
+    return s==='';
+  }
   function purge(root){
     if(!root) return;
     const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
     const dead=[];
     while(walker.nextNode()){
       const node=walker.currentNode;
-      const raw=node.nodeValue||'';
-      const compact=raw.replace(/\s+/g,'');
-      if(compact && /^\\\\n+$/.test(compact)) dead.push(node);
+      if(onlyLiteralNewlines(node.nodeValue)) dead.push(node);
     }
     dead.forEach(node=>node.parentNode&&node.parentNode.removeChild(node));
   }
   function run(){ purge(document.body); }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',run,{once:true});
   else run();
-  setTimeout(run,50); setTimeout(run,250); setTimeout(run,1000); setTimeout(run,2500);
-  const target=document.documentElement;
-  const observer=new MutationObserver(()=>run());
-  observer.observe(target,{childList:true,subtree:true,characterData:true});
+  [50,250,1000,2500].forEach(ms=>setTimeout(run,ms));
+  new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true,characterData:true});
 })();
 </script>
 </body>
