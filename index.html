@@ -5030,7 +5030,7 @@ function switchTab(tab, el) {
   window.executarBuscaForaMaleta=async function(){const input=document.getElementById('buscaForaMaletaInput'),btn=document.getElementById('buscaForaMaletaBtn'),result=document.getElementById('buscaForaMaletaResult');if(!input||!btn||!result)return;const q=input.value.trim();if(!q)return;btn.disabled=true;result.innerHTML='<div class="loading-wrap"><div class="pulse-ring"></div><p class="loading-text">Consultando medicamento...</p></div>';try{const data=await callClaude(q),meds=Array.isArray(data?.medicamentos)?data.medicamentos:[];result.innerHTML=meds.length?meds.map(m=>card(m,q)).join(''):'<div class="error-box">⚠️ Não foi possível obter uma ficha.</div>';}catch(e){result.innerHTML='<div class="error-box">❌ Erro na pesquisa: '+esc(e.message||e)+'</div>';}finally{btn.disabled=false;}};
 })();
 </script>
-\n
+
 <!-- SPRINT60: estabilização definitiva da câmera/OCR da Análise -->
 <script id="sprint60-camera-stability">
 (function(){
