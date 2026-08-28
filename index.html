@@ -5599,7 +5599,27 @@ function switchTab(tab, el) {
     const linhas=String(texto||'').split(/[\r\n;,]+/);
 
     for(const bruta of linhas){
-      const linha=limparLinhaOCR(bruta);
+      const original=String(bruta||'').trim();
+
+      // Quando a foto contém uma tela de celular, o OCR continua lendo a
+      // barra de edição/teclado abaixo da lista. A partir desse ponto não
+      // devemos continuar aceitando linhas posteriores (como sugestões do
+      // teclado, por exemplo "Loratadina"), pois elas não pertencem à lista.
+      const originalNorm=ocrNorm(original);
+      const tecladoCompactoOriginal=originalNorm.replace(/[^a-z]/g,'');
+      const linhasTecladoOCR=['qwertyuiop','asdfghjkl','zxcvbnm'];
+      const ehTeclado=tecladoCompactoOriginal.length>=3 &&
+        linhasTecladoOCR.some(l=>l.includes(tecladoCompactoOriginal));
+      const ehBarraEdicao=
+        /[☑☐✓✔✕✖✗⌫↵←→↑↓]/u.test(original) ||
+        (/\b(?:aa|formatar|copiar|colar)\b/i.test(originalNorm) && originalNorm.length<40);
+
+      // Interface/teclado marca o fim da área onde estavam os medicamentos.
+      // Usa break, e não continue, para impedir que sugestões posteriores
+      // sejam tratadas como novos medicamentos.
+      if(ehTeclado || ehBarraEdicao) break;
+
+      const linha=limparLinhaOCR(original);
       if(pareceRuidoDeInterface(linha)) continue;
 
       // Segunda barreira: não permitir que ruído de teclado volte a escapar
