@@ -5475,8 +5475,7 @@ function switchTab(tab, el) {
   function pareceRuidoDeInterface(linha){
     const t=String(linha||'').trim();
     const n=ocrNorm(t);
-    if(!n) return true;
-    if(n.length < 2) return true;
+    if(!n || n.length < 2) return true;
 
     // Teclado: sequências como "q w e r t y", "a s d f", etc.
     if(/^(?:[a-z0-9]\s+){3,}[a-z0-9]$/i.test(t)) return true;
@@ -5487,9 +5486,22 @@ function switchTab(tab, el) {
     ]);
     if(ruidoExato.has(n)) return true;
 
-    // Linhas formadas quase exclusivamente por símbolos/controles.
-    const letras=(t.match(/[\p{L}\p{N}]/gu)||[]).length;
-    if(letras < 2) return true;
+    // Controles do teclado/editor: checkbox, ícones e fragmentos misturados.
+    if(/[☑☐✓✔✕✖✗⌫↵←→↑↓]/u.test(t)) return true;
+
+    // Linha de medicamento deve começar por letra. Números soltos e teclas não entram.
+    if(!/^\p{L}/u.test(t)) return true;
+
+    // Descarta linhas claramente contaminadas por teclado/interface.
+    const palavras=n.split(/\s+/).filter(Boolean);
+    if(palavras.length >= 3 && palavras.every(p => /^[a-z0-9]$/i.test(p))) return true;
+    if(/[0-9]/.test(t) && (t.match(/\p{L}/gu)||[]).length < 5) return true;
+
+    // Se houver muitos símbolos em relação às letras, é interface, não medicamento.
+    const letras=(t.match(/\p{L}/gu)||[]).length;
+    const alfanum=(t.match(/[\p{L}\p{N}]/gu)||[]).length;
+    if(letras < 2 || alfanum < 2) return true;
+    if((t.length - alfanum) > Math.max(4, letras)) return true;
 
     return false;
   }
@@ -5497,20 +5509,21 @@ function switchTab(tab, el) {
   function limparLinhaOCR(linha){
     return String(linha||'')
       .replace(/^[\s•·\-–—_]+/,'')
+      .replace(/[\u200B-\u200D\uFEFF]/g,'')
       .replace(/\s+/g,' ')
       .trim();
   }
 
   function extrairMedicamentosOCRLiteralCompleto(texto){
     const saida=[], vistos=new Set();
-    const linhas=String(texto||'').split(/[\r\n]+/);
+    // OCR às vezes mistura linhas da lista com vírgulas/; da interface.
+    const linhas=String(texto||'').split(/[\r\n;,]+/);
 
     for(const bruta of linhas){
       const linha=limparLinhaOCR(bruta);
       if(pareceRuidoDeInterface(linha)) continue;
 
-      // Preserva exatamente o texto reconhecido pelo OCR.
-      // NÃO corrige, NÃO normaliza para nome comercial e NÃO consulta MEDS_DB.
+      // Preserva o nome lido pelo OCR: não completa e não acrescenta sufixos.
       const chave=ocrNorm(linha);
       if(!vistos.has(chave)){
         vistos.add(chave);
@@ -5579,7 +5592,7 @@ function switchTab(tab, el) {
           }
 
           mostrarAvisoBaseMedicamentos(
-            '📷 '+transcricao.length+' linha(s) transcrita(s) do OCR. Sem lista fechada e sem completar nomes.',
+            '📷 '+transcricao.length+' medicamento(s) identificado(s) na foto. Ruídos de teclado/interface foram descartados.',
             'ok'
           );
         }catch(err){
