@@ -3857,7 +3857,6 @@ async function rodarAnalise() {
     if (pacNomeExib || pacSinaisExib || pacDoencaExib || pacQueixaExib) {
       let pacHtml = '<div style="display:flex;flex-direction:column;gap:3px;margin-bottom:12px;padding:10px 12px;background:var(--surface2);border-radius:10px;border-left:3px solid var(--blue)">';
       if (pacNomeExib)   pacHtml += `<div style="font-size:14px;font-weight:800;color:#FFFFFF">👤 ${pacNomeExib}</div>`;
-      if (pacSinaisExib) pacHtml += `<div style="font-size:12px;margin-top:2px"><span style="color:#F5C842;font-weight:700">Sinal Vital Alterado:</span> <span style="color:#FFFFFF">${pacSinaisExib}</span></div>`;
       if (pacDoencaExib) pacHtml += `<div style="font-size:12px"><span style="color:#F5C842;font-weight:700">Doenças Prévias:</span> <span style="color:#FFFFFF">${pacDoencaExib}</span></div>`;
       if (pacQueixaExib) pacHtml += `<div style="font-size:12px"><span style="color:#F5C842;font-weight:700">Queixa Principal:</span> <span style="color:#FFFFFF">${pacQueixaExib}</span></div>`;
       pacHtml += '</div>';
@@ -3900,13 +3899,36 @@ async function rodarAnalise() {
     if (d.alertas_clinicos && d.alertas_clinicos.length) {
       // Filtrar: só mostrar alerta se o medicamento está na maleta
       const maletaNomes = (typeof MEDS !== 'undefined' ? MEDS : Object.keys(MEDS_DB)).map(m => m.toLowerCase());
+
+      // Evita repetição: hipóteses explicam o quadro clínico; alertas ficam apenas
+      // com cautelas práticas adicionais relacionadas aos medicamentos.
+      const textoHipoteseCompleto = [
+        ...(Array.isArray(hipPontos) ? hipPontos : []),
+        hipDetalhada || ''
+      ].join(' ');
+      const palavrasRelevantes = txt => new Set(
+        String(txt || '')
+          .normalize('NFD').replace(/[\\u0300-\\u036f]/g,'')
+          .toLowerCase()
+          .match(/[a-z]{4,}/g) || []
+      );
+      const hipTokens = palavrasRelevantes(textoHipoteseCompleto);
+      const motivoRepeteHipotese = motivo => {
+        const tokens = [...palavrasRelevantes(motivo)];
+        if (tokens.length < 4 || !hipTokens.size) return false;
+        const comuns = tokens.filter(t => hipTokens.has(t)).length;
+        return comuns / tokens.length >= 0.70;
+      };
+
       const alertasFiltrados = d.alertas_clinicos.filter(a => {
         const medLower = (a.medicamento || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
         // Verifica se algum medicamento da maleta aparece no alerta
-        return maletaNomes.some(m => {
+        const pertenceMaleta = maletaNomes.some(m => {
           const mNorm = m.normalize('NFD').replace(/[̀-ͯ]/g,'');
           return medLower.includes(mNorm.substring(0,6)) || mNorm.includes(medLower.substring(0,6));
         });
+        if (!pertenceMaleta) return false;
+        return !motivoRepeteHipotese(a.motivo || '');
       });
       if (!alertasFiltrados.length) { window._recsParaVerDetalhe = []; }
       const itensAlertas = alertasFiltrados.map(a => {
