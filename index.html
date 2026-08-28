@@ -5514,8 +5514,12 @@ function switchTab(tab, el) {
     const n=ocrNorm(t);
     if(!n || n.length < 2) return true;
 
-    // Teclado: sequências como "q w e r t y", "a s d f", etc.
+    // Teclado: tanto teclas separadas quanto trechos contíguos que o OCR junta,
+    // por exemplo "q w e r t y", "werty", "cvbnm", "sdfghjk" e semelhantes.
     if(/^(?:[a-z0-9]\s+){3,}[a-z0-9]$/i.test(t)) return true;
+    const tecladoCompacto=n.replace(/[^a-z]/g,'');
+    const linhasTeclado=['qwertyuiop','asdfghjkl','zxcvbnm'];
+    if(tecladoCompacto.length>=3 && linhasTeclado.some(l=>l.includes(tecladoCompacto))) return true;
 
     const ruidoExato=new Set([
       'abc','123','space','enter','shift','voltar','ok','cancelar',
@@ -5576,6 +5580,12 @@ function switchTab(tab, el) {
     for(const bruta of linhas){
       const linha=limparLinhaOCR(bruta);
       if(pareceRuidoDeInterface(linha)) continue;
+
+      // Segunda barreira: não permitir que ruído de teclado volte a escapar
+      // caso a limpeza da linha altere espaços ou caracteres invisíveis.
+      const compacto=ocrNorm(linha).replace(/[^a-z]/g,'');
+      const linhasTeclado=['qwertyuiop','asdfghjkl','zxcvbnm'];
+      if(compacto.length>=3 && linhasTeclado.some(l=>l.includes(compacto))) continue;
 
       // Preserva o nome lido pelo OCR: não completa e não acrescenta sufixos.
       const chave=ocrNorm(linha);
