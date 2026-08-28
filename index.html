@@ -5503,7 +5503,8 @@ function switchTab(tab, el) {
 
     const ruidoExato=new Set([
       'abc','123','space','enter','shift','voltar','ok','cancelar',
-      'copiar','colar','pesquisar','adicionar','foto','camera'
+      'copiar','colar','pesquisar','adicionar','foto','camera',
+      'titulo','title','texto','text','formatar','format'
     ]);
     if(ruidoExato.has(n)) return true;
 
@@ -5515,7 +5516,13 @@ function switchTab(tab, el) {
 
     // Descarta linhas claramente contaminadas por teclado/interface.
     const palavras=n.split(/\s+/).filter(Boolean);
-    if(palavras.length >= 3 && palavras.every(p => /^[a-z0-9]$/i.test(p))) return true;
+
+    // Fragmentos do teclado/editor, por exemplo "r t ui" ou "q w e".
+    // Nunca são nomes de medicamentos e estavam vazando para o resultado.
+    if(palavras.length >= 2 && palavras.every(p => /^[a-z0-9]$/i.test(p))) return true;
+
+    // Tokens isolados típicos de barras de formatação.
+    if(palavras.length === 1 && /^(?:a|aa|ui|rt|r|t|u|i)$/i.test(palavras[0])) return true;
     if(/[0-9]/.test(t) && (t.match(/\p{L}/gu)||[]).length < 5) return true;
 
     // Se houver muitos símbolos em relação às letras, é interface, não medicamento.
