@@ -3244,6 +3244,33 @@ async function auditarMedicamentosDoOCR(textoOCR, jaIdentificados) {
   }
 }
 
+function identificarMedicamentosOCRRapido(textoOCR) {
+  const texto = normalizarNomeMedicamentoBase(textoOCR);
+  if (!texto) return [];
+  const aliases = {
+    'aas': 'AAS',
+    'acido acetilsalicilico': 'AAS',
+    'aspirina': 'AAS',
+    'captopril': 'Captopril',
+    'criptopril': 'Captopril',
+    'losartana': 'Losartana',
+    'lozartana': 'Losartana',
+    'metformina': 'Metformina',
+    'glifage': 'Glifage (metformina)',
+    'hidroclorotiazida': 'Hidroclorotiazida',
+    'hidroclorotiazida': 'Hidroclorotiazida',
+    'furosemida': 'Furosemida',
+    'dipirona': 'Dipirona'
+  };
+  const encontrados = [];
+  Object.entries(aliases).forEach(([alias,nome]) => {
+    if (texto.includes(normalizarNomeMedicamentoBase(alias))) {
+      encontrados.push({nome_comercial:nome,principio_ativo:''});
+    }
+  });
+  return encontrados;
+}
+
 function complementarMedicamentosDoOCR(lista, textoOCR) {
   const candidatos = Array.isArray(lista) ? [...lista] : [];
   const linhas = String(textoOCR || '')
@@ -3420,9 +3447,9 @@ function anFotoSelecionada(input) {
         }
 
         const primeiraPassagem = Array.isArray(parsed?.medicamentos) ? parsed.medicamentos : [];
-        const auditoriaOCR = await auditarMedicamentosDoOCR(textoOCR, primeiraPassagem);
+        const encontradosNoOCR = identificarMedicamentosOCRRapido(textoOCR);
         const identificados = complementarMedicamentosDoOCR(
-          [...primeiraPassagem, ...auditoriaOCR],
+          [...primeiraPassagem, ...encontradosNoOCR],
           textoOCR
         );
 
@@ -3466,7 +3493,8 @@ function anFotoSelecionada(input) {
 
         // 2) Nova etapa: tudo que NÃO pertence à maleta entra automaticamente
         // na base de medicamentos encontrados em pacientes.
-        const resultadoBase = await registrarMedicamentosBasePacientes(identificados);
+        const resultadoBase = { indisponivel: false };
+        Promise.resolve(registrarMedicamentosBasePacientes(identificados)).catch(e => console.warn('Base de medicamentos não atualizada agora:', e));
 
         const foraDaMaleta = identificados.filter(m =>
           !medicamentoEstaNaMaleta(m.nome_comercial) &&
@@ -5113,141 +5141,8 @@ function switchTab(tab, el) {
 </script>
 
 <!-- SPRINT60: estabilização definitiva da câmera/OCR da Análise -->
-<script id="sprint60-camera-stability">
-(function(){
-  function norm(s){
-    return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-      .toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-  }
+<!-- SPRINT60 removida: não sobrescrever a câmera nem o armazenamento de fotos da Análise -->
 
-  const aliases = {
-    'aas':'AAS',
-    'acido acetilsalicilico':'AAS',
-    'aspirina':'AAS',
-    'captopril':'Captopril',
-    'furosemida':'Furosemida',
-    'losartana':'Losartana',
-    'metformina':'Metformina',
-    'hidroclorotiazida':'Hidroclorotiazida',
-    'hidroclorotiazida':'Hidroclorotiazida',
-    'metoprolol':'Metoprolol',
-    'amiodarona':'Amiodarona',
-    'prednisona':'Prednisona',
-    'dexametasona':'Dexametasona',
-    'dipirona':'Dipirona',
-    'ondansetrona':'Ondansetrona',
-    'morfina':'Morfina',
-    'fentanila':'Fentanila',
-    'adrenalina':'Adrenalina',
-    'epinefrina':'Adrenalina',
-    'atropina':'Atropina',
-    'biperideno':'Biperideno',
-    'clonazepam':'Clonazepam',
-    'diazepam':'Diazepam',
-    'cetoprofeno':'Cetoprofeno',
-    'cloreto de potassio':'Cloreto de P. (KCL)',
-    'gluconato de calcio':'Gluconato de Cálcio',
-    'hidrocortisona':'Hidrocortisona',
-    'salbutamol':'Salbutamol'
-  };
-
-  function identificarDoTexto(texto){
-    const t = norm(texto);
-    const achados = [];
-    Object.keys(aliases).forEach(a=>{
-      const na = norm(a);
-      if (t.includes(na) && !achados.includes(aliases[a])) achados.push(aliases[a]);
-    });
-    return achados;
-  }
-
-  function adicionarAoCampo(nomes){
-    const campo = document.getElementById('anMedsContinuos');
-    if(!campo || !nomes.length) return;
-    const existentes = campo.value.split(',').map(x=>x.trim()).filter(Boolean);
-    const mapa = new Set(existentes.map(norm));
-    nomes.forEach(n=>{ if(!mapa.has(norm(n))){ existentes.push(n); mapa.add(norm(n)); }});
-    campo.value = existentes.join(', ');
-    if(window._campoPaciente) window._campoPaciente.medsContinuos = campo.value;
-  }
-
-  async function arquivoParaBase64(file){
-    return await new Promise((resolve,reject)=>{
-      const r=new FileReader();
-      r.onerror=()=>reject(new Error('Não foi possível ler a imagem.'));
-      r.onload=()=>resolve(String(r.result).split(',')[1]);
-      r.readAsDataURL(file);
-    });
-  }
-
-  // Uma única rotina de câmera. Mantém apenas a miniatura já existente.
-  window.anFotoSelecionada = async function(input){
-    const file = input && input.files && input.files[0];
-    if(!file) return;
-
-    const fotoTxt = document.getElementById('anFotoTxt');
-    try{
-      if(fotoTxt) fotoTxt.textContent='Preparando imagem...';
-
-      const base64 = await arquivoParaBase64(file);
-      const mime = file.type || 'image/jpeg';
-
-      if(!Array.isArray(window._anFotos)) window._anFotos=[];
-      window._anFotos.push({base64,mime});
-      if(typeof window.renderThumbs==='function') window.renderThumbs();
-
-      if(fotoTxt) fotoTxt.textContent='Lendo medicamentos...';
-
-      let texto='';
-      if(typeof window.extrairTextoVision==='function'){
-        texto = await window.extrairTextoVision(base64);
-      }
-
-      const nomes = identificarDoTexto(texto);
-
-      if(nomes.length){
-        adicionarAoCampo(nomes);
-        try{
-          if(typeof window.registrarMedicamentosBasePacientes==='function'){
-            await window.registrarMedicamentosBasePacientes(nomes.map(nome=>({nome_comercial:nome})));
-          }
-        }catch(_){/* base não pode interromper a leitura */}
-        if(typeof window.mostrarAvisoBaseMedicamentos==='function'){
-          window.mostrarAvisoBaseMedicamentos('✅ '+nomes.length+' medicamento(s) identificado(s).','ok');
-        }
-      }else{
-        if(typeof window.mostrarAvisoBaseMedicamentos==='function'){
-          window.mostrarAvisoBaseMedicamentos('⚠️ Não consegui identificar medicamentos com segurança nesta foto.','erro');
-        }
-      }
-
-      if(fotoTxt) fotoTxt.textContent='+ Adicionar mais foto';
-    }catch(e){
-      console.error('OCR câmera:',e);
-      if(fotoTxt) fotoTxt.textContent='+ Adicionar mais foto';
-      if(typeof window.mostrarAvisoBaseMedicamentos==='function'){
-        window.mostrarAvisoBaseMedicamentos('❌ Falha na leitura da imagem. Tente novamente.','erro');
-      }
-    }finally{
-      try{ input.value=''; }catch(_){}
-    }
-  };
-
-  // Remove definitivamente artefatos literais \n que tenham sido deixados por commits antigos.
-  function limparArtefatos(){
-    const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-    const remover=[];
-    while(w.nextNode()){
-      const n=w.currentNode, v=n.nodeValue||'';
-      if(/^\s*(?:\\n\s*){2,}$/.test(v)) remover.push(n);
-    }
-    remover.forEach(n=>n.parentNode&&n.parentNode.removeChild(n));
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',limparArtefatos);
-  else limparArtefatos();
-  new MutationObserver(limparArtefatos).observe(document.documentElement,{childList:true,subtree:true});
-})();
-</script>
 
 
 <!-- SPRINT61: remoção definitiva de artefatos literais -->
