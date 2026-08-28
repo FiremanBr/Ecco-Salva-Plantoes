@@ -737,7 +737,7 @@ function updateUserBadge(){
           </div>
           <div id="anBuscaForaMaleta" aria-live="polite"></div>
           
-          <div id="anPreviewGrid" style="display:none;margin-top:6px">
+          <div id="anPreviewGrid" style="display:none;margin-top:10px;width:100%;clear:both">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
               <span id="anFotoCount" style="font-size:11px;font-weight:700;color:var(--green)"></span>
               <button onclick="limparFotos()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text-dim);font-size:11px;padding:3px 8px;cursor:pointer;font-family:Inter,sans-serif">✕</button>
@@ -3121,7 +3121,10 @@ function renderThumbs() {
     const _ft1 = document.getElementById('anFotoTxt'); if (_ft1) _ft1.textContent = 'Tocar para adicionar foto';
     return;
   }
-  document.getElementById('anPreviewGrid').style.display = 'block';
+  const preview = document.getElementById('anPreviewGrid');
+  preview.style.display = 'block';
+  preview.style.width = '100%';
+  preview.style.clear = 'both';
   const n = _anFotos.length;
   document.getElementById('anFotoCount').textContent = `${n} foto${n > 1 ? 's' : ''} adicionada${n > 1 ? 's' : ''}`;
   const _ft2 = document.getElementById('anFotoTxt'); if (_ft2) _ft2.textContent = '+ Adicionar mais foto';
@@ -3193,6 +3196,52 @@ function medicamentoEstaNaMaleta(nome) {
     const nk = normalizarNomeMedicamentoBase(k);
     return nk === alvo || nk.includes(alvo) || alvo.includes(nk);
   });
+}
+
+async function auditarMedicamentosDoOCR(textoOCR, jaIdentificados) {
+  const linhas = String(textoOCR || '').split(/[\n\r]+/).map(x => x.trim()).filter(Boolean);
+  if (!linhas.length) return [];
+
+  try {
+    const resposta = await callGroqServer(
+      [
+        {
+          role: 'system',
+          content:
+            'Você fará uma AUDITORIA FINAL de uma lista de OCR de medicamentos. ' +
+            'Leia linha por linha e encontre medicamentos que possam ter ficado de fora da primeira identificação. ' +
+            'Retorne SOMENTE medicamentos realmente escritos no OCR. Não invente. ' +
+            'Considere variações de OCR, acentos e pequenas falhas de leitura. ' +
+            'Responda exclusivamente em JSON: {"medicamentos":[{"nome_comercial":"...","principio_ativo":"","apresentacao":""}]}.'
+        },
+        {
+          role: 'user',
+          content:
+            'OCR completo:\n' + linhas.join('\n') +
+            '\n\nJá identificados na primeira passagem:\n' +
+            (Array.isArray(jaIdentificados) ? jaIdentificados.map(m => m.nome_comercial || m.principio_ativo || '').filter(Boolean).join('\n') : '')
+        }
+      ],
+      {
+        model: 'qwen/qwen3.6-27b',
+        max_tokens: 1200,
+        temperature: 0,
+        response_format: { type: 'json_object' }
+      }
+    );
+
+    const bruto = resposta?.choices?.[0]?.message?.content || '{}';
+    let parsed = {};
+    try { parsed = JSON.parse(bruto); }
+    catch (_) {
+      const trecho = bruto.match(/\{[\s\S]*\}/);
+      if (trecho) parsed = JSON.parse(trecho[0]);
+    }
+    return Array.isArray(parsed?.medicamentos) ? parsed.medicamentos : [];
+  } catch (e) {
+    console.warn('Auditoria adicional do OCR indisponível:', e);
+    return [];
+  }
 }
 
 function complementarMedicamentosDoOCR(lista, textoOCR) {
@@ -3370,10 +3419,12 @@ function anFotoSelecionada(input) {
           if (trecho) parsed = JSON.parse(trecho[0]);
         }
 
-        const identificados = complementarMedicamentosDoOCR(parsed?.medicamentos || [], textoOCR);
-
-        // Mostra a lupa somente para os medicamentos identificados que não pertencem à maleta.
-        renderBuscaForaMaleta(identificados);
+        const primeiraPassagem = Array.isArray(parsed?.medicamentos) ? parsed.medicamentos : [];
+        const auditoriaOCR = await auditarMedicamentosDoOCR(textoOCR, primeiraPassagem);
+        const identificados = complementarMedicamentosDoOCR(
+          [...primeiraPassagem, ...auditoriaOCR],
+          textoOCR
+        );
 
         if (!identificados.length) {
           if (fotoTxt) fotoTxt.textContent = '+ Adicionar mais foto';
@@ -3397,10 +3448,7 @@ function anFotoSelecionada(input) {
           const candidatos = [m.nome_comercial, m.principio_ativo].filter(Boolean);
           const jaExiste = candidatos.some(c => {
             const nc = normalizarNomeMedicamentoBase(c);
-            return normalizadosAtuais.some(a =>
-              a === nc || a.includes(nc.substring(0, Math.min(8, nc.length))) ||
-              nc.includes(a.substring(0, Math.min(8, a.length)))
-            );
+            return normalizadosAtuais.some(a => a === nc);
           });
 
           if (!jaExiste) {
