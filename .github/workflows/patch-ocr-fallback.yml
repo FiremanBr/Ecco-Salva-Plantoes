@@ -1,0 +1,88 @@
+name: Patch OCR fallback
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch OCR fallback
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          marker = "mostrarAvisoBaseMedicamentos('📷 Texto lido, mas a identificação automática dos medicamentos falhou.', 'erro');"
+          patch = r'''/* FALLBACK OCR ROBUSTO: usa o texto lido para reconhecer medicamentos conhecidos mesmo quando a IA falha */
+          try {
+            const ocrLinhas = String(textoOCR || '').split(/\\r?\\n/).map(x => x.trim()).filter(Boolean);
+            const aliasesOCR = {
+              'losartana':'Losartana','lozartana':'Losartana','losartan':'Losartana',
+              'metformina':'Metformina','glifage':'Glifage (metformina)','glifagem':'Glifage (metformina)',
+              'aas':'AAS','ácido acetilsalicílico':'AAS','acido acetilsalicilico':'AAS',
+              'hidroclorotiazida':'Hidroclorotiazida','hidroclorotiazida':'Hidroclorotiazida',
+              'captopril':'Captopril','criptopril':'Captopril',
+              'furosemida':'Furosemida'
+            };
+            const chaves = Object.keys(aliasesOCR);
+            const encontradosOCR = [];
+            const normOCR = v => String(v || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9+ ]/g,' ').replace(/\\s+/g,' ').trim();
+            for (const linha of ocrLinhas) {
+              const n = normOCR(linha);
+              if (!n) continue;
+              for (const chave of chaves) {
+                const nk = normOCR(chave);
+                if (n === nk || n.includes(nk) || nk.includes(n)) {
+                  const nome = aliasesOCR[chave];
+                  if (!encontradosOCR.some(x => normOCR(x) === normOCR(nome))) encontradosOCR.push(nome);
+                }
+              }
+            }
+            /* Também tenta casar diretamente com a base da Maleta. */
+            if (typeof MEDS_DB === 'object' && MEDS_DB) {
+              for (const nomeBase of Object.keys(MEDS_DB)) {
+                const nb = normOCR(nomeBase);
+                if (nb.length < 3) continue;
+                if (ocrLinhas.some(l => normOCR(l).includes(nb))) {
+                  if (!encontradosOCR.some(x => normOCR(x) === nb)) encontradosOCR.push(nomeBase);
+                }
+              }
+            }
+            if (encontradosOCR.length) {
+              const atuais = campoMeds.value.split(',').map(x => x.trim()).filter(Boolean);
+              const normAtuais = atuais.map(normOCR);
+              const novos = encontradosOCR.filter(nome => !normAtuais.includes(normOCR(nome)));
+              if (novos.length) {
+                campoMeds.value = [...atuais, ...novos].join(', ');
+                _campoPaciente.medsContinuos = campoMeds.value;
+              }
+              if (fotoTxt) fotoTxt.textContent = 'Medicamentos identificados';
+              mostrarAvisoBaseMedicamentos('📷 Medicamentos identificados pelo texto da foto.', 'ok');
+            } else {
+              mostrarAvisoBaseMedicamentos('📷 Texto lido, mas a identificação automática dos medicamentos falhou.', 'erro');
+            }
+          } catch (eFallback) {
+            mostrarAvisoBaseMedicamentos('📷 Texto lido, mas a identificação automática dos medicamentos falhou.', 'erro');
+          }'''
+          if marker not in s:
+              raise SystemExit('Marcador do fallback não encontrado; nenhuma alteração feita.')
+          s = s.replace(marker, patch, 1)
+          p.write_text(s, encoding='utf-8')
+      - name: Commit and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/patch-ocr-fallback.yml
+          git add index.html .github/workflows/patch-ocr-fallback.yml
+          git commit -m "fix: robust OCR medication fallback"
+          git push origin main
