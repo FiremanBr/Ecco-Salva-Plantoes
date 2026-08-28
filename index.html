@@ -3034,7 +3034,7 @@ Interprete variações fonéticas: "forchiga"/"forsiga" → Forxiga (dapaglifloz
 })();
 
 // Array de fotos: cada item = { base64, mime }
-let _anFotos = [];
+let _anFotos = []; window._anFotosRef = _anFotos;
 // Dados persistentes do paciente (enquanto não salvar)
 let _campoPaciente = { nome: '', sinais: '', comorb: '', queixa: '' };
 let _checkboxState = {}; // rec_0: true/false
@@ -5521,8 +5521,8 @@ function switchTab(tab, el) {
           const mime='image/jpeg';
 
           // Mantém a foto para o restante do atendimento.
-          if(Array.isArray(window._anFotos)){
-            window._anFotos.push({base64,mime});
+          if(Array.isArray(window._anFotosRef)){
+            window._anFotosRef.push({base64,mime});
             if(typeof renderThumbs==='function') renderThumbs();
           }
 
