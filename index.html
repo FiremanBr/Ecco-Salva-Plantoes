@@ -2610,10 +2610,26 @@ async function executarBuscaForaMaleta() {
   result.innerHTML = `<div class="loading-wrap"><div class="pulse-ring"></div><p class="loading-text">Consultando medicamento...</p></div>`;
 
   try {
+    // Se o medicamento pesquisado já existe na base oficial/local da Maleta,
+    // usar a ficha completa local. Isso evita respostas da IA com "..." em campos.
+    const normalizarBusca = s => String(s || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    const chaveLocal = Object.keys(MEDS_DB || {}).find(nome => normalizarBusca(nome) === normalizarBusca(q));
+
+    if (chaveLocal) {
+      result.innerHTML = buildCardFromDB(chaveLocal);
+      return;
+    }
+
     const data = await callClaude(q);
     let html = '';
 
-    (Array.isArray(data?.medicamentos) ? data.medicamentos : []).forEach(med => {
+    const listaRetornada = Array.isArray(data?.medicamentos) ? data.medicamentos : [];
+    const temConteudoUtil = v => {
+      const s = String(v || '').trim();
+      return s && !/^(\.{3,}|…+|n\/a|na|não informado|nao informado)$/i.test(s);
+    };
+
+    listaRetornada.forEach(med => {
       const fonteLabel = med.fonte || 'Literatura geral';
       const fonteIcon = fonteLabel.toLowerCase().includes('einstein') ? '🏥' :
                         fonteLabel.toLowerCase().includes('anvisa') ? '🇧🇷' :
@@ -2629,14 +2645,14 @@ async function executarBuscaForaMaleta() {
             <span class="med-badge" style="background:rgba(59,155,232,0.15);color:var(--blue);border-color:rgba(59,155,232,0.3)">${fonteIcon} ${escHtmlAuth(fonteLabel)}</span>
           </div>
           <div class="med-card-body">
-            <div><div class="row-lbl">📦 Apresentação</div><div class="row-val">${escHtmlAuth(med.apresentacao || 'Não identificada')}</div></div>
+            <div><div class="row-lbl">📦 Apresentação</div><div class="row-val">${escHtmlAuth(temConteudoUtil(med.apresentacao) ? med.apresentacao : 'Não informado')}</div></div>
             <div class="divider"></div>
-            <div><div class="row-lbl">📌 Para que serve</div><div class="row-val">${escHtmlAuth(med.para_que_serve || 'Não informado')}</div></div>
-            <div><div class="row-lbl">💉 Via</div><div class="row-val">${escHtmlAuth(med.via || 'Não informada')}</div></div>
-            <div><div class="row-lbl">🧪 Diluente e preparo</div><div class="row-val">${escHtmlAuth(med.diluente || 'Não informado')}</div></div>
-            <div><div class="row-lbl">🔄 Flush</div><div class="row-val">${escHtmlAuth(med.flush || 'Não informado')}</div></div>
+            <div><div class="row-lbl">📌 Para que serve</div><div class="row-val">${escHtmlAuth(temConteudoUtil(med.para_que_serve) ? med.para_que_serve : 'Não informado')}</div></div>
+            <div><div class="row-lbl">💉 Via</div><div class="row-val">${escHtmlAuth(temConteudoUtil(med.via) ? med.via : 'Não informado')}</div></div>
+            <div><div class="row-lbl">🧪 Diluente e preparo</div><div class="row-val">${escHtmlAuth(temConteudoUtil(med.diluente) ? med.diluente : 'Não informado')}</div></div>
+            <div><div class="row-lbl">🔄 Flush</div><div class="row-val">${escHtmlAuth(temConteudoUtil(med.flush) ? med.flush : 'Não informado')}</div></div>
             <div class="divider"></div>
-            <div class="interacao-box"><div class="interacao-title">⚠️ Efeitos no organismo</div><div class="interacao-item">${escHtmlAuth(med.efeitos_corpo || 'Não informado')}</div></div>
+            <div class="interacao-box"><div class="interacao-title">⚠️ Efeitos no organismo</div><div class="interacao-item">${escHtmlAuth(temConteudoUtil(med.efeitos_corpo) ? med.efeitos_corpo : 'Não informado')}</div></div>
           </div>
         </div>`;
     });
