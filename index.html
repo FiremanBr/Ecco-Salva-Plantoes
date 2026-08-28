@@ -5028,46 +5028,8 @@ function switchTab(tab, el) {
 </div>
 
 
-<script id="sprint52-lupa-guarantee">
-(function(){
-  function instalarLupaMedicamentos(){
-    const campos = document.querySelectorAll('#anMedsContinuos');
-    campos.forEach(function(campo){
-      const parent = campo.parentElement;
-      if (!parent) return;
-      if (parent.querySelector('[data-sprint52-lupa]')) return;
+<!-- SPRINT52 desativada: a lupa não pertence à Análise. A câmera permanece exclusiva neste campo. -->
 
-      const wrap = document.createElement('div');
-      wrap.setAttribute('data-sprint52-lupa','1');
-      wrap.style.cssText='position:absolute;bottom:8px;right:8px;display:flex;gap:5px;align-items:center;z-index:10;';
-
-      const btn = document.createElement('button');
-      btn.type='button';
-      btn.setAttribute('aria-label','Pesquisar medicamento');
-      btn.title='Pesquisar medicamento';
-      btn.textContent='🔎';
-      btn.style.cssText='background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:6px 8px;cursor:pointer;font-size:17px;line-height:1;color:var(--text);';
-      btn.onclick=function(){
-        if(typeof abrirBuscaForaMaleta === 'function') abrirBuscaForaMaleta('');
-        else {
-          const modal=document.getElementById('buscaForaMaletaModal');
-          const input=document.getElementById('buscaForaMaletaInput');
-          if(modal){ modal.style.display='flex'; if(input) input.focus(); }
-        }
-      };
-
-      wrap.appendChild(btn);
-      parent.appendChild(wrap);
-    });
-  }
-
-  document.addEventListener('DOMContentLoaded', instalarLupaMedicamentos);
-  const observer = new MutationObserver(instalarLupaMedicamentos);
-  observer.observe(document.documentElement,{childList:true,subtree:true});
-  setTimeout(instalarLupaMedicamentos,500);
-  setTimeout(instalarLupaMedicamentos,1500);
-})();
-</script>
 
 <!-- SPRINT59: administração prática e expansão de siglas na pesquisa -->
 <script id="sprint59-pesquisa-clinica">
