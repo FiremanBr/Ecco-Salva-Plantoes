@@ -5388,5 +5388,45 @@ function switchTab(tab, el) {
   setInterval(limparLupaAnalise,1000);
 })();
 </script>
+
+
+<!-- SPRINT62: correção definitiva da busca da Maleta — prioriza base local validada -->
+<script id="sprint62-busca-maleta-estavel">
+(function(){
+  const buscaAnterior = window.executarBuscaForaMaleta;
+  function norm(v){
+    return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+      .replace(/[^a-z0-9]+/g,' ').trim();
+  }
+  const aliases={
+    'aas':'AAS','a a s':'AAS','acido acetilsalicilico':'AAS','aspirina':'AAS',
+    'kcl':'Cloreto de P. (KCL)','cloreto de potassio':'Cloreto de P. (KCL)',
+    'bicarbonato':'Bicarbonato de Sódio','buscopan composto':'Buscopan C.','buscopan simples':'Buscopan S.'
+  };
+  function acharLocal(q){
+    if(!window.MEDS_DB) return null;
+    const nq=norm(q);
+    const alias=aliases[nq];
+    if(alias && MEDS_DB[alias]) return alias;
+    return Object.keys(MEDS_DB).find(k=>norm(k)===nq) || null;
+  }
+  window.executarBuscaForaMaleta = async function(){
+    const input=document.getElementById('buscaForaMaletaInput');
+    const btn=document.getElementById('buscaForaMaletaBtn');
+    const result=document.getElementById('buscaForaMaletaResult');
+    if(!input||!btn||!result) return;
+    const q=input.value.trim();
+    if(!q) return;
+    const local=acharLocal(q);
+    if(local && typeof buildCardFromDB==='function'){
+      result.innerHTML=buildCardFromDB(local);
+      return;
+    }
+    if(typeof buscaAnterior==='function') return buscaAnterior();
+    result.innerHTML='<div class="error-box">⚠️ Pesquisa temporariamente indisponível.</div>';
+  };
+})();
+</script>
+
 </body>
 </html>
