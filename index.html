@@ -5453,71 +5453,74 @@ function switchTab(tab, el) {
 </html>
 
 
-<!-- SPRINT63: OCR ESTRITO — transcrição literal, sem IA complementar -->
-<script id="sprint63-ocr-estrito">
+<!-- SPRINT64: OCR LITERAL COMPLETO — sem lista fechada de medicamentos -->
+<script id="sprint64-ocr-literal-completo">
 (function(){
   function ocrNorm(v){
     return String(v||'')
       .trim()
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
       .toLowerCase()
-      .replace(/^[\s•·\-–—\d.)]+/,'')
-      .replace(/[^\p{L}\p{N}\s.+-]/gu,' ')
       .replace(/\s+/g,' ')
       .trim();
   }
 
-  // Cada entrada só é aceita quando a própria linha do OCR sustenta o nome.
-  // Não há busca por "contém" contra a MEDS_DB e não há IA completando nomes.
-  const OCR_EXATO = {
-    'dipirona':'Dipirona',
-    'buscopan':'Buscopan',
-    'bucospan':'Buscopan',
-    'buscopan composto':'Buscopan Composto',
-    'buscopan comp':'Buscopan Composto',
-    'buscopan c':'Buscopan C.',
-    'buscopan simples':'Buscopan Simples',
-    'buscopan s':'Buscopan S.',
-    'aas':'AAS',
-    'a a s':'AAS',
-    'acido acetilsalicilico':'Ácido acetilsalicílico',
-    'aspirina':'Aspirina',
-    'captopril':'Captopril',
-    'captropil':'Captopril',
-    'criptopril':'Captopril',
-    'losartana':'Losartana',
-    'lozartana':'Losartana',
-    'losartan':'Losartana',
-    'tramadol':'Tramadol',
-    'tramodol':'Tramadol',
-    'metformina':'Metformina',
-    'metformine':'Metformina',
-    'hidroclorotiazida':'Hidroclorotiazida',
-    'furosemida':'Furosemida'
-  };
+  /*
+   * IMPORTANTE:
+   * Não existe mais lista branca de medicamentos.
+   * Tudo que o OCR reconhecer como uma linha textual da lista é preservado.
+   * Só removemos ruído evidente de teclado/interface (letras isoladas e linhas
+   * de controles), sem "adivinhar" ou completar nomes.
+   */
+  function pareceRuidoDeInterface(linha){
+    const t=String(linha||'').trim();
+    const n=ocrNorm(t);
+    if(!n) return true;
+    if(n.length < 2) return true;
 
-  function extrairMedicamentosOCRLiteral(texto){
+    // Teclado: sequências como "q w e r t y", "a s d f", etc.
+    if(/^(?:[a-z0-9]\s+){3,}[a-z0-9]$/i.test(t)) return true;
+
+    const ruidoExato=new Set([
+      'abc','123','space','enter','shift','voltar','ok','cancelar',
+      'copiar','colar','pesquisar','adicionar','foto','camera'
+    ]);
+    if(ruidoExato.has(n)) return true;
+
+    // Linhas formadas quase exclusivamente por símbolos/controles.
+    const letras=(t.match(/[\p{L}\p{N}]/gu)||[]).length;
+    if(letras < 2) return true;
+
+    return false;
+  }
+
+  function limparLinhaOCR(linha){
+    return String(linha||'')
+      .replace(/^[\s•·\-–—_]+/,'')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+
+  function extrairMedicamentosOCRLiteralCompleto(texto){
     const saida=[], vistos=new Set();
-    const linhas=String(texto||'')
-      .split(/[\r\n]+/)
-      .map(ocrNorm)
-      .filter(Boolean);
+    const linhas=String(texto||'').split(/[\r\n]+/);
 
-    for(const linha of linhas){
-      const nome=OCR_EXATO[linha];
-      if(!nome) continue;
-      const chave=ocrNorm(nome);
+    for(const bruta of linhas){
+      const linha=limparLinhaOCR(bruta);
+      if(pareceRuidoDeInterface(linha)) continue;
+
+      // Preserva exatamente o texto reconhecido pelo OCR.
+      // NÃO corrige, NÃO normaliza para nome comercial e NÃO consulta MEDS_DB.
+      const chave=ocrNorm(linha);
       if(!vistos.has(chave)){
         vistos.add(chave);
-        saida.push(nome);
+        saida.push(linha);
       }
     }
     return saida;
   }
 
-  // Substitui o fluxo anterior: OCR -> leitura literal por linha -> campo.
-  // Deliberadamente NÃO chama Groq, complementarMedicamentosDoOCR ou MEDS_DB.
-  window.anFotoSelecionada = function(input){
+  window.anFotoSelecionada=function(input){
     const file=input && input.files && input.files[0];
     if(!file) return;
 
@@ -5525,12 +5528,13 @@ function switchTab(tab, el) {
     reader.onload=function(e){
       const img=new Image();
       img.onload=async function(){
+        const fotoTxt=document.getElementById('anFotoTxt');
         try{
-          const MAX=2200;
+          const MAX=2400;
           let w=img.width,h=img.height;
           if(w>MAX||h>MAX){
-            if(w>h){ h=Math.round(h*MAX/w); w=MAX; }
-            else { w=Math.round(w*MAX/h); h=MAX; }
+            if(w>h){h=Math.round(h*MAX/w);w=MAX;}
+            else {w=Math.round(w*MAX/h);h=MAX;}
           }
 
           const canvas=document.createElement('canvas');
@@ -5538,49 +5542,51 @@ function switchTab(tab, el) {
           const ctx=canvas.getContext('2d',{willReadFrequently:true});
           ctx.drawImage(img,0,0,w,h);
 
-          const base64=canvas.toDataURL('image/jpeg',0.92).split(',')[1];
+          const base64=canvas.toDataURL('image/jpeg',0.95).split(',')[1];
           const mime='image/jpeg';
 
-          // Mantém a foto para o restante do atendimento.
           if(Array.isArray(window._anFotosRef)){
             window._anFotosRef.push({base64,mime});
             if(typeof renderThumbs==='function') renderThumbs();
           }
 
-          const campo=document.getElementById('anMedsContinuos');
-          const fotoTxt=document.getElementById('anFotoTxt');
-          if(fotoTxt) fotoTxt.textContent='Lendo medicamentos...';
+          if(fotoTxt) fotoTxt.textContent='Transcrevendo texto da foto...';
 
-          const texto=await extrairTextoVision(base64);
-          const medicamentos=extrairMedicamentosOCRLiteral(texto);
+          const textoOCR=await extrairTextoVision(base64);
+          const transcricao=extrairMedicamentosOCRLiteralCompleto(textoOCR);
 
-          if(!medicamentos.length){
-            if(fotoTxt) fotoTxt.textContent='+ Adicionar mais foto';
-            mostrarAvisoBaseMedicamentos('⚠️ Não foi possível identificar medicamentos com segurança. Nenhum nome foi inventado.', 'erro');
+          if(!transcricao.length){
+            mostrarAvisoBaseMedicamentos('⚠️ Não foi possível ler texto suficiente na foto. Nenhum medicamento foi inventado.', 'erro');
             return;
           }
 
+          const campo=document.getElementById('anMedsContinuos');
           const atuais=campo ? campo.value.split(',').map(x=>x.trim()).filter(Boolean) : [];
           const vistos=new Set(atuais.map(ocrNorm));
-          const novos=medicamentos.filter(m=>{
-            const k=ocrNorm(m);
-            if(vistos.has(k)) return false;
+
+          // Adiciona TODAS as linhas transcritas do OCR que ainda não estejam no campo.
+          const novos=[];
+          for(const item of transcricao){
+            const k=ocrNorm(item);
+            if(vistos.has(k)) continue;
             vistos.add(k);
-            return true;
-          });
+            novos.push(item);
+          }
 
           if(campo && novos.length){
             campo.value=[...atuais,...novos].join(', ');
             if(window._campoPaciente) window._campoPaciente.medsContinuos=campo.value;
           }
 
-          if(fotoTxt) fotoTxt.textContent='+ Adicionar mais foto';
-          mostrarAvisoBaseMedicamentos('📷 '+medicamentos.length+' medicamento(s) transcrito(s) diretamente da foto, sem complementação.', 'ok');
+          mostrarAvisoBaseMedicamentos(
+            '📷 '+transcricao.length+' linha(s) transcrita(s) do OCR. Sem lista fechada e sem completar nomes.',
+            'ok'
+          );
         }catch(err){
-          console.error('OCR estrito:',err);
-          const fotoTxt=document.getElementById('anFotoTxt');
+          console.error('OCR literal completo:',err);
+          mostrarAvisoBaseMedicamentos('📷 Erro ao ler a foto. Nenhum medicamento foi criado automaticamente.', 'erro');
+        }finally{
           if(fotoTxt) fotoTxt.textContent='+ Adicionar mais foto';
-          mostrarAvisoBaseMedicamentos('📷 Erro ao ler a foto. Nenhum medicamento foi adicionado automaticamente.', 'erro');
         }
       };
       img.src=e.target.result;
@@ -5588,6 +5594,6 @@ function switchTab(tab, el) {
     reader.readAsDataURL(file);
   };
 
-  window.extrairMedicamentosOCRLiteral=extrairMedicamentosOCRLiteral;
+  window.extrairMedicamentosOCRLiteralCompleto=extrairMedicamentosOCRLiteralCompleto;
 })();
 </script>
