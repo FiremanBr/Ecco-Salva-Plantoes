@@ -3436,7 +3436,57 @@ function anFotoSelecionada(input) {
           _campoPaciente.medsContinuos = campoMeds.value;
         }
 
-        mostrarAvisoBaseMedicamentos('📷 Texto lido, mas a identificação automática dos medicamentos falhou.', 'erro');
+        /* FALLBACK OCR ROBUSTO: usa o texto lido para reconhecer medicamentos conhecidos mesmo quando a IA falha */
+try {
+  const ocrLinhas = String(textoOCR || '').split(/\\r?\\n/).map(x => x.trim()).filter(Boolean);
+  const aliasesOCR = {
+    'losartana':'Losartana','lozartana':'Losartana','losartan':'Losartana',
+    'metformina':'Metformina','glifage':'Glifage (metformina)','glifagem':'Glifage (metformina)',
+    'aas':'AAS','ácido acetilsalicílico':'AAS','acido acetilsalicilico':'AAS',
+    'hidroclorotiazida':'Hidroclorotiazida','hidroclorotiazida':'Hidroclorotiazida',
+    'captopril':'Captopril','criptopril':'Captopril',
+    'furosemida':'Furosemida'
+  };
+  const chaves = Object.keys(aliasesOCR);
+  const encontradosOCR = [];
+  const normOCR = v => String(v || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9+ ]/g,' ').replace(/\\s+/g,' ').trim();
+  for (const linha of ocrLinhas) {
+    const n = normOCR(linha);
+    if (!n) continue;
+    for (const chave of chaves) {
+      const nk = normOCR(chave);
+      if (n === nk || n.includes(nk) || nk.includes(n)) {
+        const nome = aliasesOCR[chave];
+        if (!encontradosOCR.some(x => normOCR(x) === normOCR(nome))) encontradosOCR.push(nome);
+      }
+    }
+  }
+  /* Também tenta casar diretamente com a base da Maleta. */
+  if (typeof MEDS_DB === 'object' && MEDS_DB) {
+    for (const nomeBase of Object.keys(MEDS_DB)) {
+      const nb = normOCR(nomeBase);
+      if (nb.length < 3) continue;
+      if (ocrLinhas.some(l => normOCR(l).includes(nb))) {
+        if (!encontradosOCR.some(x => normOCR(x) === nb)) encontradosOCR.push(nomeBase);
+      }
+    }
+  }
+  if (encontradosOCR.length) {
+    const atuais = campoMeds.value.split(',').map(x => x.trim()).filter(Boolean);
+    const normAtuais = atuais.map(normOCR);
+    const novos = encontradosOCR.filter(nome => !normAtuais.includes(normOCR(nome)));
+    if (novos.length) {
+      campoMeds.value = [...atuais, ...novos].join(', ');
+      _campoPaciente.medsContinuos = campoMeds.value;
+    }
+    if (fotoTxt) fotoTxt.textContent = 'Medicamentos identificados';
+    mostrarAvisoBaseMedicamentos('📷 Medicamentos identificados pelo texto da foto.', 'ok');
+  } else {
+    mostrarAvisoBaseMedicamentos('📷 Texto lido, mas a identificação automática dos medicamentos falhou.', 'erro');
+  }
+} catch (eFallback) {
+  mostrarAvisoBaseMedicamentos('📷 Texto lido, mas a identificação automática dos medicamentos falhou.', 'erro');
+}
       }
 
       if (fotoTxt) fotoTxt.textContent = '+ Adicionar mais foto';
