@@ -1494,7 +1494,7 @@ function renderMaleta() {
         : med;
 
       const isFav = _favoritos.has(med);
-      html += `<div class="med-chip${isNovaLetra ? ' new-letter' : ''}${isFav ? ' favorito' : ''}" data-med="${med}" onclick="toggleMed('${med}',this)">
+      html += `<div class="med-chip${isNovaLetra ? ' new-letter' : ''}${isFav ? ' favorito' : ''}" data-med="${med}" onclick="handleMaletaMedClick('${med}',this,event)">
         <span class="ck">✓</span>${nomeExibido}${isFav ? '<span class="med-fav-mark" title="Favorito">⭐</span>' : ''}
       </div>`;
     });
@@ -1587,6 +1587,14 @@ function temDadosPaciente() {
   const queixa = document.getElementById('anQueixa') && document.getElementById('anQueixa').value.trim();
   const meds   = document.getElementById('anMedsContinuos') && document.getElementById('anMedsContinuos').value.trim();
   return !!(voz || nome || sinais || queixa || meds || _campoPaciente.voz || _ultimaAnalise);
+}
+
+function handleMaletaMedClick(nome, el, ev) {
+  // Clique normal: mantém a seleção/ficha e também garante a estrela de favorito.
+  // O toque longo continua sendo usado para remover/adicionar manualmente.
+  if (el && el.dataset && el.dataset.skipClick === '1') return;
+  if (!_favoritos.has(nome)) toggleFavorito(nome, ev);
+  toggleMed(nome, el);
 }
 
 function toggleMed(nome, el) {
@@ -3568,12 +3576,20 @@ function anFotoSelecionada(input) {
 try {
   const ocrLinhas = String(textoOCR || '').split(/\\r?\\n/).map(x => x.trim()).filter(Boolean);
   const aliasesOCR = {
-    'losartana':'Losartana','lozartana':'Losartana','losartan':'Losartana',
-    'metformina':'Metformina','glifage':'Glifage (metformina)','glifagem':'Glifage (metformina)',
+    // Nomes frequentes nas listas fotografadas
+    'dipirona':'Dipirona',
     'aas':'AAS','ácido acetilsalicílico':'AAS','acido acetilsalicilico':'AAS',
-    'hidroclorotiazida':'Hidroclorotiazida','hidroclorotiazida':'Hidroclorotiazida',
     'captopril':'Captopril','criptopril':'Captopril',
-    'furosemida':'Furosemida'
+    'losartana':'Losartana','lozartana':'Losartana','losartan':'Losartana',
+    'metformina':'Metformina',
+    'tramadol':'Tramadol',
+    // Não acrescentar "Comp."/"Composto" quando o OCR disser apenas Buscopan.
+    'buscopan':'Buscopan',
+    'buscopan composto':'Buscopan C.',
+    'buscopan simples':'Buscopan S.',
+    'hidroclorotiazida':'Hidroclorotiazida',
+    'furosemida':'Furosemida',
+    'glifage':'Glifage (metformina)','glifagem':'Glifage (metformina)'
   };
   const chaves = Object.keys(aliasesOCR);
   const encontradosOCR = [];
@@ -3594,7 +3610,13 @@ try {
     for (const nomeBase of Object.keys(MEDS_DB)) {
       const nb = normOCR(nomeBase);
       if (nb.length < 3) continue;
-      if (ocrLinhas.some(l => normOCR(l).includes(nb))) {
+      // Buscopan: só usar C./S. se esse complemento estiver efetivamente no texto.
+      if ((nb === 'buscopan c' || nb === 'buscopan s') &&
+          ocrLinhas.some(l => normOCR(l) === 'buscopan')) continue;
+      if (ocrLinhas.some(l => {
+        const nl = normOCR(l);
+        return nl === nb || nl.includes(nb);
+      })) {
         if (!encontradosOCR.some(x => normOCR(x) === nb)) encontradosOCR.push(nomeBase);
       }
     }
