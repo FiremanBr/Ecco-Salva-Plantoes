@@ -3344,12 +3344,28 @@ function canonicalizarMedicamentoOCR(nome) {
   return bruto;
 }
 
+function ehRuidoDeTecladoOCR(nome) {
+  const n = normalizarNomeMedicamentoBase(nome).replace(/[^a-z]/g, '');
+  if (!n) return true;
+
+  // Textos típicos capturados da interface/teclado do SMART.
+  const interfaceRuido = new Set(['titulo','titulo','title','medicamentos','medicamento','teclado','buscar','pesquisar']);
+  if (interfaceRuido.has(n)) return true;
+
+  // Sequências contíguas das fileiras do teclado: qwerty, asdfgh, zxcvbn etc.
+  // Basta 3 caracteres consecutivos para não deixar entrar "werty", "sdfghjk", "bnm" e semelhantes.
+  const linhasTeclado = ['qwertyuiop','asdfghjkl','zxcvbnm'];
+  if (n.length >= 3 && linhasTeclado.some(l => l.includes(n))) return true;
+
+  return false;
+}
+
 function deduplicarMedicamentosIdentificados(lista) {
   const mapa = new Map();
   (Array.isArray(lista) ? lista : []).forEach(item => {
     const obj = typeof item === 'string' ? { nome_comercial: item } : (item || {});
     const nome = canonicalizarMedicamentoOCR(obj.nome_comercial || obj.nome || obj.medicamento || obj.principio_ativo || '');
-    if (nome.length < 2) return;
+    if (nome.length < 2 || ehRuidoDeTecladoOCR(nome)) return;
     const chave = normalizarNomeMedicamentoBase(obj.principio_ativo || nome);
     if (!chave) return;
     if (!mapa.has(chave)) {
@@ -3601,8 +3617,8 @@ try {
     'tramadol':'Tramadol',
     // Não acrescentar "Comp."/"Composto" quando o OCR disser apenas Buscopan.
     'buscopan':'Buscopan',
-    'buscopan composto':'Buscopan C.',
-    'buscopan simples':'Buscopan S.',
+    'buscopan composto':'Buscopan Composto',
+    'buscopan simples':'Buscopan',
     'hidroclorotiazida':'Hidroclorotiazida',
     'furosemida':'Furosemida',
     'glifage':'Glifage (metformina)','glifagem':'Glifage (metformina)'
