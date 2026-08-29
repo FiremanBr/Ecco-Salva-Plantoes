@@ -3854,7 +3854,9 @@ async function rodarAnalise() {
     let html = '';
 
     // Cabeçalho do paciente organizado
-    if (pacNomeExib || pacSinaisExib || pacDoencaExib || pacQueixaExib) {
+    // Só cria o cabeçalho se houver informações que realmente serão exibidas.
+    // O sinal vital alterado não é repetido nesta área.
+    if (pacNomeExib || pacDoencaExib || pacQueixaExib) {
       let pacHtml = '<div style="display:flex;flex-direction:column;gap:3px;margin-bottom:12px;padding:10px 12px;background:var(--surface2);border-radius:10px;border-left:3px solid var(--blue)">';
       if (pacNomeExib)   pacHtml += `<div style="font-size:14px;font-weight:800;color:#FFFFFF">👤 ${pacNomeExib}</div>`;
       if (pacDoencaExib) pacHtml += `<div style="font-size:12px"><span style="color:#F5C842;font-weight:700">Doenças Prévias:</span> <span style="color:#FFFFFF">${pacDoencaExib}</span></div>`;
