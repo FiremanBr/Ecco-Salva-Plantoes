@@ -1,0 +1,25 @@
+name: Aplicar correção da ficha de medicamentos
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: "!contains(github.event.head_commit.message, 'APPLIED-MED-FIX')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar patch
+        run: python3 scripts/add_commercial_names.py
+      - name: Commitar patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html scripts/add_commercial_names.py
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: ficha completa, nomes comerciais e busca local [APPLIED-MED-FIX]"
+          git push
