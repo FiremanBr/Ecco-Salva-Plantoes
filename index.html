@@ -5663,6 +5663,27 @@ function switchTab(tab, el) {
   setInterval(limparLupaAnalise,1000);
 })();
 </script>
+<script id="sprint56-runtime">
+(function(){
+  function limparLupaAnalise(){
+    var campo=document.getElementById('anMedsContinuos');
+    if(!campo||!campo.parentElement)return;
+    var area=campo.parentElement;
+    area.querySelectorAll('button').forEach(function(b){
+      var t=((b.getAttribute('aria-label')||'')+' '+(b.getAttribute('title')||'')+' '+(b.getAttribute('onclick')||'')).toLowerCase();
+      if(t.indexOf('pesquisar medicamento')>=0||t.indexOf('abrirbuscaforamaleta')>=0)b.remove();
+    });
+    if(!area.querySelector('button[onclick*="abrirCamera"]')){
+      var d=document.createElement('div');d.style.cssText='position:absolute;bottom:8px;right:8px';
+      d.innerHTML='<button type="button" onclick="abrirCamera()" title="Fotografar receita ou tela" aria-label="Fotografar receita ou tela" style="background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:6px 8px;cursor:pointer;font-size:18px;line-height:1">📸</button>';
+      area.appendChild(d);
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',limparLupaAnalise);else limparLupaAnalise();
+  new MutationObserver(limparLupaAnalise).observe(document.body,{childList:true,subtree:true});
+  setInterval(limparLupaAnalise,1000);
+})();
+</script>
 </body>
 </html>
 
