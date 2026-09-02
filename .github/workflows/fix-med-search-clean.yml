@@ -1,0 +1,107 @@
+name: Correção limpa da busca de medicamentos
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remover patch experimental e instalar busca determinística
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          # Remove somente o SPRINT60 experimental que estava competindo com a busca.
+          s, n = re.subn(r'<script id="sprint60-medicamento-fix">.*?</script>\\s*', '', s, count=1, flags=re.S)
+          if n != 1:
+              raise SystemExit(f'SPRINT60 esperado uma vez; encontrado: {n}')
+
+          # Instala uma única rota final, sem chamar IA para medicamentos existentes na MEDS_DB.
+          marker = '<script id="sprint61-medicamento-search-clean">'
+          if marker in s:
+              raise SystemExit('SPRINT61 já existe')
+
+          script = r'''<script id="sprint61-medicamento-search-clean">
+          (function(){
+            // SPRINT61: busca de medicamentos conhecida = somente MEDS_DB.
+            // IA fica restrita ao fallback para nomes que não existem na base local.
+            const COMERCIAIS={
+              'AAS':['Aspirina'],'Dipirona':['Novalgina','Anador','Magnopyrol'],'Paracetamol':['Tylenol'],
+              'Captopril':['Capoten'],'Losartana':['Cozaar'],'Prednisona':['Meticorten'],'Furosemida':['Lasix'],
+              'Amiodarona':['Ancoron','Atlansil'],'Metoprolol':['Lopressor','Seloken'],'Sustrate':['Sustrate'],
+              'Clonidina':['Atensina'],'Toragesic':['Toragesic'],'Adrenalina':['Adren'],'Atropina':['Atropion'],
+              'Cetoprofeno EV':['Profenid'],'Cetoprofeno IM':['Profenid'],'Buscopan C.':['Buscopan Composto'],
+              'Buscopan S.':['Buscopan'],'Metoclopramida':['Plasil'],'Salbutamol':['Aerolin'],'Adenosina':['Adenocard'],
+              'Ondansetrona':['Vonau','Zofran'],'Prometazina':['Fenergan'],'Dexametasona':['Decadron'],
+              'Terbutalina':['Bricanyl'],'Fenitoína':['Hidantal'],'Diazepam Inj.':['Valium'],'Diazepam Comp.':['Valium'],
+              'Tramadol':['Tramal'],'Haloperidol':['Haldol'],'Biperideno':['Akineton'],'Flumazenil':['Lanexat'],
+              'Clorpromazina':['Amplictil'],'Morfina':['Dimorf'],'Fentanila':['Sublimaze'],'Deslanosídeo':['Cedilanide'],
+              'Dopamina':['Revivan'],'Narcan':['Narcan']
+            };
+            const ALIAS={cozaar:'Losartana',aspirina:'AAS',novalgina:'Dipirona',anador:'Dipirona',magnopyrol:'Dipirona',
+              tylenol:'Paracetamol',capoten:'Captopril',meticorten:'Prednisona',lasix:'Furosemida',ancoron:'Amiodarona',
+              atlansil:'Amiodarona',lopressor:'Metoprolol',seloken:'Metoprolol',atensina:'Clonidina',adren:'Adrenalina',
+              atropion:'Atropina',profenid:'Cetoprofeno EV','buscopan composto':'Buscopan C.',buscopan:'Buscopan S.',
+              plasil:'Metoclopramida',aerolin:'Salbutamol',adenocard:'Adenosina',vonau:'Ondansetrona',zofran:'Ondansetrona',
+              fenergan:'Prometazina',decadron:'Dexametasona',bricanyl:'Terbutalina',hidantal:'Fenitoína',valium:'Diazepam Inj.',
+              tramal:'Tramadol',haldol:'Haloperidol',akineton:'Biperideno',lanexat:'Flumazenil',amplictil:'Clorpromazina',
+              dimorf:'Morfina',sublimaze:'Fentanila',cedilanide:'Deslanosídeo',revivan:'Dopamina'};
+            function norm(v){return String(v||'').trim().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9. ]/g,'').replace(/\\s+/g,' ')}
+            function dist(a,b){
+              const d=Array.from({length:a.length+1},(_,i)=>{const r=new Array(b.length+1);r[0]=i;return r});
+              for(let j=1;j<=b.length;j++)d[0][j]=j;
+              for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+              return d[a.length][b.length]
+            }
+            function local(q){
+              if(typeof MEDS_DB==='undefined')return null;
+              const nq=norm(q);if(!nq)return null;const keys=Object.keys(MEDS_DB);
+              let k=keys.find(x=>norm(x)===nq);if(k)return k;
+              if(ALIAS[nq]&&MEDS_DB[ALIAS[nq]])return ALIAS[nq];
+              k=keys.find(x=>{const nx=norm(x);return nx.startsWith(nq)||nq.startsWith(nx)});if(k)return k;
+              // Corrige pequenos erros de digitação/OCR, como Losaetana -> Losartana.
+              let best=null,bd=99;for(const x of keys){const nx=norm(x);if(nx.length<4)continue;const dd=dist(nq,nx);if(dd<bd){bd=dd;best=x}}
+              const limite=nq.length<=6?1:Math.max(1,Math.floor(nq.length*0.2));
+              return bd<=limite?best:null;
+            }
+            function comercial(nome){return COMERCIAIS[nome]||[]}
+            function render(q,out){
+              const nome=local(q);if(!nome||typeof buildCardFromDB!=='function')return false;
+              let h=buildCardFromDB(nome);
+              const arr=comercial(nome);
+              if(arr.length){
+                h=h.replace(/(<div class="med-card-name">.*?<\\/div>)/, '$1<div class="sprint61-commercial"><span>🏷️ NOME COMERCIAL</span><strong>'+arr.join(' · ')+'</strong></div>');
+              }
+              out.innerHTML='<button class="btn-voltar" onclick="limparBusca()">← Voltar</button>'+h;
+              return true;
+            }
+            const fallback=window.buscarLivre;
+            window.buscarLivre=async function(){
+              const input=document.getElementById('buscaInput'),out=document.getElementById('buscaResult'),q=input&&input.value?input.value.trim():'';
+              if(!q||!out)return;
+              if(render(q,out))return;
+              if(typeof fallback==='function')return fallback.apply(this,arguments);
+              out.innerHTML='<div class="error-box">⚠️ Medicamento não encontrado na base local.</div>';
+            };
+          })();
+          </script>'''
+          css = '<style id="sprint61-commercial-css">.sprint61-commercial{margin-top:8px;padding:9px 11px;border:1px solid rgba(70,200,130,.35);border-radius:9px;background:rgba(25,150,90,.10);display:flex;flex-direction:column;gap:3px}.sprint61-commercial span{font-weight:800;font-size:13px;color:#55d68b}.sprint61-commercial strong{font-size:16px}</style>\n'
+          s += '\n' + css + script + '\n'
+          p.write_text(s,encoding='utf-8')
+
+      - name: Commitar e remover este workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git rm .github/workflows/fix-med-search-clean.yml
+          git commit -m "fix: consolidar busca de medicamentos sem rota experimental"
+          git push
