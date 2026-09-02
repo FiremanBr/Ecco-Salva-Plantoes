@@ -1,0 +1,156 @@
+name: Sprint60 - corrigir pesquisa da Maleta
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Corrigir pesquisa da Maleta
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          inicio = s.find('async function buscarLivre() {')
+          if inicio < 0:
+              raise SystemExit('Função buscarLivre não encontrada')
+
+          fim = s.find('\nfunction limparBusca()', inicio)
+          if fim < 0:
+              raise SystemExit('Fim da função buscarLivre não encontrado')
+
+          nova = r'''async function buscarLivre() {
+            const input = document.getElementById('buscaInput');
+            const result = document.getElementById('buscaResult');
+            const btn = document.getElementById('buscaBtn');
+            if (!input || !result) return;
+            const q = input.value.trim();
+            if (!q) return;
+
+            // Na aba Maleta, a pesquisa de medicamentos da própria maleta
+            // deve usar SEMPRE o MEDS_DB local. Isso evita IA retornar ficha
+            // incompleta, dados inventados ou campos "...".
+            const normalizar = v => String(v || '')
+              .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+              .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+            const nq = normalizar(q);
+
+            const chavesDB = Object.keys(MEDS_DB || {});
+            const matchExato = chavesDB.find(n => normalizar(n) === nq);
+            const matchPrefixo = chavesDB.find(n => normalizar(n).startsWith(nq) || nq.startsWith(normalizar(n)));
+            const matchContido = chavesDB.find(n => {
+              const nn = normalizar(n);
+              return nn.includes(nq) || nq.includes(nn);
+            });
+
+            // Também reconhece siglas/abreviações usuais da Maleta.
+            const aliases = {
+              'aas':'AAS', 'a a s':'AAS',
+              'dipiro':'Dipirona', 'dipirona':'Dipirona',
+              'bus':'Buscopan Simples', 'buscopan':'Buscopan Simples',
+              'bus comp':'Buscopan Composto', 'buscopan comp':'Buscopan Composto',
+              'trama':'Tramadol', 'tramadol':'Tramadol',
+              'captop':'Captopril', 'captopril':'Captopril',
+              'losart':'Losartana', 'losartana':'Losartana',
+              'pred':'Prednisona', 'prednisona':'Prednisona',
+              'furo':'Furosemida', 'furosemida':'Furosemida',
+              'dexa':'Dexametasona', 'dexametasona':'Dexametasona',
+              'amio':'Amiodarona', 'amiodarona':'Amiodarona',
+              'atro':'Atropina', 'atropina':'Atropina',
+              'adre':'Adrenalina', 'epi':'Adrenalina', 'adrenalina':'Adrenalina',
+              'metro':'Metoclopramida', 'metoclopramida':'Metoclopramida',
+              'ondan':'Ondansetrona', 'ondansetrona':'Ondansetrona',
+              'promet':'Prometazina', 'prometazina':'Prometazina',
+              'morf':'Morfina', 'morfina':'Morfina',
+              'fenta':'Fentanila', 'fentanila':'Fentanila',
+              'diaze':'Diazepam Injetável', 'diazepam':'Diazepam Injetável',
+              'halo':'Haloperidol', 'haloperidol':'Haloperidol',
+              'clorp':'Clorpromazina', 'clorpromazina':'Clorpromazina',
+              'fenito':'Fenitoína', 'fenitoina':'Fenitoína',
+              'fluma':'Flumazenil', 'flumazenil':'Flumazenil',
+              'narcan':'Naloxona', 'nalox':'Naloxona', 'naloxona':'Naloxona',
+              'dopa':'Dopamina', 'dopamina':'Dopamina',
+              'amino':'Aminofilina', 'aminofilina':'Aminofilina',
+              'adeno':'Adenosina', 'adenosina':'Adenosina',
+              'terbu':'Terbutalina', 'terbutalina':'Terbutalina',
+              'hidro':'Hidrocortisona', 'hidrocortisona':'Hidrocortisona',
+              'bicarb':'Bicarbonato de Sódio', 'bicarbonato':'Bicarbonato de Sódio',
+              'mag':'Sulfato de Magnésio', 'magnesio':'Sulfato de Magnésio',
+              'calcio':'Gluconato de Cálcio', 'gluconato de calcio':'Gluconato de Cálcio',
+              'desla':'Deslanosídeo', 'deslanosideo':'Deslanosídeo',
+              'biperi':'Biperideno', 'biperideno':'Biperideno'
+            };
+            const aliasNome = aliases[nq];
+            const nomeLocal = aliasNome && MEDS_DB[aliasNome] ? aliasNome : (matchExato || matchPrefixo || matchContido);
+
+            if (nomeLocal && MEDS_DB[nomeLocal]) {
+              result.innerHTML = `<button class="btn-voltar" onclick="limparBusca()">← Voltar</button>` + buildCardFromDB(nomeLocal);
+              return;
+            }
+
+            // Medicamento fora da Maleta: mantém a pesquisa externa existente.
+            if (btn) btn.disabled = true;
+            result.innerHTML = `<div class="loading-wrap"><div class="pulse-ring"></div><p class="loading-text">Consultando...</p></div>`;
+            try {
+              const data = await callClaude(q);
+              const meds = Array.isArray(data?.medicamentos) ? data.medicamentos : [];
+              let html = `<button class="btn-voltar" onclick="limparBusca()">← Voltar</button>`;
+              meds.forEach(med => {
+                html += buildCardFromBuscaIA(med);
+              });
+              result.innerHTML = meds.length ? html : html + `<div class="error-box">⚠️ Medicamento não localizado.</div>`;
+            } catch(e) {
+              console.error(e);
+              result.innerHTML = `<button class="btn-voltar" onclick="limparBusca()">← Voltar</button><div class="error-box">❌ Erro: ${e.message}</div>`;
+            } finally {
+              if (btn) btn.disabled = false;
+            }
+          }
+
+          function buildCardFromBuscaIA(med) {
+            const fonteLabel = med.fonte || 'Literatura geral';
+            const fonteIcon = fonteLabel.toLowerCase().includes('einstein') ? '🏥' :
+              fonteLabel.toLowerCase().includes('anvisa') ? '🇧🇷' :
+              fonteLabel.toLowerCase().includes('cofen') ? '📋' :
+              fonteLabel.toLowerCase().includes('aha') || fonteLabel.toLowerCase().includes('ilcor') || fonteLabel.toLowerCase().includes('acls') ? '❤️' :
+              fonteLabel.toLowerCase().includes('sbc') ? '🫀' :
+              fonteLabel.toLowerCase().includes('micromedex') || fonteLabel.toLowerCase().includes('uptodate') ? '📚' : '📖';
+            const esc = v => String(v ?? '').replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
+            return `<div class="med-card"><div class="med-card-header"><div class="med-card-name">💊 ${esc(med.nome)}</div><span class="med-badge" style="background:rgba(59,155,232,0.15);color:var(--blue);border-color:rgba(59,155,232,0.3)">${fonteIcon} ${esc(fonteLabel)}</span></div><div class="med-card-body"><div><div class="row-lbl">📦 Apresentação</div><div class="row-val">${esc(med.apresentacao)}</div></div><div class="divider"></div><div><div class="row-lbl">📌 Para que serve</div><div class="row-val">${esc(med.para_que_serve)}</div></div><div><div class="row-lbl">💉 Via</div><div class="row-val">${esc(med.via)}</div></div><div><div class="row-lbl">🧪 Diluente e preparo</div><div class="row-val">${esc(med.diluente)}</div></div><div><div class="row-lbl">🔄 Flush</div><div class="row-val">${esc(med.flush)}</div></div><div class="divider"></div><div class="interacao-box"><div class="interacao-title">⚠️ Efeitos no organismo</div><div class="interacao-item">${esc(med.efeitos_corpo)}</div></div></div></div>`;
+          }'''
+
+          s = s[:inicio] + nova + s[fim:]
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Validar JavaScript
+        shell: bash
+        run: |
+          grep -q "async function buscarLivre()" index.html
+          grep -q "MEDS_DB" index.html
+          grep -q "matchExato" index.html
+          echo "Pesquisa local da Maleta validada."
+
+      - name: Commitar
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "fix: pesquisa da Maleta usa base local completa [skip ci]"
+          git push origin main
