@@ -14,93 +14,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Aguardar correções legadas
-        run: sleep 120
-      - name: Limpar override antigo e adicionar nomes comerciais
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          p = Path('index.html')
-          s = p.read_text(encoding='utf-8')
-
-          # Remove override antigo da busca, quando existir.
-          s = re.sub(r'\\n?<!-- SPRINT57: camera exclusiva na Analise.*?<script id="sprint57-camera-busca">.*?</script>\\n?', '\\n', s, flags=re.S)
-
-          marker = '// ── BUILD CARD FROM LOCAL DB (sem IA, dados 100% oficiais) ──'
-          if 'const NOMES_COMERCIAIS_PRINCIPAIS' not in s:
-              mapa = r'''// Principais nomes comerciais no Brasil — referência rápida.
-// O nome comercial pode variar conforme fabricante e apresentação.
-const NOMES_COMERCIAIS_PRINCIPAIS = {
-  'AAS': ['Aspirina'],
-  'Dipirona': ['Novalgina', 'Anador', 'Magnopyrol'],
-  'Paracetamol': ['Tylenol'],
-  'Captopril': ['Capoten'],
-  'Losartana': ['Cozaar'],
-  'Prednisona': ['Meticorten'],
-  'Furosemida': ['Lasix'],
-  'Amiodarona': ['Ancoron', 'Atlansil'],
-  'Metoprolol': ['Lopressor', 'Seloken'],
-  'Sustrate': ['Sustrate'],
-  'Clonidina': ['Atensina'],
-  'Toragesic': ['Toragesic'],
-  'Adrenalina': ['Adren'],
-  'Atropina': ['Atropion'],
-  'Cetoprofeno EV': ['Profenid'],
-  'Cetoprofeno IM': ['Profenid'],
-  'Buscopan C.': ['Buscopan Composto'],
-  'Buscopan S.': ['Buscopan'],
-  'Metoclopramida': ['Plasil'],
-  'Salbutamol': ['Aerolin'],
-  'Adenosina': ['Adenocard'],
-  'Ondansetrona': ['Vonau', 'Zofran'],
-  'Prometazina': ['Fenergan'],
-  'Dexametasona': ['Decadron'],
-  'Terbutalina': ['Bricanyl'],
-  'Fenitoína': ['Hidantal'],
-  'Diazepam Inj.': ['Valium'],
-  'Diazepam Comp.': ['Valium'],
-  'Tramadol': ['Tramal'],
-  'Haloperidol': ['Haldol'],
-  'Biperideno': ['Akineton'],
-  'Flumazenil': ['Lanexat'],
-  'Clorpromazina': ['Amplictil'],
-  'Morfina': ['Dimorf'],
-  'Fentanila': ['Sublimaze'],
-  'Deslanosídeo': ['Cedilanide'],
-  'Dopamina': ['Revivan'],
-  'Narcan': ['Narcan'],
-};
-
-function nomesComerciaisDoMedicamento(nome) {
-  if (NOMES_COMERCIAIS_PRINCIPAIS[nome]) return NOMES_COMERCIAIS_PRINCIPAIS[nome];
-  const base = nome.replace(/\s+(EV|IM|Inj\.|Comp\.)$/i, '');
-  return NOMES_COMERCIAIS_PRINCIPAIS[base] || [];
-}
-
-'''
-              if marker not in s:
-                  raise SystemExit('marcador do buildCardFromDB não encontrado')
-              s = s.replace(marker, mapa + marker, 1)
-
-          old = '''  const m = MEDS_DB[nome];\n  if (!m) return '';\n  const interacoesHtml ='''
-          new = '''  const m = MEDS_DB[nome];\n  if (!m) return '';\n  const nomesComerciais = nomesComerciaisDoMedicamento(nome);\n  const comerciaisHtml = nomesComerciais.length\n    ? `<div style="margin-top:6px"><div class="row-lbl">🏷️ Principais nomes comerciais</div><div class="row-val">${nomesComerciais.join(' · ')}</div></div>`\n    : '';\n  const interacoesHtml ='''
-          if old not in s:
-              raise SystemExit('bloco alvo buildCardFromDB não encontrado')
-          s = s.replace(old, new, 1)
-
-          old2 = '''        <div><div class="row-lbl">📦 Apresentação</div><div class="row-val">${m.apresentacao}${m.doseMax24h ? '<br><span style="color:var(--text);font-size:11px">⏱️ ' + m.doseMax24h + '</span>' : ''}</div></div>'''
-          new2 = '''        <div><div class="row-lbl">📦 Apresentação</div><div class="row-val">${m.apresentacao}${m.doseMax24h ? '<br><span style="color:var(--text);font-size:11px">⏱️ ' + m.doseMax24h + '</span>' : ''}</div></div>\n        ${comerciaisHtml}'''
-          if old2 not in s:
-              raise SystemExit('linha de apresentação não encontrada')
-          s = s.replace(old2, new2, 1)
-
-          p.write_text(s, encoding='utf-8')
-          PY
-      - name: Commitar limpeza e nomes comerciais
+        run: sleep 90
+      - name: Aplicar patch de nomes comerciais
+        run: python3 scripts/add_commercial_names.py
+      - name: Commitar alterações
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html .github/workflows/cleanup-sprint57.yml
+          git add index.html scripts/add_commercial_names.py .github/workflows/cleanup-sprint57.yml
           git diff --cached --quiet && exit 0
-          git commit -m "feat: nomes comerciais nas fichas [skip ci]"
+          git commit -m "feat: mostrar nomes comerciais nas fichas [skip ci]"
           git push origin main
