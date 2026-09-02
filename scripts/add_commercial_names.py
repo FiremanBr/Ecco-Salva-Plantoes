@@ -3,15 +3,14 @@ from pathlib import Path
 p = Path('index.html')
 s = p.read_text(encoding='utf-8')
 
-marker = '<script id="sprint59-medicamento-fix">'
-if marker in s:
-    print('Correção de medicamentos já presente; nada a fazer.')
-    raise SystemExit(0)
+start_marker = '<script id="sprint59-medicamento-fix">'
+end_marker = '</script>'
 
-runtime = r'''<script id="sprint59-medicamento-fix">
+runtime = r'''<script id="sprint60-medicamento-fix">
 (function(){
-  // SPRINT59: MEDS_DB tem prioridade sobre IA para medicamentos conhecidos.
-  // Também exibe nomes comerciais como referência, sem alterar a ficha clínica local.
+  // SPRINT60: busca local determinística para medicamentos conhecidos.
+  // Impede que uma segunda implementação/IA sobrescreva a ficha local.
+  // Nomes comerciais aparecem de forma explícita e destacada.
   const COMMERCIAIS = {
     'AAS':['Aspirina'], 'Dipirona':['Novalgina','Anador','Magnopyrol'],
     'Paracetamol':['Tylenol'], 'Captopril':['Capoten'], 'Losartana':['Cozaar'],
@@ -31,10 +30,6 @@ runtime = r'''<script id="sprint59-medicamento-fix">
     'Narcan':['Narcan']
   };
 
-  function norm(v){
-    return String(v||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-  }
-
   const ALIAS = {
     cozaar:'Losartana', novalgina:'Dipirona', anador:'Dipirona', magnopyrol:'Dipirona',
     tylenol:'Paracetamol', capoten:'Captopril', meticorten:'Prednisona', lasix:'Furosemida',
@@ -45,8 +40,12 @@ runtime = r'''<script id="sprint59-medicamento-fix">
     fenergan:'Prometazina', decadron:'Dexametasona', bricanyl:'Terbutalina', hidantal:'Fenitoína',
     valium:'Diazepam Inj.', tramal:'Tramadol', haldol:'Haloperidol', akineton:'Biperideno',
     lanexat:'Flumazenil', amplictil:'Clorpromazina', dimorf:'Morfina', sublimaze:'Fentanila',
-    cedilanide:'Deslanosídeo', revivan:'Dopamina'
+    cedilanide:'Deslanosídeo', revivan:'Dopamina', aspirina:'AAS'
   };
+
+  function norm(v){
+    return String(v||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  }
 
   function acharLocal(q){
     if(typeof MEDS_DB === 'undefined') return null;
@@ -66,36 +65,74 @@ runtime = r'''<script id="sprint59-medicamento-fix">
     return COMMERCIAIS[base] || [];
   }
 
-  function adicionarComerciais(out,nome){
+  function destacarComerciais(out,nome){
     const arr=comerciais(nome); if(!arr.length) return;
     const card=out.querySelector('.med-card, .med-card-local, [class*="med-card"]') || out.firstElementChild;
-    if(!card || card.querySelector('.sprint59-comerciais')) return;
+    if(!card || card.querySelector('.sprint60-comerciais')) return;
     const box=document.createElement('div');
-    box.className='sprint59-comerciais';
-    box.style.cssText='margin:8px 0;padding:8px 10px;border-radius:8px;background:var(--surface-2,#f4f4f5);';
-    box.innerHTML='<div class="row-lbl">🏷️ Principais nomes comerciais</div><div class="row-val">'+arr.join(' · ')+'</div>';
-    card.prepend(box);
+    box.className='sprint60-comerciais';
+    box.style.cssText='margin:0 0 12px;padding:10px 12px;border:1px solid rgba(70,200,130,.35);border-radius:10px;background:rgba(25,150,90,.10);';
+    box.innerHTML='<div style="font-weight:800;font-size:14px;color:#55d68b;margin-bottom:4px">🏷️ NOME COMERCIAL</div><div style="font-weight:800;font-size:17px">'+arr.join(' · ')+'</div>';
+    const firstSection=card.querySelector('.med-title, h3, h4, .card-header, [class*="header"]');
+    if(firstSection && firstSection.parentElement) firstSection.parentElement.insertBefore(box, firstSection.nextSibling);
+    else card.prepend(box);
   }
 
-  const originalBuscar = window.buscarLivre;
-  window.buscarLivre = async function(){
+  function renderLocal(q,out){
+    const local=acharLocal(q);
+    if(!local || typeof buildCardFromDB!=='function') return false;
+    out.innerHTML='<button class="btn-voltar" onclick="limparBusca()">← Voltar</button>'+buildCardFromDB(local);
+    destacarComerciais(out,local);
+    return true;
+  }
+
+  // Guarda a função que existir agora e intercepta futuras atribuições a window.buscarLivre.
+  // Assim, scripts posteriores não conseguem substituir a rota local para medicamentos conhecidos.
+  let downstream = (typeof window.buscarLivre === 'function') ? window.buscarLivre : null;
+  let installed = false;
+
+  function buscarEstavel(){
     const input=document.getElementById('buscaInput');
     const out=document.getElementById('buscaResult');
     const q=input && input.value ? input.value.trim() : '';
     if(!q || !out) return;
-    const local=acharLocal(q);
-    if(local && typeof buildCardFromDB==='function'){
-      out.innerHTML='<button class="btn-voltar" onclick="limparBusca()">← Voltar</button>'+buildCardFromDB(local);
-      adicionarComerciais(out,local);
-      return;
+    if(renderLocal(q,out)) return;
+    if(typeof downstream==='function' && downstream!==buscarEstavel){
+      return downstream.apply(this,arguments);
     }
-    if(typeof originalBuscar==='function') return originalBuscar.apply(this,arguments);
     out.innerHTML='<div class="error-box">⚠️ Pesquisa temporariamente indisponível.</div>';
-  };
+  }
+
+  try{
+    Object.defineProperty(window,'buscarLivre',{
+      configurable:true,
+      enumerable:true,
+      get:function(){ return buscarEstavel; },
+      set:function(fn){ if(typeof fn==='function' && fn!==buscarEstavel) downstream=fn; }
+    });
+    installed=true;
+  }catch(e){
+    window.buscarLivre=buscarEstavel;
+  }
+
+  // Alguns botões podem ter recebido uma referência antiga antes do interceptor.
+  // Reforça o comportamento após o DOM estar pronto, sem criar polling contínuo.
+  function reforcar(){
+    if(installed) return;
+    try{ window.buscarLivre=buscarEstavel; }catch(e){}
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',reforcar,{once:true});
+  else reforcar();
 })();
 </script>
 '''
 
-s = s.rstrip() + '\n\n' + runtime
+if start_marker in s:
+    start = s.index(start_marker)
+    end = s.index(end_marker, start) + len(end_marker)
+    s = s[:start] + runtime.rstrip() + s[end:]
+elif '<script id="sprint60-medicamento-fix">' not in s:
+    s = s.rstrip() + '\n\n' + runtime.rstrip() + '\n'
+
 p.write_text(s, encoding='utf-8')
-print('Correção SPRINT59 aplicada: MEDS_DB primeiro, aliases e nomes comerciais por runtime.')
+print('SPRINT60 aplicada: busca local determinística + interceptor contra sobrescrita + nome comercial destacado.')
