@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Aplicar patch
+      - name: Aplicar patch robusto
         run: python3 scripts/add_commercial_names.py
       - name: Commitar patch
         run: |
