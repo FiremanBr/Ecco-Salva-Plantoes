@@ -5935,122 +5935,16 @@ function switchTab(tab, el) {
 })();
 </script>
 
-<script id="sprint60-medicamento-fix">
+
+<style id="sprint61-commercial-css">.sprint61-commercial{margin-top:8px;padding:9px 11px;border:1px solid rgba(70,200,130,.35);border-radius:9px;background:rgba(25,150,90,.10);display:flex;flex-direction:column;gap:3px}.sprint61-commercial span{font-weight:800;font-size:13px;color:#55d68b}.sprint61-commercial strong{font-size:16px}</style>
+<script id="sprint61-medicamento-search-clean">
 (function(){
-  // SPRINT60: busca local determinística para medicamentos conhecidos.
-  // Impede que uma segunda implementação/IA sobrescreva a ficha local.
-  // Nomes comerciais aparecem de forma explícita e destacada.
-  const COMMERCIAIS = {
-    'AAS':['Aspirina'], 'Dipirona':['Novalgina','Anador','Magnopyrol'],
-    'Paracetamol':['Tylenol'], 'Captopril':['Capoten'], 'Losartana':['Cozaar'],
-    'Prednisona':['Meticorten'], 'Furosemida':['Lasix'],
-    'Amiodarona':['Ancoron','Atlansil'], 'Metoprolol':['Lopressor','Seloken'],
-    'Sustrate':['Sustrate'], 'Clonidina':['Atensina'], 'Toragesic':['Toragesic'],
-    'Adrenalina':['Adren'], 'Atropina':['Atropion'],
-    'Cetoprofeno EV':['Profenid'], 'Cetoprofeno IM':['Profenid'],
-    'Buscopan C.':['Buscopan Composto'], 'Buscopan S.':['Buscopan'],
-    'Metoclopramida':['Plasil'], 'Salbutamol':['Aerolin'], 'Adenosina':['Adenocard'],
-    'Ondansetrona':['Vonau','Zofran'], 'Prometazina':['Fenergan'],
-    'Dexametasona':['Decadron'], 'Terbutalina':['Bricanyl'],
-    'Fenitoína':['Hidantal'], 'Diazepam Inj.':['Valium'], 'Diazepam Comp.':['Valium'],
-    'Tramadol':['Tramal'], 'Haloperidol':['Haldol'], 'Biperideno':['Akineton'],
-    'Flumazenil':['Lanexat'], 'Clorpromazina':['Amplictil'], 'Morfina':['Dimorf'],
-    'Fentanila':['Sublimaze'], 'Deslanosídeo':['Cedilanide'], 'Dopamina':['Revivan'],
-    'Narcan':['Narcan']
-  };
-
-  const ALIAS = {
-    cozaar:'Losartana', novalgina:'Dipirona', anador:'Dipirona', magnopyrol:'Dipirona',
-    tylenol:'Paracetamol', capoten:'Captopril', meticorten:'Prednisona', lasix:'Furosemida',
-    ancoron:'Amiodarona', atlansil:'Amiodarona', lopressor:'Metoprolol', seloken:'Metoprolol',
-    atensina:'Clonidina', adren:'Adrenalina', atropion:'Atropina', profenid:'Cetoprofeno EV',
-    'buscopan composto':'Buscopan C.', buscopan:'Buscopan S.', plasil:'Metoclopramida',
-    aerolin:'Salbutamol', adenocard:'Adenosina', vonau:'Ondansetrona', zofran:'Ondansetrona',
-    fenergan:'Prometazina', decadron:'Dexametasona', bricanyl:'Terbutalina', hidantal:'Fenitoína',
-    valium:'Diazepam Inj.', tramal:'Tramadol', haldol:'Haloperidol', akineton:'Biperideno',
-    lanexat:'Flumazenil', amplictil:'Clorpromazina', dimorf:'Morfina', sublimaze:'Fentanila',
-    cedilanide:'Deslanosídeo', revivan:'Dopamina', aspirina:'AAS'
-  };
-
-  function norm(v){
-    return String(v||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-  }
-
-  function acharLocal(q){
-    if(typeof MEDS_DB === 'undefined') return null;
-    const nq=norm(q); if(!nq) return null;
-    const keys=Object.keys(MEDS_DB);
-    const ex=keys.find(k=>norm(k)===nq);
-    if(ex) return ex;
-    const ali=ALIAS[nq];
-    if(ali && MEDS_DB[ali]) return ali;
-    const pref=keys.find(k=>{const nk=norm(k); return nk.indexOf(nq)===0 || nq.indexOf(nk)===0;});
-    return pref || keys.find(k=>norm(k).indexOf(nq)>=0) || null;
-  }
-
-  function comerciais(nome){
-    if(COMERCIAIS[nome]) return COMMERCIAIS[nome];
-    const base=String(nome).replace(/\s+(EV|IM|Inj\.|Comp\.)$/i,'');
-    return COMMERCIAIS[base] || [];
-  }
-
-  function destacarComerciais(out,nome){
-    const arr=comerciais(nome); if(!arr.length) return;
-    const card=out.querySelector('.med-card, .med-card-local, [class*="med-card"]') || out.firstElementChild;
-    if(!card || card.querySelector('.sprint60-comerciais')) return;
-    const box=document.createElement('div');
-    box.className='sprint60-comerciais';
-    box.style.cssText='margin:0 0 12px;padding:10px 12px;border:1px solid rgba(70,200,130,.35);border-radius:10px;background:rgba(25,150,90,.10);';
-    box.innerHTML='<div style="font-weight:800;font-size:14px;color:#55d68b;margin-bottom:4px">🏷️ NOME COMERCIAL</div><div style="font-weight:800;font-size:17px">'+arr.join(' · ')+'</div>';
-    const firstSection=card.querySelector('.med-title, h3, h4, .card-header, [class*="header"]');
-    if(firstSection && firstSection.parentElement) firstSection.parentElement.insertBefore(box, firstSection.nextSibling);
-    else card.prepend(box);
-  }
-
-  function renderLocal(q,out){
-    const local=acharLocal(q);
-    if(!local || typeof buildCardFromDB!=='function') return false;
-    out.innerHTML='<button class="btn-voltar" onclick="limparBusca()">← Voltar</button>'+buildCardFromDB(local);
-    destacarComerciais(out,local);
-    return true;
-  }
-
-  // Guarda a função que existir agora e intercepta futuras atribuições a window.buscarLivre.
-  // Assim, scripts posteriores não conseguem substituir a rota local para medicamentos conhecidos.
-  let downstream = (typeof window.buscarLivre === 'function') ? window.buscarLivre : null;
-  let installed = false;
-
-  function buscarEstavel(){
-    const input=document.getElementById('buscaInput');
-    const out=document.getElementById('buscaResult');
-    const q=input && input.value ? input.value.trim() : '';
-    if(!q || !out) return;
-    if(renderLocal(q,out)) return;
-    if(typeof downstream==='function' && downstream!==buscarEstavel){
-      return downstream.apply(this,arguments);
-    }
-    out.innerHTML='<div class="error-box">⚠️ Pesquisa temporariamente indisponível.</div>';
-  }
-
-  try{
-    Object.defineProperty(window,'buscarLivre',{
-      configurable:true,
-      enumerable:true,
-      get:function(){ return buscarEstavel; },
-      set:function(fn){ if(typeof fn==='function' && fn!==buscarEstavel) downstream=fn; }
-    });
-    installed=true;
-  }catch(e){
-    window.buscarLivre=buscarEstavel;
-  }
-
-  // Alguns botões podem ter recebido uma referência antiga antes do interceptor.
-  // Reforça o comportamento após o DOM estar pronto, sem criar polling contínuo.
-  function reforcar(){
-    if(installed) return;
-    try{ window.buscarLivre=buscarEstavel; }catch(e){}
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',reforcar,{once:true});
-  else reforcar();
+  const COMERCIAIS={'AAS':['Aspirina'],'Dipirona':['Novalgina','Anador','Magnopyrol'],'Paracetamol':['Tylenol'],'Captopril':['Capoten'],'Losartana':['Cozaar'],'Prednisona':['Meticorten'],'Furosemida':['Lasix'],'Amiodarona':['Ancoron','Atlansil'],'Metoprolol':['Lopressor','Seloken'],'Sustrate':['Sustrate'],'Clonidina':['Atensina'],'Toragesic':['Toragesic'],'Adrenalina':['Adren'],'Atropina':['Atropion'],'Cetoprofeno EV':['Profenid'],'Cetoprofeno IM':['Profenid'],'Buscopan C.':['Buscopan Composto'],'Buscopan S.':['Buscopan'],'Metoclopramida':['Plasil'],'Salbutamol':['Aerolin'],'Adenosina':['Adenocard'],'Ondansetrona':['Vonau','Zofran'],'Prometazina':['Fenergan'],'Dexametasona':['Decadron'],'Terbutalina':['Bricanyl'],'Fenitoína':['Hidantal'],'Diazepam Inj.':['Valium'],'Diazepam Comp.':['Valium'],'Tramadol':['Tramal'],'Haloperidol':['Haldol'],'Biperideno':['Akineton'],'Flumazenil':['Lanexat'],'Clorpromazina':['Amplictil'],'Morfina':['Dimorf'],'Fentanila':['Sublimaze'],'Deslanosídeo':['Cedilanide'],'Dopamina':['Revivan'],'Narcan':['Narcan']};
+  const ALIAS={cozaar:'Losartana',aspirina:'AAS',novalgina:'Dipirona',anador:'Dipirona',magnopyrol:'Dipirona',tylenol:'Paracetamol',capoten:'Captopril',meticorten:'Prednisona',lasix:'Furosemida',ancoron:'Amiodarona',atlansil:'Amiodarona',lopressor:'Metoprolol',seloken:'Metoprolol',atensina:'Clonidina',adren:'Adrenalina',atropion:'Atropina',profenid:'Cetoprofeno EV','buscopan composto':'Buscopan C.',buscopan:'Buscopan S.',plasil:'Metoclopramida',aerolin:'Salbutamol',adenocard:'Adenosina',vonau:'Ondansetrona',zofran:'Ondansetrona',fenergan:'Prometazina',decadron:'Dexametasona',bricanyl:'Terbutalina',hidantal:'Fenitoína',valium:'Diazepam Inj.',tramal:'Tramadol',haldol:'Haloperidol',akineton:'Biperideno',lanexat:'Flumazenil',amplictil:'Clorpromazina',dimorf:'Morfina',sublimaze:'Fentanila',cedilanide:'Deslanosídeo',revivan:'Dopamina'};
+  function norm(v){return String(v||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9. ]/g,'').replace(/\s+/g,' ')}
+  function dist(a,b){const d=Array.from({length:a.length+1},(_,i)=>{const r=new Array(b.length+1);r[0]=i;return r});for(let j=1;j<=b.length;j++)d[0][j]=j;for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length]}
+  function local(q){if(typeof MEDS_DB==='undefined')return null;const nq=norm(q);if(!nq)return null;const keys=Object.keys(MEDS_DB);let k=keys.find(x=>norm(x)===nq);if(k)return k;if(ALIAS[nq]&&MEDS_DB[ALIAS[nq]])return ALIAS[nq];k=keys.find(x=>{const nx=norm(x);return nx.startsWith(nq)||nq.startsWith(nx)});if(k)return k;let best=null,bd=99;for(const x of keys){const nx=norm(x);if(nx.length<4)continue;const dd=dist(nq,nx);if(dd<bd){bd=dd;best=x}}const limite=nq.length<=6?1:Math.max(1,Math.floor(nq.length*0.2));return bd<=limite?best:null}
+  function render(q,out){const nome=local(q);if(!nome||typeof buildCardFromDB!=='function')return false;let h=buildCardFromDB(nome);const arr=COMERCIAIS[nome]||[];if(arr.length)h=h.replace(/(<div class="med-card-name">.*?<\/div>)/,'$1<div class="sprint61-commercial"><span>🏷️ NOME COMERCIAL</span><strong>'+arr.join(' · ')+'</strong></div>');out.innerHTML='<button class="btn-voltar" onclick="limparBusca()">← Voltar</button>'+h;return true}
+  const fallback=window.buscarLivre;window.buscarLivre=async function(){const input=document.getElementById('buscaInput'),out=document.getElementById('buscaResult'),q=input&&input.value?input.value.trim():'';if(!q||!out)return;if(render(q,out))return;if(typeof fallback==='function')return fallback.apply(this,arguments);out.innerHTML='<div class="error-box">⚠️ Medicamento não encontrado na base local.</div>'};
 })();
 </script>
