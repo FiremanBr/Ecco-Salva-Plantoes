@@ -13,7 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+      - name: Aguardar workflows legados
+        run: sleep 120
       - name: Adicionar nomes comerciais
         run: |
           python3 - <<'PY'
@@ -67,11 +68,13 @@ const NOMES_COMERCIAIS_PRINCIPAIS = {
 
 function nomesComerciaisDoMedicamento(nome) {
   if (NOMES_COMERCIAIS_PRINCIPAIS[nome]) return NOMES_COMERCIAIS_PRINCIPAIS[nome];
-  const base = nome.replace(/\\s+(EV|IM|Inj\\.|Comp\\.)$/i, '');
+  const base = nome.replace(/\s+(EV|IM|Inj\.|Comp\.)$/i, '');
   return NOMES_COMERCIAIS_PRINCIPAIS[base] || [];
 }
 
 '''
+              if marker not in s:
+                  raise SystemExit('marcador do buildCardFromDB não encontrado')
               s = s.replace(marker, mapa + marker, 1)
 
           old = '''  const m = MEDS_DB[nome];\n  if (!m) return '';\n  const interacoesHtml ='''
@@ -88,7 +91,6 @@ function nomesComerciaisDoMedicamento(nome) {
 
           p.write_text(s, encoding='utf-8')
           PY
-
       - name: Commit
         run: |
           git config user.name 'github-actions[bot]'
