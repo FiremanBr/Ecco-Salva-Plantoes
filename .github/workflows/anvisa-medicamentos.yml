@@ -16,17 +16,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Baixar e indexar dados oficiais da ANVISA
         shell: bash
         run: |
           set -euo pipefail
-          curl -L --fail --retry 3 -o /tmp/anvisa.csv 'https://dados.anvisa.gov.br/dados/DADOS_ABERTOS_MEDICAMENTOS.csv'
+          curl -L --fail --retry 3 -o /tmp/anvisa.csv 'https://dados.anvisa.gov.br/DADOS_ABERTOS_MEDICAMENTOS.csv'
           python - <<'PY'
-          import csv, json, re
+          import csv,json,re
           from pathlib import Path
-          src=Path('/tmp/anvisa.csv'); raw=src.read_bytes()
-          text=raw.decode('utf-8-sig',errors='replace')
+          raw=Path('/tmp/anvisa.csv').read_bytes(); text=raw.decode('utf-8-sig',errors='replace')
           if '\ufffd' in text[:20000]: text=raw.decode('latin-1',errors='replace')
           try: dialect=csv.Sniffer().sniff(text[:20000],delimiters=';,|\t')
           except Exception: dialect=csv.excel; dialect.delimiter=';'
@@ -59,7 +57,6 @@ jobs:
           Path('anvisa-medicamentos.json').write_text(json.dumps({'fonte':'ANVISA Dados Abertos - Medicamentos Registrados no Brasil','atualizado_em':__import__('datetime').datetime.utcnow().isoformat()+'Z','registros':rows},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
           print('Registros indexados:',len(rows)); print('Colunas:',cols)
           PY
-
       - name: Substituir busca da Maleta pela base ANVISA
         shell: bash
         run: |
@@ -84,9 +81,7 @@ jobs:
           })();
           </script>'''
           p.write_text(s[:start]+runtime+s[end:],encoding='utf-8')
-          print('Busca SPRINT62 instalada.')
           PY
-
       - name: Publicar alteração
         shell: bash
         run: |
@@ -96,5 +91,3 @@ jobs:
           if git diff --cached --quiet; then echo 'Nada para publicar.'; exit 0; fi
           git commit -m 'feat: pesquisa unificada na base oficial de medicamentos da Anvisa'
           git push
-
-          # alteração deliberada no workflow acima serve apenas para disparar esta execução inicial; as execuções semanais vêm do schedule.
