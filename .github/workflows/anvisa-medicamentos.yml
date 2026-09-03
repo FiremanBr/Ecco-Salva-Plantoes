@@ -25,63 +25,39 @@ jobs:
           python - <<'PY'
           import csv, json, re
           from pathlib import Path
-
-          src=Path('/tmp/anvisa.csv')
-          raw=src.read_bytes()
+          src=Path('/tmp/anvisa.csv'); raw=src.read_bytes()
           text=raw.decode('utf-8-sig',errors='replace')
-          if '\ufffd' in text[:20000]:
-              text=raw.decode('latin-1',errors='replace')
-          sample=text[:20000]
-          try:
-              dialect=csv.Sniffer().sniff(sample, delimiters=';,|\t')
-          except Exception:
-              dialect=csv.excel
-              dialect.delimiter=';'
-          reader=csv.DictReader(text.splitlines(), dialect=dialect)
-          headers=reader.fieldnames or []
-          def norm(s):
-              return re.sub(r'[^A-Z0-9]','',str(s).upper())
+          if '\ufffd' in text[:20000]: text=raw.decode('latin-1',errors='replace')
+          try: dialect=csv.Sniffer().sniff(text[:20000],delimiters=';,|\t')
+          except Exception: dialect=csv.excel; dialect.delimiter=';'
+          reader=csv.DictReader(text.splitlines(),dialect=dialect); headers=reader.fieldnames or []
+          def norm(s): return re.sub(r'[^A-Z0-9]','',str(s).upper())
           nh={norm(h):h for h in headers}
           def pick(*names):
+            for n in names:
+              if norm(n) in nh:return nh[norm(n)]
+            for h in headers:
+              x=norm(h)
               for n in names:
-                  if norm(n) in nh: return nh[norm(n)]
-              for h in headers:
-                  x=norm(h)
-                  for n in names:
-                      y=norm(n)
-                      if y and (y in x or x in y): return h
-              return None
-          cols={
-            'produto':pick('NOME_PRODUTO','NOME PRODUTO','NOME_COMERCIAL','NOME COMERCIAL','PRODUTO'),
-            'principio_ativo':pick('PRINCIPIO_ATIVO','PRINCÍPIO ATIVO','PRINCIPIO ATIVO'),
-            'registro':pick('NUMERO_REGISTRO','NÚMERO REGISTRO','REGISTRO'),
-            'empresa':pick('EMPRESA_DETENTORA_REGISTRO','EMPRESA DETENTORA REGISTRO','RAZAO_SOCIAL'),
-            'categoria':pick('CATEGORIA_REGULATORIA','CATEGORIA REGULATORIA'),
-            'classe':pick('CLASSE_TERAPEUTICA','CLASSE TERAPEUTICA'),
-            'apresentacao':pick('APRESENTACAO','APRESENTAÇÃO'),
-            'forma_farmaceutica':pick('FORMA_FARMACEUTICA','FORMA FARMACEUTICA'),
-            'via':pick('VIA_ADMINISTRACAO','VIA ADMINISTRAÇÃO'),
-            'situacao':pick('SITUACAO','SITUAÇÃO'),
-          }
-          if not cols['produto']:
-              raise SystemExit('Coluna de nome do produto não encontrada: '+repr(headers))
+                y=norm(n)
+                if y and (y in x or x in y):return h
+            return None
+          cols={'produto':pick('NOME_PRODUTO','NOME PRODUTO','NOME_COMERCIAL','NOME COMERCIAL','PRODUTO'),'principio_ativo':pick('PRINCIPIO_ATIVO','PRINCÍPIO ATIVO','PRINCIPIO ATIVO'),'registro':pick('NUMERO_REGISTRO','NÚMERO REGISTRO','REGISTRO'),'empresa':pick('EMPRESA_DETENTORA_REGISTRO','EMPRESA DETENTORA REGISTRO','RAZAO_SOCIAL'),'categoria':pick('CATEGORIA_REGULATORIA','CATEGORIA REGULATORIA'),'classe':pick('CLASSE_TERAPEUTICA','CLASSE TERAPEUTICA'),'apresentacao':pick('APRESENTACAO','APRESENTAÇÃO'),'forma_farmaceutica':pick('FORMA_FARMACEUTICA','FORMA FARMACEUTICA'),'via':pick('VIA_ADMINISTRACAO','VIA ADMINISTRAÇÃO'),'situacao':pick('SITUACAO','SITUAÇÃO')}
+          if not cols['produto']: raise SystemExit('Coluna de nome do produto não encontrada: '+repr(headers))
           rows=[]; seen=set()
           for r in reader:
-              produto=(r.get(cols['produto']) or '').strip()
-              if not produto: continue
-              key=(produto.upper(),(r.get(cols['registro']) or '').strip())
-              if key in seen: continue
-              seen.add(key)
-              item={'nome':produto}
-              for k,c in cols.items():
-                  if k=='produto' or not c: continue
-                  v=(r.get(c) or '').strip()
-                  if v: item[k]=v
-              rows.append(item)
-          out=Path('anvisa-medicamentos.json')
-          out.write_text(json.dumps({'fonte':'ANVISA Dados Abertos - Medicamentos Registrados no Brasil','atualizado_em':__import__('datetime').datetime.utcnow().isoformat()+'Z','registros':rows},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
-          print('Registros indexados:',len(rows))
-          print('Colunas:',cols)
+            produto=(r.get(cols['produto']) or '').strip()
+            if not produto: continue
+            key=(produto.upper(),(r.get(cols['registro']) or '').strip())
+            if key in seen: continue
+            seen.add(key); item={'nome':produto}
+            for k,c in cols.items():
+              if k!='produto' and c:
+                v=(r.get(c) or '').strip()
+                if v:item[k]=v
+            rows.append(item)
+          Path('anvisa-medicamentos.json').write_text(json.dumps({'fonte':'ANVISA Dados Abertos - Medicamentos Registrados no Brasil','atualizado_em':__import__('datetime').datetime.utcnow().isoformat()+'Z','registros':rows},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
+          print('Registros indexados:',len(rows)); print('Colunas:',cols)
           PY
 
       - name: Substituir busca da Maleta pela base ANVISA
@@ -89,69 +65,25 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
+          p=Path('index.html'); s=p.read_text(encoding='utf-8')
           marker='<script id="sprint61-medicamento-search-clean">'
-          if marker not in s:
-              raise SystemExit('Marcador SPRINT61 não encontrado; nenhuma alteração feita.')
-          start=s.index(marker)
-          end=s.index('</script>',start)+len('</script>')
+          if marker not in s: raise SystemExit('Marcador SPRINT61 não encontrado; nenhuma alteração feita.')
+          start=s.index(marker); end=s.index('</script>',start)+len('</script>')
           runtime=r'''<script id="sprint62-anvisa-medicamento-search">
           (function(){
-            // SPRINT62: pesquisa de medicamentos usa exclusivamente o índice
-            // derivado dos Dados Abertos oficiais da ANVISA. MEDS_DB/Maleta e IA
-            // não participam da identificação do medicamento nesta pesquisa.
-            const URL_BASE='anvisa-medicamentos.json';
-            let cache=null;
+            // SPRINT62: fonte única da pesquisa = base oficial de medicamentos da ANVISA.
+            // MEDS_DB/Maleta, EXTRAS, aliases locais e IA não participam desta busca.
+            const URL_BASE='anvisa-medicamentos.json'; let cache=null;
             function norm(v){return String(v||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
             function esc(v){return String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));}
-            async function carregar(){
-              if(cache) return cache;
-              const r=await fetch(URL_BASE+'?v='+Date.now(),{cache:'no-store'});
-              if(!r.ok) throw new Error('Base ANVISA indisponível');
-              const j=await r.json(); cache=j.registros||[]; return cache;
-            }
-            function pontuar(item,q){
-              const n=norm(item.nome), p=norm(item.principio_ativo);
-              if(n===q) return 100;
-              if(n.startsWith(q)) return 80;
-              if(n.includes(q)) return 65;
-              if(p===q) return 60;
-              if(p.includes(q)) return 45;
-              return 0;
-            }
-            function card(item){
-              const rows=[];
-              if(item.nome) rows.push(['Nome do produto',item.nome]);
-              if(item.principio_ativo) rows.push(['Princípio ativo',item.principio_ativo]);
-              if(item.apresentacao) rows.push(['Apresentação',item.apresentacao]);
-              if(item.forma_farmaceutica) rows.push(['Forma farmacêutica',item.forma_farmaceutica]);
-              if(item.via) rows.push(['Via de administração',item.via]);
-              if(item.classe) rows.push(['Classe terapêutica',item.classe]);
-              if(item.categoria) rows.push(['Categoria regulatória',item.categoria]);
-              if(item.registro) rows.push(['Registro ANVISA',item.registro]);
-              if(item.empresa) rows.push(['Detentora do registro',item.empresa]);
-              return '<div class="med-card" style="margin-top:12px"><div style="font-size:18px;font-weight:800;margin-bottom:10px">💊 '+esc(item.nome)+'</div><div style="font-size:12px;font-weight:800;color:#55d68b;margin-bottom:8px">FONTE: ANVISA — DADOS ABERTOS</div>'+rows.map(x=>'<div style="margin:7px 0"><b>'+esc(x[0])+':</b> '+esc(x[1])+'</div>').join('')+'</div>';
-            }
-            async function buscarAnvisa(q,out){
-              const base=await carregar(), nq=norm(q);
-              const achados=base.map(x=>({x,s:pontuar(x,nq)})).filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,8).map(x=>x.x);
-              out.innerHTML='<button class="btn-voltar" onclick="limparBusca()">← Voltar</button>';
-              if(!achados.length){out.innerHTML+='<div class="error-box">⚠️ Medicamento não encontrado na base oficial de medicamentos registrados da ANVISA.</div>';return;}
-              out.innerHTML+='<div style="font-size:13px;font-weight:800;margin:8px 0 4px">Resultados oficiais da ANVISA</div>'+achados.map(card).join('');
-            }
-            window.buscarLivre=async function(){
-              const input=document.getElementById('buscaInput'), out=document.getElementById('buscaResult');
-              const q=input&&input.value?input.value.trim():'';
-              if(!q||!out)return;
-              out.innerHTML='<div class="loading-wrap">🔎 Consultando base oficial da ANVISA...</div>';
-              try{await buscarAnvisa(q,out);}catch(e){console.error(e);out.innerHTML='<div class="error-box">⚠️ Não foi possível consultar a base oficial da ANVISA agora.</div>';}
-            };
+            async function carregar(){if(cache)return cache;const r=await fetch(URL_BASE+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('Base ANVISA indisponível');const j=await r.json();cache=j.registros||[];return cache;}
+            function score(x,q){const n=norm(x.nome),p=norm(x.principio_ativo);if(n===q)return 100;if(n.startsWith(q))return 80;if(n.includes(q))return 65;if(p===q)return 60;if(p.includes(q))return 45;return 0;}
+            function card(x){const a=[];if(x.nome)a.push(['Nome do produto',x.nome]);if(x.principio_ativo)a.push(['Princípio ativo',x.principio_ativo]);if(x.apresentacao)a.push(['Apresentação',x.apresentacao]);if(x.forma_farmaceutica)a.push(['Forma farmacêutica',x.forma_farmaceutica]);if(x.via)a.push(['Via de administração',x.via]);if(x.classe)a.push(['Classe terapêutica',x.classe]);if(x.categoria)a.push(['Categoria regulatória',x.categoria]);if(x.registro)a.push(['Registro ANVISA',x.registro]);if(x.empresa)a.push(['Detentora do registro',x.empresa]);return '<div class="med-card" style="margin-top:12px"><div style="font-size:18px;font-weight:800;margin-bottom:10px">💊 '+esc(x.nome)+'</div><div style="font-size:12px;font-weight:800;color:#55d68b;margin-bottom:8px">FONTE: ANVISA — DADOS ABERTOS</div>'+a.map(v=>'<div style="margin:7px 0"><b>'+esc(v[0])+':</b> '+esc(v[1])+'</div>').join('')+'</div>';}
+            async function buscar(q,out){const base=await carregar(),nq=norm(q);const ach=base.map(x=>({x,s:score(x,nq)})).filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,8).map(x=>x.x);out.innerHTML='<button class="btn-voltar" onclick="limparBusca()">← Voltar</button>';if(!ach.length){out.innerHTML+='<div class="error-box">⚠️ Medicamento não encontrado na base oficial de medicamentos registrados da ANVISA.</div>';return;}out.innerHTML+='<div style="font-size:13px;font-weight:800;margin:8px 0 4px">Resultados oficiais da ANVISA</div>'+ach.map(card).join('');}
+            window.buscarLivre=async function(){const input=document.getElementById('buscaInput'),out=document.getElementById('buscaResult'),q=input&&input.value?input.value.trim():'';if(!q||!out)return;out.innerHTML='<div class="loading-wrap">🔎 Consultando base oficial da ANVISA...</div>';try{await buscar(q,out);}catch(e){console.error(e);out.innerHTML='<div class="error-box">⚠️ Não foi possível consultar a base oficial da ANVISA agora.</div>';}};
           })();
           </script>'''
-          s=s[:start]+runtime+s[end:]
-          p.write_text(s,encoding='utf-8')
+          p.write_text(s[:start]+runtime+s[end:],encoding='utf-8')
           print('Busca SPRINT62 instalada.')
           PY
 
@@ -164,3 +96,5 @@ jobs:
           if git diff --cached --quiet; then echo 'Nada para publicar.'; exit 0; fi
           git commit -m 'feat: pesquisa unificada na base oficial de medicamentos da Anvisa'
           git push
+
+          # alteração deliberada no workflow acima serve apenas para disparar esta execução inicial; as execuções semanais vêm do schedule.
