@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   fix:
-    if: github.actor == 'github-actions[bot]' || github.event_name == 'push'
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -46,7 +46,6 @@ jobs:
             };
 
             // Banco COMPLEMENTAR apenas para pesquisa. Não adiciona nada à Maleta.
-            // Dados mantidos mínimos e determinísticos para evitar ficha vazia/IA instável.
             const EXTRAS={
               'Losartana':{
                 nome:'Losartana Potássica',
@@ -88,7 +87,7 @@ jobs:
             function fuzzyKey(q,keys){
               const nq=norm(q); if(!nq)return null;
               let k=keys.find(x=>norm(x)===nq); if(k)return k;
-              if(ALIAS[nq]) return ALIAS[nq];
+              if(ALIAS[nq] && keys.includes(ALIAS[nq])) return ALIAS[nq];
               k=keys.find(x=>{const nx=norm(x);return nx.startsWith(nq)||nq.startsWith(nx)}); if(k)return k;
               let best=null,bd=99;
               for(const x of keys){
@@ -96,7 +95,6 @@ jobs:
                 const dd=dist(nq,nx);
                 if(dd<bd){bd=dd;best=x;}
               }
-              // Tolerância curta e controlada para erros de digitação/OCR.
               const limite=nq.length<=5?1:nq.length<=8?2:Math.max(2,Math.floor(nq.length*0.25));
               return bd<=limite?best:null;
             }
@@ -147,20 +145,17 @@ jobs:
               const out=document.getElementById('buscaResult');
               const q=input&&input.value?input.value.trim():'';
               if(!q||!out)return;
-
-              // ORDEM FIXA: base da Maleta → banco complementar → IA somente se realmente desconhecido.
               const lk=localKey(q);
               if(lk&&renderLocal(lk,out))return;
               const ek=extraKey(q);
               if(ek&&renderExtra(ek,out))return;
-
               if(typeof fallback==='function')return fallback.apply(this,arguments);
               out.innerHTML='<div class="error-box">⚠️ Medicamento não encontrado na base local.</div>';
             };
           })();
           </script>'''
 
-          s2 = re.sub(pattern, block, s, count=1)
+          s2 = re.sub(pattern, lambda m: block, s, count=1)
           if s2 == s:
               raise SystemExit('Nenhuma alteração feita.')
           p.write_text(s2, encoding='utf-8')
