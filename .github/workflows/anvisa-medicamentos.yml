@@ -21,8 +21,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # A ANVISA publica a base em dados.anvisa.gov.br; o servidor apresenta
-          # cadeia intermediária TLS incompleta em alguns ambientes de CI.
           curl -k -L --fail --retry 3 -A 'Mozilla/5.0 Ecco-Salva' -o /tmp/anvisa.csv 'https://dados.anvisa.gov.br/dados/DADOS_ABERTOS_MEDICAMENTOS.csv'
           test "$(wc -c < /tmp/anvisa.csv)" -gt 1000000
           python - <<'PY'
@@ -61,37 +59,12 @@ jobs:
           Path('anvisa-medicamentos.json').write_text(json.dumps({'fonte':'ANVISA Dados Abertos - Medicamentos Registrados no Brasil','atualizado_em':__import__('datetime').datetime.utcnow().isoformat()+'Z','registros':rows},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
           print('Registros indexados:',len(rows)); print('Colunas:',cols)
           PY
-      - name: Substituir busca da Maleta pela base ANVISA
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('index.html'); s=p.read_text(encoding='utf-8')
-          marker='<script id="sprint61-medicamento-search-clean">'
-          if marker not in s: raise SystemExit('Marcador SPRINT61 não encontrado; nenhuma alteração feita.')
-          start=s.index(marker); end=s.index('</script>',start)+len('</script>')
-          runtime=r'''<script id="sprint62-anvisa-medicamento-search">
-          (function(){
-            // SPRINT62: fonte única da pesquisa = base oficial de medicamentos da ANVISA.
-            // MEDS_DB/Maleta, EXTRAS, aliases locais e IA não participam desta busca.
-            const URL_BASE='anvisa-medicamentos.json'; let cache=null;
-            function norm(v){return String(v||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
-            function esc(v){return String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));}
-            async function carregar(){if(cache)return cache;const r=await fetch(URL_BASE+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('Base ANVISA indisponível');const j=await r.json();cache=j.registros||[];return cache;}
-            function score(x,q){const n=norm(x.nome),p=norm(x.principio_ativo);if(n===q)return 100;if(n.startsWith(q))return 80;if(n.includes(q))return 65;if(p===q)return 60;if(p.includes(q))return 45;return 0;}
-            function card(x){const a=[];if(x.nome)a.push(['Nome do produto',x.nome]);if(x.principio_ativo)a.push(['Princípio ativo',x.principio_ativo]);if(x.apresentacao)a.push(['Apresentação',x.apresentacao]);if(x.forma_farmaceutica)a.push(['Forma farmacêutica',x.forma_farmaceutica]);if(x.via)a.push(['Via de administração',x.via]);if(x.classe)a.push(['Classe terapêutica',x.classe]);if(x.categoria)a.push(['Categoria regulatória',x.categoria]);if(x.registro)a.push(['Registro ANVISA',x.registro]);if(x.empresa)a.push(['Detentora do registro',x.empresa]);return '<div class="med-card" style="margin-top:12px"><div style="font-size:18px;font-weight:800;margin-bottom:10px">💊 '+esc(x.nome)+'</div><div style="font-size:12px;font-weight:800;color:#55d68b;margin-bottom:8px">FONTE: ANVISA — DADOS ABERTOS</div>'+a.map(v=>'<div style="margin:7px 0"><b>'+esc(v[0])+':</b> '+esc(v[1])+'</div>').join('')+'</div>';}
-            async function buscar(q,out){const base=await carregar(),nq=norm(q);const ach=base.map(x=>({x,s:score(x,nq)})).filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,8).map(x=>x.x);out.innerHTML='<button class="btn-voltar" onclick="limparBusca()">← Voltar</button>';if(!ach.length){out.innerHTML+='<div class="error-box">⚠️ Medicamento não encontrado na base oficial de medicamentos registrados da ANVISA.</div>';return;}out.innerHTML+='<div style="font-size:13px;font-weight:800;margin:8px 0 4px">Resultados oficiais da ANVISA</div>'+ach.map(card).join('');}
-            window.buscarLivre=async function(){const input=document.getElementById('buscaInput'),out=document.getElementById('buscaResult'),q=input&&input.value?input.value.trim():'';if(!q||!out)return;out.innerHTML='<div class="loading-wrap">🔎 Consultando base oficial da ANVISA...</div>';try{await buscar(q,out);}catch(e){console.error(e);out.innerHTML='<div class="error-box">⚠️ Não foi possível consultar a base oficial da ANVISA agora.</div>';}};
-          })();
-          </script>'''
-          p.write_text(s[:start]+runtime+s[end:],encoding='utf-8')
-          PY
-      - name: Publicar alteração
+      - name: Publicar base atualizada
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html anvisa-medicamentos.json
-          if git diff --cached --quiet; then echo 'Nada para publicar.'; exit 0; fi
-          git commit -m 'feat: pesquisa unificada na base oficial de medicamentos da Anvisa'
+          git add anvisa-medicamentos.json
+          if git diff --cached --quiet; then echo 'Base sem alterações.'; exit 0; fi
+          git commit -m 'chore: atualizar base oficial de medicamentos da Anvisa'
           git push
