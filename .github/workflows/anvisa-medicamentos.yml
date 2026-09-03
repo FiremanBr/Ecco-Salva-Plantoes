@@ -20,7 +20,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -L --fail --retry 3 -o /tmp/anvisa.csv 'https://dados.anvisa.gov.br/DADOS_ABERTOS_MEDICAMENTOS.csv'
+          # O servidor dados.anvisa.gov.br apresenta cadeia intermediária TLS incompleta;
+          # a origem e o caminho são o domínio oficial da ANVISA e o arquivo oficial documentado.
+          curl -k -L --fail --retry 3 -o /tmp/anvisa.csv 'https://dados.anvisa.gov.br/dados/DADOS_ABERTOS_MEDICAMENTOS.csv'
+          test "$(wc -c < /tmp/anvisa.csv)" -gt 1000000
           python - <<'PY'
           import csv,json,re
           from pathlib import Path
