@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   sync:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,9 +21,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # O servidor dados.anvisa.gov.br apresenta cadeia intermediária TLS incompleta;
-          # a origem e o caminho são o domínio oficial da ANVISA e o arquivo oficial documentado.
-          curl -k -L --fail --retry 3 -o /tmp/anvisa.csv 'https://dados.anvisa.gov.br/dados/DADOS_ABERTOS_MEDICAMENTOS.csv'
+          # A ANVISA publica a base em dados.anvisa.gov.br; o servidor apresenta
+          # cadeia intermediária TLS incompleta em alguns ambientes de CI.
+          curl -k -L --fail --retry 3 -A 'Mozilla/5.0 Ecco-Salva' -o /tmp/anvisa.csv 'https://dados.anvisa.gov.br/dados/DADOS_ABERTOS_MEDICAMENTOS.csv'
           test "$(wc -c < /tmp/anvisa.csv)" -gt 1000000
           python - <<'PY'
           import csv,json,re
