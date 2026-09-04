@@ -5875,7 +5875,7 @@ function switchTab(tab, el) {
   };
 })();
 </script>
-<!-- ECOSALVA_ESTUDOS_TAB_V2 -->
+<!-- ECOSALVA_ESTUDOS_TAB_V3 -->
 <style>
   #ecosalva-estudos-tab{cursor:pointer}
   #ecosalva-estudos-area{display:none;margin:16px 0 24px}
@@ -5916,38 +5916,82 @@ function switchTab(tab, el) {
       document.body.prepend(tab);
     }
 
+    var nav=target ? target.parentElement : document.body;
+    var host=nav.parentElement || document.body;
+
     var area=document.createElement('section');
     area.id='ecosalva-estudos-area';
     area.innerHTML='<div class="ecosalva-estudos-box">'+
-      '<div class="ecosalva-estudos-title">📚 Estudos</div>'+
+      '<div class="ecosalva-estudos-title">📚 Estudos</div>'+ 
       '<div class="ecosalva-estudo-card">'+
-        '<button class="ecosalva-estudo-btn" type="button">Nove Certos da Enfermagem</button>'+
+        '<button class="ecosalva-estudo-btn" type="button">Nove Certos da Enfermagem</button>'+ 
         '<div class="ecosalva-estudo-content">'+
-          '<p><strong>1. Paciente certo:</strong> confirmar a identificação correta do paciente.</p>'+
-          '<p><strong>2. Medicamento certo:</strong> conferir nome, apresentação e concentração.</p>'+
-          '<p><strong>3. Dose certa:</strong> verificar a dose prescrita e os cálculos necessários.</p>'+
-          '<p><strong>4. Via certa:</strong> confirmar a via de administração prescrita.</p>'+
-          '<p><strong>5. Horário certo:</strong> administrar no horário ou aprazamento correto.</p>'+
-          '<p><strong>6. Registro certo:</strong> registrar corretamente a administração e eventuais intercorrências.</p>'+
+          '<p><strong>1. Paciente certo:</strong> confirmar a identificação correta do paciente.</p>'+ 
+          '<p><strong>2. Medicamento certo:</strong> conferir nome, apresentação e concentração.</p>'+ 
+          '<p><strong>3. Dose certa:</strong> verificar a dose prescrita e os cálculos necessários.</p>'+ 
+          '<p><strong>4. Via certa:</strong> confirmar a via de administração prescrita.</p>'+ 
+          '<p><strong>5. Horário certo:</strong> administrar no horário ou aprazamento correto.</p>'+ 
+          '<p><strong>6. Registro certo:</strong> registrar corretamente a administração e eventuais intercorrências.</p>'+ 
           '<p><strong>7. Indicação/razão certa:</strong> confirmar se o medicamento é adequado à indicação clínica.</p>'+ 
-          '<p><strong>8. Resposta certa:</strong> avaliar o efeito esperado e possíveis reações após a administração.</p>'+
-          '<p><strong>9. Forma/apresentação certa:</strong> conferir a apresentação, formulação e características do medicamento antes de administrar.</p>'+
-          '<p><strong>Memorização rápida:</strong> Paciente → Medicamento → Dose → Via → Horário → Registro → Indicação → Resposta → Forma.</p>'+
+          '<p><strong>8. Resposta certa:</strong> avaliar o efeito esperado e possíveis reações após a administração.</p>'+ 
+          '<p><strong>9. Forma/apresentação certa:</strong> conferir a apresentação, formulação e características do medicamento antes de administrar.</p>'+ 
+          '<p><strong>Memorização rápida:</strong> Paciente → Medicamento → Dose → Via → Horário → Registro → Indicação → Resposta → Forma.</p>'+ 
         '</div>'+ 
       '</div>'+ 
     '</div>';
 
-    var nav=target ? target.parentElement : document.body;
-    nav.parentElement ? nav.parentElement.insertBefore(area,nav.nextSibling) : document.body.appendChild(area);
+    host.insertBefore(area, nav.nextSibling);
 
-    tab.addEventListener('click',function(){
-      area.classList.toggle('open');
-      if(area.classList.contains('open')) area.scrollIntoView({behavior:'smooth',block:'start'});
+    // The Estudos tab behaves as a true exclusive tab:
+    // when open, hide only the existing panels that live after the navigation row.
+    var hiddenPanels=[];
+    var studyOpen=false;
+
+    function closeStudies(){
+      if(!studyOpen) return;
+      studyOpen=false;
+      area.classList.remove('open');
+      hiddenPanels.forEach(function(item){
+        item.el.style.display=item.display;
+      });
+      hiddenPanels=[];
+    }
+
+    function openStudies(){
+      if(studyOpen) return;
+      studyOpen=true;
+      hiddenPanels=[];
+      Array.from(host.children).forEach(function(el){
+        if(el===nav || el===area) return;
+        var display=getComputedStyle(el).display;
+        hiddenPanels.push({el:el,display:el.style.display});
+        el.style.display='none';
+      });
+      area.classList.add('open');
+      area.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+
+    // Capture-phase listener ensures normal platform tab clicks close Estudos first,
+    // without replacing the platform's existing tab behavior.
+    document.addEventListener('click',function(ev){
+      if(!studyOpen) return;
+      var clicked=ev.target.closest ? ev.target.closest('button,a,[role="button"],div') : null;
+      if(clicked && nav.contains(clicked) && clicked!==tab){
+        closeStudies();
+      }
+    },true);
+
+    tab.addEventListener('click',function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      if(studyOpen) closeStudies(); else openStudies();
     });
 
     var studyBtn=area.querySelector('.ecosalva-estudo-btn');
     var content=area.querySelector('.ecosalva-estudo-content');
-    studyBtn.addEventListener('click',function(){
+    studyBtn.addEventListener('click',function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
       studyBtn.classList.toggle('open');
       content.classList.toggle('open');
     });
