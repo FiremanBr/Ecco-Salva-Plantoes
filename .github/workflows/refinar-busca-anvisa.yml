@@ -1,0 +1,128 @@
+name: Refinar busca ANVISA
+
+on:
+  push:
+    paths:
+      - '.github/workflows/refinar-busca-anvisa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Atualizar interface da pesquisa ANVISA
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          marker = 'SPRINT63: pesquisa ANVISA consolidada para uso e estudo'
+          if marker in s:
+              print('SPRINT63 ja aplicado')
+              raise SystemExit(0)
+
+          patch = r'''<!-- SPRINT63: pesquisa ANVISA consolidada para uso e estudo -->
+          <script id="sprint63-anvisa-estudo">
+          (function(){
+            // Pesquisa exclusivamente na base oficial ANVISA já sincronizada no projeto.
+            // Consolida registros ativos por medicamento/princípio ativo e oculta dados
+            // regulatórios de baixo valor operacional (registro, CNPJ e laboratório).
+            const URL_BASE='anvisa-medicamentos.json';
+            let cache=null;
+            function norm(v){return String(v||'').trim().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();}
+            function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+            async function load(){
+              if(cache)return cache;
+              const r=await fetch(URL_BASE+'?v='+Date.now(),{cache:'no-store'});
+              if(!r.ok)throw Error('Base ANVISA indisponível');
+              const j=await r.json(); cache=j.registros||[]; return cache;
+            }
+            function ativo(x){return !x.situacao || norm(x.situacao).includes('ativo');}
+            function score(x,q){
+              const n=norm(x.nome), a=norm(x.principio_ativo);
+              if(n===q||a===q)return 100;
+              if(n.startsWith(q)||a.startsWith(q))return 85;
+              if(n.includes(q)||a.includes(q))return 70;
+              return 0;
+            }
+            function key(x){return norm(x.principio_ativo||x.nome);}
+            function addUniq(arr,v){
+              if(v && !arr.some(z=>norm(z)===norm(v)))arr.push(String(v).trim());
+            }
+            function bularioUrl(name){
+              return 'https://consultas.anvisa.gov.br/#/bulario/';
+            }
+            function card(g){
+              const names=[]; const presentations=[]; const forms=[]; const vias=[]; const classes=[]; const cats=[];
+              g.rows.forEach(x=>{
+                addUniq(names,x.nome);
+                addUniq(presentations,x.apresentacao);
+                addUniq(forms,x.forma_farmaceutica);
+                addUniq(vias,x.via);
+                addUniq(classes,x.classe);
+                addUniq(cats,x.categoria);
+              });
+              const display=g.principio||names[0]||'Medicamento';
+              let h='<div class="med-card" style="margin:10px 0;padding:0;border:1px solid #2b3a52;border-radius:18px;overflow:hidden;background:rgba(18,27,43,.92)">';
+              h+='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px;border-bottom:1px solid #2b3a52">';
+              h+='<div style="font-size:20px;font-weight:900">💊 '+esc(display.toUpperCase())+'</div><span style="font-size:12px;font-weight:800;color:#35c98a;border:1px solid #176b4e;border-radius:7px;padding:5px 8px">🇧🇷 ANVISA</span></div>';
+              h+='<div style="padding:4px 16px 14px">';
+              h+='<div style="padding:10px 0;border-bottom:1px solid #2b3a52"><div style="font-size:12px;font-weight:900;color:#69b9ff">PRINCÍPIO ATIVO</div><div style="font-size:17px;margin-top:5px">'+esc(g.principio||display)+'</div></div>';
+              if(names.length){
+                h+='<div style="padding:10px 0;border-bottom:1px solid #2b3a52"><div style="font-size:12px;font-weight:900;color:#69b9ff">🏷️ NOMES COMERCIAIS / PRODUTOS REGISTRADOS</div><div style="font-size:16px;line-height:1.65;margin-top:5px">';
+                h+=names.map(n=>'<span style="display:inline-block;margin:2px 6px 2px 0;padding:4px 9px;border-radius:8px;background:#17243a">'+esc(n)+'</span>').join('');
+                h+='</div></div>';
+              }
+              if(classes.length)h+='<div style="padding:10px 0;border-bottom:1px solid #2b3a52"><div style="font-size:12px;font-weight:900;color:#69b9ff">CLASSE TERAPÊUTICA</div><div style="font-size:16px;margin-top:5px">'+esc(classes.join(' • '))+'</div></div>';
+              if(cats.length)h+='<div style="padding:10px 0;border-bottom:1px solid #2b3a52"><div style="font-size:12px;font-weight:900;color:#69b9ff">CATEGORIA</div><div style="font-size:16px;margin-top:5px">'+esc(cats.join(' • '))+'</div></div>';
+              if(presentations.length)h+='<div style="padding:10px 0;border-bottom:1px solid #2b3a52"><div style="font-size:12px;font-weight:900;color:#69b9ff">APRESENTAÇÕES ENCONTRADAS</div><div style="font-size:16px;line-height:1.5;margin-top:5px">'+esc(presentations.join(' • '))+'</div></div>';
+              if(forms.length)h+='<div style="padding:10px 0;border-bottom:1px solid #2b3a52"><div style="font-size:12px;font-weight:900;color:#69b9ff">FORMA FARMACÊUTICA</div><div style="font-size:16px;margin-top:5px">'+esc(forms.join(' • '))+'</div></div>';
+              if(vias.length)h+='<div style="padding:10px 0;border-bottom:1px solid #2b3a52"><div style="font-size:12px;font-weight:900;color:#69b9ff">VIA DE ADMINISTRAÇÃO</div><div style="font-size:16px;margin-top:5px">'+esc(vias.join(' • '))+'</div></div>';
+              h+='<div style="padding:10px 0"><div style="font-size:12px;font-weight:900;color:#69b9ff">📚 INFORMAÇÕES CLÍNICAS OFICIAIS</div><div style="font-size:15px;line-height:1.45;margin-top:5px">Indicações, posologia, contraindicações, advertências, preparo e administração devem ser consultados na bula profissional vigente da ANVISA.</div>';
+              h+='<a href="'+bularioUrl(display)+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:9px;padding:9px 12px;border-radius:9px;text-decoration:none;background:#1677d2;color:white;font-weight:800">📄 Abrir Bulário ANVISA</a></div>';
+              h+='<div style="font-size:11px;opacity:.7;padding-top:2px">Fonte: ANVISA — Dados Abertos de Medicamentos. Somente registros ativos são considerados.</div>';
+              h+='</div></div>'; return h;
+            }
+            window.executarBuscaForaMaleta=async function(){
+              const input=document.getElementById('buscaForaMaletaInput'), out=document.getElementById('buscaForaMaletaResult');
+              const q=input&&input.value?input.value.trim():'';
+              if(!q||!out)return;
+              out.innerHTML='<div class="loading-wrap">🔎 Consultando base oficial da ANVISA...</div>';
+              try{
+                const data=await load(), pool=data.filter(ativo), nq=norm(q);
+                const rows=pool.map(x=>({x,s:score(x,nq)})).filter(o=>o.s>0).sort((a,b)=>b.s-a.s).slice(0,60).map(o=>o.x);
+                const groups=new Map();
+                rows.forEach(x=>{const k=key(x);if(!groups.has(k))groups.set(k,{principio:x.principio_ativo||x.nome,rows:[]});groups.get(k).rows.push(x);});
+                const gs=[...groups.values()].slice(0,8);
+                out.innerHTML='<button class="btn-voltar" onclick="limparBusca()">← Voltar</button>';
+                if(!gs.length){out.innerHTML+='<div class="error-box">⚠️ Medicamento não encontrado na base oficial de medicamentos ativos da ANVISA.</div>';return;}
+                out.innerHTML+='<div style="font-size:13px;font-weight:800;margin:8px 0 4px">Resultados oficiais da ANVISA — consolidados</div>'+gs.map(card).join('');
+              }catch(e){console.error(e);out.innerHTML='<div class="error-box">⚠️ Não foi possível consultar a base oficial da ANVISA agora.</div>';}
+            };
+          })();
+          </script>
+          '''
+          s = s.replace('</body>', patch + '\n</body>') if '</body>' in s else s + '\n' + patch
+          p.write_text(s, encoding='utf-8')
+          print('SPRINT63 aplicado')
+
+      - name: Commit e remover workflow temporário
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'feat: consolidar pesquisa de medicamentos da Anvisa' || true
+          git push
+          rm -f .github/workflows/refinar-busca-anvisa.yml
+          git add .github/workflows/refinar-busca-anvisa.yml
+          git commit -m 'chore: remover workflow temporario de refinamento' || true
+          git push
