@@ -1,0 +1,14 @@
+name: Trigger final ANVISA patch
+on:
+  push:
+    paths:
+      - '.github/workflows/trigger-final.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  noop:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ready
