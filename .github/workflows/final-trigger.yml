@@ -1,0 +1,14 @@
+name: Final trigger
+on:
+  push:
+    paths:
+      - '.github/workflows/final-trigger.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo done
