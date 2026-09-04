@@ -5875,7 +5875,7 @@ function switchTab(tab, el) {
   };
 })();
 </script>
-<!-- ECOSALVA_ESTUDOS_TAB_V3 -->
+<!-- ECOSALVA_ESTUDOS_TAB_V5 -->
 <style>
   #ecosalva-estudos-tab{cursor:pointer}
   #ecosalva-estudos-area{display:none;margin:16px 0 24px}
@@ -5899,7 +5899,7 @@ function switchTab(tab, el) {
     var candidates=Array.from(document.querySelectorAll('button,a,[role="button"],div'));
     var target=candidates.find(function(el){
       var t=(el.textContent||'').trim();
-      return /^.*Segurança.*$/.test(t) && t.length < 40;
+      return /Segurança/.test(t) && t.length < 40;
     });
 
     var tab=document.createElement(target ? target.tagName.toLowerCase() : 'button');
@@ -5942,50 +5942,62 @@ function switchTab(tab, el) {
 
     host.insertBefore(area, nav.nextSibling);
 
-    // The Estudos tab behaves as a true exclusive tab:
-    // when open, hide only the existing panels that live after the navigation row.
-    var hiddenPanels=[];
-    var studyOpen=false;
+    var managed=[];
+    function collectManaged(){
+      managed=[];
+      Array.from(host.children).forEach(function(el){
+        if(el!==nav && el!==area) managed.push({el:el,display:el.style.display});
+      });
+    }
+    collectManaged();
+
+    function hideOtherPanels(){
+      collectManaged();
+      managed.forEach(function(item){ item.el.style.setProperty('display','none','important'); });
+    }
+
+    function restoreOtherPanels(){
+      managed.forEach(function(item){
+        if(item.display) item.el.style.display=item.display;
+        else item.el.style.removeProperty('display');
+      });
+    }
 
     function closeStudies(){
-      if(!studyOpen) return;
-      studyOpen=false;
       area.classList.remove('open');
-      hiddenPanels.forEach(function(item){
-        item.el.style.display=item.display;
-      });
-      hiddenPanels=[];
+      restoreOtherPanels();
     }
 
     function openStudies(){
-      if(studyOpen) return;
-      studyOpen=true;
-      hiddenPanels=[];
-      Array.from(host.children).forEach(function(el){
-        if(el===nav || el===area) return;
-        var display=getComputedStyle(el).display;
-        hiddenPanels.push({el:el,display:el.style.display});
-        el.style.display='none';
-      });
+      hideOtherPanels();
       area.classList.add('open');
-      area.scrollIntoView({behavior:'smooth',block:'start'});
     }
 
-    // Capture-phase listener ensures normal platform tab clicks close Estudos first,
-    // without replacing the platform's existing tab behavior.
     document.addEventListener('click',function(ev){
-      if(!studyOpen) return;
-      var clicked=ev.target.closest ? ev.target.closest('button,a,[role="button"],div') : null;
-      if(clicked && nav.contains(clicked) && clicked!==tab){
-        closeStudies();
+      var node=ev.target;
+      while(node && node !== document.body){
+        if(node.id==='ecosalva-estudos-tab'){
+          ev.preventDefault();
+          ev.stopPropagation();
+          if(area.classList.contains('open')) closeStudies();
+          else openStudies();
+          return;
+        }
+        node=node.parentElement;
+      }
+
+      if(area.contains(ev.target)) return;
+
+      node=ev.target;
+      while(node && node !== document.body){
+        var txt=(node.textContent||'').trim();
+        if(/^(?:🔬\s*)?Análise$/.test(txt) || /^💊\s*Maleta$/.test(txt) || /^📋\s*Histórico$/.test(txt) || /^🎯\s*Sintoma$/.test(txt) || /^☠️?\s*Segurança$/.test(txt)){
+          closeStudies();
+          return;
+        }
+        node=node.parentElement;
       }
     },true);
-
-    tab.addEventListener('click',function(ev){
-      ev.preventDefault();
-      ev.stopPropagation();
-      if(studyOpen) closeStudies(); else openStudies();
-    });
 
     var studyBtn=area.querySelector('.ecosalva-estudo-btn');
     var content=area.querySelector('.ecosalva-estudo-content');
