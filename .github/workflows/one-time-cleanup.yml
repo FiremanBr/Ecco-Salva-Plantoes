@@ -1,0 +1,22 @@
+name: One time cleanup
+on:
+  push:
+    paths:
+      - '.github/workflows/one-time-cleanup.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove temporary files
+        run: |
+          rm -f .github/workflows/trigger-final.yml .github/workflows/final-trigger.yml .github/workflows/cleanup-final.yml .github/workflows/force-anvisa-matching.yml .github/workflows/apply-anvisa-matching.yml scripts/.anvisa-matching-trigger scripts/.anvisa-force scripts/.final-trigger scripts/.stop-junk .github/workflows/one-time-cleanup.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'chore: remover artefatos temporarios' || true
+          git push
