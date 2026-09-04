@@ -5726,6 +5726,20 @@ function switchTab(tab, el) {
   setInterval(limparLupaAnalise,1000);
 })();
 </script>
+<!-- SPRINT63: busca externa ANVISA - handler final -->
+<script id="sprint63-anvisa-final">
+(function(){
+  const URL_BASE='anvisa-medicamentos.json'; let cache=null;
+  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function lev(a,b){let p=Array(b.length+1).fill(0);for(let j=0;j<=b.length;j++)p[j]=j;for(let i=1;i<=a.length;i++){let q=[i];for(let j=1;j<=b.length;j++)q[j]=Math.min(q[j-1]+1,p[j]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=q;}return p[b.length];}
+  async function load(){if(cache)return cache;const r=await fetch(URL_BASE+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('Base ANVISA indisponível');const j=await r.json();cache=Array.isArray(j.registros)?j.registros:[];return cache;}
+  function score(x,q){const n=norm(x.nome),p=norm(x.principio_ativo);if(n===q)return 1200;if(n.startsWith(q))return 1100;if(n.includes(q))return 1000;if(p===q)return 900;if(p.includes(q))return 800;let best=0;for(const t of q.split(' ')){if(t.length<4)continue;for(const w of (n+' '+p).split(' ')){const d=lev(t,w);if(d<=((t.length>=8)?2:1))best=Math.max(best,600-d*100);}}return best;}
+  function card(x){const rows=[];[['Nome do produto',x.nome],['Princípio ativo',x.principio_ativo],['Apresentação',x.apresentacao],['Forma farmacêutica',x.forma_farmaceutica],['Via de administração',x.via],['Classe terapêutica',x.classe],['Categoria regulatória',x.categoria],['Registro ANVISA',x.registro],['Detentora do registro',x.empresa],['Situação',x.situacao]].forEach(r=>{if(r[1])rows.push('<div><div class="row-lbl">'+esc(r[0])+'</div><div class="row-val">'+esc(r[1])+'</div></div>');});return '<div class="med-card"><div class="med-card-header"><div class="med-card-name">💊 '+esc(x.nome||'Medicamento')+'</div><span class="med-badge">🇧🇷 ANVISA</span></div><div class="med-card-body">'+rows.join('<div class="divider"></div>')+'</div></div>';}
+  window.executarBuscaForaMaleta=async function(){const input=document.getElementById('buscaForaMaletaInput'),btn=document.getElementById('buscaForaMaletaBtn'),out=document.getElementById('buscaForaMaletaResult');if(!input||!btn||!out)return;const q=input.value.trim();if(!q)return;btn.disabled=true;out.innerHTML='<div class="loading-wrap">🔎 Consultando a base oficial da ANVISA...</div>';try{const nq=norm(q),data=await load(),ativos=data.filter(x=>!x.situacao||norm(x.situacao).includes('ativo')),pool=ativos.length?ativos:data,ach=pool.map(x=>({x,s:score(x,nq)})).filter(o=>o.s>0).sort((a,b)=>b.s-a.s).slice(0,8).map(o=>o.x);if(!ach.length){out.innerHTML='<div class="error-box">⚠️ Medicamento não encontrado na base oficial de medicamentos registrados da ANVISA.</div>';return;}out.innerHTML='<div style="font-size:13px;font-weight:800;margin:8px 0 4px">Resultados oficiais da ANVISA</div>'+ach.map(card).join('');}catch(e){console.error(e);out.innerHTML='<div class="error-box">⚠️ Não foi possível consultar a base oficial da ANVISA agora.</div>';}finally{btn.disabled=false;}};
+})();
+</script>
+
 </body>
 </html>
 
