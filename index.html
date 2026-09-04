@@ -5875,55 +5875,85 @@ function switchTab(tab, el) {
   };
 })();
 </script>
-
-<!-- ECOSALVA_ESTUDOS_TAB_V1 -->
+<!-- ECOSALVA_ESTUDOS_TAB_V2 -->
 <style>
   #ecosalva-estudos-tab{cursor:pointer}
-  #ecosalva-estudos-panel{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.45);padding:24px;box-sizing:border-box}
-  #ecosalva-estudos-panel.open{display:flex;align-items:center;justify-content:center}
-  .ecosalva-estudos-card{width:min(760px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:16px;padding:24px;box-shadow:0 12px 40px rgba(0,0,0,.28);font-family:inherit}
-  .ecosalva-estudos-card h2{margin:0 0 18px;font-size:1.5rem}
-  .ecosalva-estudos-item{padding:14px 0;border-bottom:1px solid #ddd}
-  .ecosalva-estudos-item:last-child{border-bottom:0}
-  .ecosalva-estudos-item strong{display:block;margin-bottom:5px}
-  .ecosalva-estudos-close{float:right;border:0;background:transparent;font-size:26px;cursor:pointer;line-height:1}
-  @media(max-width:600px){#ecosalva-estudos-panel{padding:10px}.ecosalva-estudos-card{padding:18px}}
+  #ecosalva-estudos-area{display:none;margin:16px 0 24px}
+  #ecosalva-estudos-area.open{display:block}
+  .ecosalva-estudos-box{background:#111827;border:1px solid #334155;border-radius:14px;padding:16px;color:#e5e7eb}
+  .ecosalva-estudos-title{font-size:18px;font-weight:800;margin:0 0 12px;color:#60a5fa}
+  .ecosalva-estudo-card{background:#1e293b;border:1px solid #334155;border-radius:10px;margin-top:10px;overflow:hidden}
+  .ecosalva-estudo-btn{width:100%;text-align:left;background:transparent;border:0;color:#e5e7eb;padding:14px 16px;font-size:16px;font-weight:800;cursor:pointer}
+  .ecosalva-estudo-btn::after{content:'＋';float:right;font-size:18px}
+  .ecosalva-estudo-btn.open::after{content:'−'}
+  .ecosalva-estudo-content{display:none;padding:0 16px 16px;color:#cbd5e1;line-height:1.55}
+  .ecosalva-estudo-content.open{display:block}
+  .ecosalva-estudo-content p{margin:8px 0}
+  @media(max-width:600px){.ecosalva-estudos-box{padding:12px}.ecosalva-estudo-btn{font-size:15px}}
 </style>
 <script>
 (function(){
-  function initEstudos(){
+  function makeStudies(){
     if(document.getElementById('ecosalva-estudos-tab')) return;
-    var tab=document.createElement('button');
+
+    var candidates=Array.from(document.querySelectorAll('button,a,[role="button"],div'));
+    var target=candidates.find(function(el){
+      var t=(el.textContent||'').trim();
+      return /^.*Segurança.*$/.test(t) && t.length < 40;
+    });
+
+    var tab=document.createElement(target ? target.tagName.toLowerCase() : 'button');
     tab.id='ecosalva-estudos-tab';
     tab.type='button';
-    tab.textContent='Estudos';
+    tab.textContent='📚 Estudos';
     tab.setAttribute('aria-label','Abrir Estudos');
-    tab.style.cssText='position:fixed;top:12px;right:12px;z-index:99998;padding:10px 16px;border-radius:10px;border:0;cursor:pointer;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,.2);';
+    if(target){
+      tab.className=target.className;
+      tab.style.cssText=target.style.cssText;
+      target.parentElement.appendChild(tab);
+    }else{
+      tab.style.cssText='display:block;margin:8px 0;padding:8px 14px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#e5e7eb;font-weight:700;';
+      document.body.prepend(tab);
+    }
 
-    var panel=document.createElement('div');
-    panel.id='ecosalva-estudos-panel';
-    panel.setAttribute('role','dialog');
-    panel.setAttribute('aria-modal','true');
-    panel.innerHTML='<div class="ecosalva-estudos-card"><button class="ecosalva-estudos-close" type="button" aria-label="Fechar">×</button><h2>Nove Certos da Enfermagem</h2>'+
-      '<div class="ecosalva-estudos-item"><strong>1. Paciente certo</strong>Confirmar a identificação correta do paciente.</div>'+ 
-      '<div class="ecosalva-estudos-item"><strong>2. Medicamento certo</strong>Conferir nome, apresentação e concentração.</div>'+ 
-      '<div class="ecosalva-estudos-item"><strong>3. Dose certa</strong>Verificar a dose prescrita e os cálculos necessários.</div>'+ 
-      '<div class="ecosalva-estudos-item"><strong>4. Via certa</strong>Confirmar a via de administração prescrita.</div>'+ 
-      '<div class="ecosalva-estudos-item"><strong>5. Horário certo</strong>Administrar no horário ou aprazamento correto.</div>'+ 
-      '<div class="ecosalva-estudos-item"><strong>6. Registro certo</strong>Registrar corretamente a administração e eventuais intercorrências.</div>'+ 
-      '<div class="ecosalva-estudos-item"><strong>7. Indicação/razão certa</strong>Confirmar se o medicamento é adequado à indicação clínica.</div>'+ 
-      '<div class="ecosalva-estudos-item"><strong>8. Resposta certa</strong>Avaliar o efeito esperado e possíveis reações após a administração.</div>'+ 
-      '<div class="ecosalva-estudos-item"><strong>9. Forma/apresentação certa</strong>Conferir a apresentação, formulação e características do medicamento antes de administrar.</div>'+ 
-      '<div style="margin-top:18px;font-weight:700">Memorização rápida: Paciente → Medicamento → Dose → Via → Horário → Registro → Indicação → Resposta → Forma.</div></div>';
+    var area=document.createElement('section');
+    area.id='ecosalva-estudos-area';
+    area.innerHTML='<div class="ecosalva-estudos-box">'+
+      '<div class="ecosalva-estudos-title">📚 Estudos</div>'+
+      '<div class="ecosalva-estudo-card">'+
+        '<button class="ecosalva-estudo-btn" type="button">Nove Certos da Enfermagem</button>'+
+        '<div class="ecosalva-estudo-content">'+
+          '<p><strong>1. Paciente certo:</strong> confirmar a identificação correta do paciente.</p>'+
+          '<p><strong>2. Medicamento certo:</strong> conferir nome, apresentação e concentração.</p>'+
+          '<p><strong>3. Dose certa:</strong> verificar a dose prescrita e os cálculos necessários.</p>'+
+          '<p><strong>4. Via certa:</strong> confirmar a via de administração prescrita.</p>'+
+          '<p><strong>5. Horário certo:</strong> administrar no horário ou aprazamento correto.</p>'+
+          '<p><strong>6. Registro certo:</strong> registrar corretamente a administração e eventuais intercorrências.</p>'+
+          '<p><strong>7. Indicação/razão certa:</strong> confirmar se o medicamento é adequado à indicação clínica.</p>'+ 
+          '<p><strong>8. Resposta certa:</strong> avaliar o efeito esperado e possíveis reações após a administração.</p>'+
+          '<p><strong>9. Forma/apresentação certa:</strong> conferir a apresentação, formulação e características do medicamento antes de administrar.</p>'+
+          '<p><strong>Memorização rápida:</strong> Paciente → Medicamento → Dose → Via → Horário → Registro → Indicação → Resposta → Forma.</p>'+
+        '</div>'+ 
+      '</div>'+ 
+    '</div>';
 
-    document.body.appendChild(tab);
-    document.body.appendChild(panel);
-    tab.addEventListener('click',function(){panel.classList.add('open')});
-    panel.querySelector('.ecosalva-estudos-close').addEventListener('click',function(){panel.classList.remove('open')});
-    panel.addEventListener('click',function(e){if(e.target===panel) panel.classList.remove('open')});
-    document.addEventListener('keydown',function(e){if(e.key==='Escape') panel.classList.remove('open')});
+    var nav=target ? target.parentElement : document.body;
+    nav.parentElement ? nav.parentElement.insertBefore(area,nav.nextSibling) : document.body.appendChild(area);
+
+    tab.addEventListener('click',function(){
+      area.classList.toggle('open');
+      if(area.classList.contains('open')) area.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+
+    var studyBtn=area.querySelector('.ecosalva-estudo-btn');
+    var content=area.querySelector('.ecosalva-estudo-content');
+    studyBtn.addEventListener('click',function(){
+      studyBtn.classList.toggle('open');
+      content.classList.toggle('open');
+    });
   }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initEstudos); else initEstudos();
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',makeStudies); else makeStudies();
 })();
 </script>
 </body>
