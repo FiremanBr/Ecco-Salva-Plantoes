@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fix Estudos navigation and exclusive panel
+      - name: Install Estudos as exclusive tab panel
         shell: python
         run: |
           from pathlib import Path
@@ -25,16 +25,16 @@ jobs:
           path = Path('index.html')
           text = path.read_text(encoding='utf-8')
 
-          # Remove previous Estudos injections before adding the current version.
+          # Remove every previous Estudos injection before installing the new one.
           text = re.sub(
-              r'\s*<!-- ECOSALVA_ESTUDOS_TAB_V[1234] -->.*?</script>\s*',
+              r'\s*<!-- ECOSALVA_ESTUDOS_TAB_V[1-5] -->.*?</script>\s*',
               '\n',
               text,
               count=1,
               flags=re.S,
           )
 
-          payload = r'''<!-- ECOSALVA_ESTUDOS_TAB_V4 -->
+          payload = r'''<!-- ECOSALVA_ESTUDOS_TAB_V5 -->
           <style>
             #ecosalva-estudos-tab{cursor:pointer}
             #ecosalva-estudos-area{display:none;margin:16px 0 24px}
@@ -101,36 +101,59 @@ jobs:
 
               host.insertBefore(area, nav.nextSibling);
 
+              // Only the original application content immediately around the tab bar is
+              // temporarily hidden while Estudos is active. Its exact inline display values
+              // are restored when another main tab is clicked, so the native tab system keeps control.
+              var managed=[];
+              function collectManaged(){
+                managed=[];
+                Array.from(host.children).forEach(function(el){
+                  if(el!==nav && el!==area) managed.push({el:el,display:el.style.display});
+                });
+              }
+              collectManaged();
+
+              function hideOtherPanels(){
+                collectManaged();
+                managed.forEach(function(item){ item.el.style.setProperty('display','none','important'); });
+              }
+
+              function restoreOtherPanels(){
+                managed.forEach(function(item){
+                  if(item.display) item.el.style.display=item.display;
+                  else item.el.style.removeProperty('display');
+                });
+              }
+
               function closeStudies(){
                 area.classList.remove('open');
+                restoreOtherPanels();
               }
 
               function openStudies(){
+                hideOtherPanels();
                 area.classList.add('open');
-                area.scrollIntoView({behavior:'smooth',block:'start'});
               }
 
-              // Delegated capture listener: the existing application controls the other tabs.
-              // We only control the visibility of the Estudos panel here.
+              // Capture phase guarantees that clicking another existing tab closes Studies
+              // before the platform's own tab handler runs.
               document.addEventListener('click',function(ev){
                 var node=ev.target;
-                var clickedTab=null;
                 while(node && node !== document.body){
-                  if(node.id==='ecosalva-estudos-tab') { clickedTab=node; break; }
+                  if(node.id==='ecosalva-estudos-tab'){
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    if(area.classList.contains('open')) closeStudies();
+                    else openStudies();
+                    return;
+                  }
                   node=node.parentElement;
                 }
 
-                if(clickedTab){
-                  ev.preventDefault();
-                  ev.stopPropagation();
-                  if(area.classList.contains('open')) closeStudies(); else openStudies();
-                  return;
-                }
-
-                // Never close the study while interacting with its own content.
+                // Interactions inside Studies must not close it.
                 if(area.contains(ev.target)) return;
 
-                // Any of the platform's main navigation tabs closes Estudos immediately.
+                // Any click on an existing main tab leaves Estudos mode.
                 node=ev.target;
                 while(node && node !== document.body){
                   var txt=(node.textContent||'').trim();
@@ -162,7 +185,7 @@ jobs:
               text += '\n' + payload + '\n'
 
           path.write_text(text, encoding='utf-8')
-          print('Estudos V4 installed')
+          print('Estudos V5 installed')
 
       - name: Commit and push
         shell: bash
@@ -174,5 +197,5 @@ jobs:
             echo 'No changes to commit'
             exit 0
           fi
-          git commit -m 'fix: isolate Estudos content from other tabs'
+          git commit -m 'fix: Estudos opens as exclusive panel'
           git push
