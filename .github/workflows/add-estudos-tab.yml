@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Estudos as exclusive tab panel
+      - name: Install Estudos as exclusive tab
         shell: python
         run: |
           from pathlib import Path
@@ -25,16 +25,9 @@ jobs:
           path = Path('index.html')
           text = path.read_text(encoding='utf-8')
 
-          # Remove every previous Estudos injection before installing the new one.
-          text = re.sub(
-              r'\s*<!-- ECOSALVA_ESTUDOS_TAB_V[1-5] -->.*?</script>\s*',
-              '\n',
-              text,
-              count=1,
-              flags=re.S,
-          )
+          text = re.sub(r'\s*<!-- ECOSALVA_ESTUDOS_TAB_V[1-6] -->.*?</script>\s*', '\n', text, count=1, flags=re.S)
 
-          payload = r'''<!-- ECOSALVA_ESTUDOS_TAB_V5 -->
+          payload = r'''<!-- ECOSALVA_ESTUDOS_TAB_V6 -->
           <style>
             #ecosalva-estudos-tab{cursor:pointer}
             #ecosalva-estudos-area{display:none;margin:16px 0 24px}
@@ -48,7 +41,6 @@ jobs:
             .ecosalva-estudo-content{display:none;padding:0 16px 16px;color:#cbd5e1;line-height:1.55}
             .ecosalva-estudo-content.open{display:block}
             .ecosalva-estudo-content p{margin:8px 0}
-            @media(max-width:600px){.ecosalva-estudos-box{padding:12px}.ecosalva-estudo-btn{font-size:15px}}
           </style>
           <script>
           (function(){
@@ -58,10 +50,10 @@ jobs:
               var candidates=Array.from(document.querySelectorAll('button,a,[role="button"],div'));
               var target=candidates.find(function(el){
                 var t=(el.textContent||'').trim();
-                return /Segurança/.test(t) && t.length < 40;
+                return /Segurança/.test(t) && t.length<40;
               });
 
-              var tab=document.createElement(target ? target.tagName.toLowerCase() : 'button');
+              var tab=document.createElement(target?target.tagName.toLowerCase():'button');
               tab.id='ecosalva-estudos-tab';
               tab.type='button';
               tab.textContent='📚 Estudos';
@@ -71,114 +63,113 @@ jobs:
                 tab.style.cssText=target.style.cssText;
                 target.parentElement.appendChild(tab);
               }else{
-                tab.style.cssText='display:block;margin:8px 0;padding:8px 14px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#e5e7eb;font-weight:700;';
+                tab.style.cssText='display:block;margin:8px 0;padding:8px 14px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#e5e7eb;font-weight:700';
                 document.body.prepend(tab);
               }
 
-              var nav=target ? target.parentElement : document.body;
-              var host=nav.parentElement || document.body;
-
+              var nav=target?target.parentElement:document.body;
               var area=document.createElement('section');
               area.id='ecosalva-estudos-area';
               area.innerHTML='<div class="ecosalva-estudos-box">'+
                 '<div class="ecosalva-estudos-title">📚 Estudos</div>'+ 
-                '<div class="ecosalva-estudo-card">'+
-                  '<button class="ecosalva-estudo-btn" type="button">Nove Certos da Enfermagem</button>'+ 
-                  '<div class="ecosalva-estudo-content">'+
-                    '<p><strong>1. Paciente certo:</strong> confirmar a identificação correta do paciente.</p>'+ 
-                    '<p><strong>2. Medicamento certo:</strong> conferir nome, apresentação e concentração.</p>'+ 
-                    '<p><strong>3. Dose certa:</strong> verificar a dose prescrita e os cálculos necessários.</p>'+ 
-                    '<p><strong>4. Via certa:</strong> confirmar a via de administração prescrita.</p>'+ 
-                    '<p><strong>5. Horário certo:</strong> administrar no horário ou aprazamento correto.</p>'+ 
-                    '<p><strong>6. Registro certo:</strong> registrar corretamente a administração e eventuais intercorrências.</p>'+ 
-                    '<p><strong>7. Indicação/razão certa:</strong> confirmar se o medicamento é adequado à indicação clínica.</p>'+ 
-                    '<p><strong>8. Resposta certa:</strong> avaliar o efeito esperado e possíveis reações após a administração.</p>'+ 
-                    '<p><strong>9. Forma/apresentação certa:</strong> conferir a apresentação, formulação e características do medicamento antes de administrar.</p>'+ 
-                    '<p><strong>Memorização rápida:</strong> Paciente → Medicamento → Dose → Via → Horário → Registro → Indicação → Resposta → Forma.</p>'+ 
-                  '</div>'+ 
-                '</div>'+ 
-              '</div>';
+                '<div class="ecosalva-estudo-card"><button class="ecosalva-estudo-btn" type="button">Nove Certos da Enfermagem</button>'+ 
+                '<div class="ecosalva-estudo-content">'+
+                '<p><strong>1. Paciente certo:</strong> confirmar a identificação correta do paciente.</p>'+ 
+                '<p><strong>2. Medicamento certo:</strong> conferir nome, apresentação e concentração.</p>'+ 
+                '<p><strong>3. Dose certa:</strong> verificar a dose prescrita e os cálculos necessários.</p>'+ 
+                '<p><strong>4. Via certa:</strong> confirmar a via de administração prescrita.</p>'+ 
+                '<p><strong>5. Horário certo:</strong> administrar no horário ou aprazamento correto.</p>'+ 
+                '<p><strong>6. Registro certo:</strong> registrar corretamente a administração e eventuais intercorrências.</p>'+ 
+                '<p><strong>7. Indicação/razão certa:</strong> confirmar se o medicamento é adequado à indicação clínica.</p>'+ 
+                '<p><strong>8. Resposta certa:</strong> avaliar o efeito esperado e possíveis reações após a administração.</p>'+ 
+                '<p><strong>9. Forma/apresentação certa:</strong> conferir a apresentação, formulação e características do medicamento antes de administrar.</p>'+ 
+                '<p><strong>Memorização rápida:</strong> Paciente → Medicamento → Dose → Via → Horário → Registro → Indicação → Resposta → Forma.</p>'+ 
+                '</div></div></div>';
 
-              host.insertBefore(area, nav.nextSibling);
+              nav.parentElement.insertBefore(area,nav.nextSibling);
 
-              var managed=[];
-              function collectManaged(){
-                managed=[];
-                Array.from(host.children).forEach(function(el){
-                  if(el!==nav && el!==area) managed.push({el:el,display:el.style.display});
+              var hidden=[];
+              function isVisible(el){
+                var s=getComputedStyle(el),r=el.getBoundingClientRect();
+                return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;
+              }
+              function isProtected(el){
+                return el===area||area.contains(el)||el===tab||tab.contains(el)||el===nav||nav.contains(el);
+              }
+              function findPanelRoots(){
+                var navRect=nav.getBoundingClientRect();
+                var roots=[];
+                Array.from(document.body.querySelectorAll('main,section,article,[class],[id]')).forEach(function(el){
+                  if(isProtected(el)||!isVisible(el)) return;
+                  var r=el.getBoundingClientRect();
+                  if(r.top < navRect.bottom-2) return;
+                  var p=el.parentElement;
+                  if(!p||isProtected(p)) return;
+                  var pr=p.getBoundingClientRect();
+                  if(pr.top < navRect.bottom-2 || p===document.body) roots.push(el);
+                });
+                roots.sort(function(a,b){return a.getBoundingClientRect().top-b.getBoundingClientRect().top});
+                return roots.filter(function(el,i){
+                  return !roots.some(function(other,j){return i!==j&&other.contains(el)});
                 });
               }
-              collectManaged();
-
-              function hideOtherPanels(){
-                collectManaged();
-                managed.forEach(function(item){ item.el.style.setProperty('display','none','important'); });
-              }
-
-              function restoreOtherPanels(){
-                managed.forEach(function(item){
-                  if(item.display) item.el.style.display=item.display;
-                  else item.el.style.removeProperty('display');
+              function openStudies(){
+                hidden=[];
+                findPanelRoots().forEach(function(el){
+                  hidden.push({el:el,display:el.style.display,visibility:el.style.visibility});
+                  el.style.setProperty('display','none','important');
                 });
+                area.classList.add('open');
+                tab.classList.add('active');
+                tab.setAttribute('aria-selected','true');
               }
-
               function closeStudies(){
                 area.classList.remove('open');
-                restoreOtherPanels();
-              }
-
-              function openStudies(){
-                hideOtherPanels();
-                area.classList.add('open');
+                tab.classList.remove('active');
+                tab.setAttribute('aria-selected','false');
+                hidden.forEach(function(x){
+                  if(x.display) x.el.style.display=x.display; else x.el.style.removeProperty('display');
+                  if(x.visibility) x.el.style.visibility=x.visibility; else x.el.style.removeProperty('visibility');
+                });
+                hidden=[];
               }
 
               document.addEventListener('click',function(ev){
-                var node=ev.target;
-                while(node && node !== document.body){
-                  if(node.id==='ecosalva-estudos-tab'){
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    if(area.classList.contains('open')) closeStudies();
-                    else openStudies();
+                var n=ev.target;
+                while(n&&n!==document.body){
+                  if(n.id==='ecosalva-estudos-tab'){
+                    ev.preventDefault();ev.stopImmediatePropagation();
+                    if(area.classList.contains('open')) closeStudies(); else openStudies();
                     return;
                   }
-                  node=node.parentElement;
+                  n=n.parentElement;
                 }
-
                 if(area.contains(ev.target)) return;
-
-                node=ev.target;
-                while(node && node !== document.body){
-                  var txt=(node.textContent||'').trim();
-                  if(/^(?:🔬\s*)?Análise$/.test(txt) || /^💊\s*Maleta$/.test(txt) || /^📋\s*Histórico$/.test(txt) || /^🎯\s*Sintoma$/.test(txt) || /^☠️?\s*Segurança$/.test(txt)){
+                n=ev.target;
+                while(n&&n!==document.body){
+                  var t=(n.textContent||'').trim();
+                  if(/^(?:🔬\s*)?Análise$/.test(t)||/^💊\s*Maleta$/.test(t)||/^📋\s*Histórico$/.test(t)||/^🎯\s*Sintoma$/.test(t)||/^☠️?\s*Segurança$/.test(t)){
                     closeStudies();
                     return;
                   }
-                  node=node.parentElement;
+                  n=n.parentElement;
                 }
               },true);
 
-              var studyBtn=area.querySelector('.ecosalva-estudo-btn');
-              var content=area.querySelector('.ecosalva-estudo-content');
-              studyBtn.addEventListener('click',function(ev){
-                ev.preventDefault();
-                ev.stopPropagation();
-                studyBtn.classList.toggle('open');
-                content.classList.toggle('open');
-              });
+              var sb=area.querySelector('.ecosalva-estudo-btn'),sc=area.querySelector('.ecosalva-estudo-content');
+              sb.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();sb.classList.toggle('open');sc.classList.toggle('open')});
             }
-
             if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',makeStudies); else makeStudies();
           })();
           </script>'''
 
-          if re.search(r'</body\s*>', text, flags=re.I):
-              text = re.sub(r'</body\s*>', lambda m: payload + '\n</body>', text, count=1, flags=re.I)
+          m=re.search(r'</body\s*>',text,flags=re.I)
+          if m:
+            text=text[:m.start()]+payload+'\n'+text[m.start():]
           else:
-              text += '\n' + payload + '\n'
-
-          path.write_text(text, encoding='utf-8')
-          print('Estudos V5 installed')
+            text+='\n'+payload+'\n'
+          path.write_text(text,encoding='utf-8')
+          print('Estudos V6 installed')
 
       - name: Commit and push
         shell: bash
@@ -186,9 +177,6 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
-          if git diff --cached --quiet; then
-            echo 'No changes to commit'
-            exit 0
-          fi
-          git commit -m 'fix: Estudos opens as exclusive panel'
+          if git diff --cached --quiet; then echo 'No changes to commit'; exit 0; fi
+          git commit -m 'fix: Estudos truly exclusive panel'
           git push
