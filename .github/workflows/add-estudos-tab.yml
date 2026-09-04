@@ -101,9 +101,6 @@ jobs:
 
               host.insertBefore(area, nav.nextSibling);
 
-              // Only the original application content immediately around the tab bar is
-              // temporarily hidden while Estudos is active. Its exact inline display values
-              // are restored when another main tab is clicked, so the native tab system keeps control.
               var managed=[];
               function collectManaged(){
                 managed=[];
@@ -135,8 +132,6 @@ jobs:
                 area.classList.add('open');
               }
 
-              // Capture phase guarantees that clicking another existing tab closes Studies
-              // before the platform's own tab handler runs.
               document.addEventListener('click',function(ev){
                 var node=ev.target;
                 while(node && node !== document.body){
@@ -150,10 +145,8 @@ jobs:
                   node=node.parentElement;
                 }
 
-                // Interactions inside Studies must not close it.
                 if(area.contains(ev.target)) return;
 
-                // Any click on an existing main tab leaves Estudos mode.
                 node=ev.target;
                 while(node && node !== document.body){
                   var txt=(node.textContent||'').trim();
@@ -180,7 +173,7 @@ jobs:
           </script>'''
 
           if re.search(r'</body\s*>', text, flags=re.I):
-              text = re.sub(r'</body\s*>', payload + '\n</body>', text, count=1, flags=re.I)
+              text = re.sub(r'</body\s*>', lambda m: payload + '\n</body>', text, count=1, flags=re.I)
           else:
               text += '\n' + payload + '\n'
 
