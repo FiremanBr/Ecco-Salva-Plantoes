@@ -1,0 +1,17 @@
+name: Force ANVISA matching
+on:
+  push:
+    paths:
+      - '.github/workflows/force-anvisa-matching.yml'
+      - 'scripts/.anvisa-matching-trigger'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  run:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run fix workflow
+        run: echo 'Matching fix workflow is triggered by the workflow file itself.'
