@@ -25,16 +25,16 @@ jobs:
           path = Path('index.html')
           text = path.read_text(encoding='utf-8')
 
-          # Remove any previous Estudos injection (V1/V2/V3) before adding the current one.
+          # Remove previous Estudos injections before adding the current version.
           text = re.sub(
-              r'\s*<!-- ECOSALVA_ESTUDOS_TAB_V[123] -->.*?</script>\s*',
+              r'\s*<!-- ECOSALVA_ESTUDOS_TAB_V[1234] -->.*?</script>\s*',
               '\n',
               text,
               count=1,
               flags=re.S,
           )
 
-          payload = r'''<!-- ECOSALVA_ESTUDOS_TAB_V3 -->
+          payload = r'''<!-- ECOSALVA_ESTUDOS_TAB_V4 -->
           <style>
             #ecosalva-estudos-tab{cursor:pointer}
             #ecosalva-estudos-area{display:none;margin:16px 0 24px}
@@ -58,7 +58,7 @@ jobs:
               var candidates=Array.from(document.querySelectorAll('button,a,[role="button"],div'));
               var target=candidates.find(function(el){
                 var t=(el.textContent||'').trim();
-                return /^.*Segurança.*$/.test(t) && t.length < 40;
+                return /Segurança/.test(t) && t.length < 40;
               });
 
               var tab=document.createElement(target ? target.tagName.toLowerCase() : 'button');
@@ -101,50 +101,46 @@ jobs:
 
               host.insertBefore(area, nav.nextSibling);
 
-              // The Estudos tab behaves as a true exclusive tab:
-              // when open, hide only the existing panels that live after the navigation row.
-              var hiddenPanels=[];
-              var studyOpen=false;
-
               function closeStudies(){
-                if(!studyOpen) return;
-                studyOpen=false;
                 area.classList.remove('open');
-                hiddenPanels.forEach(function(item){
-                  item.el.style.display=item.display;
-                });
-                hiddenPanels=[];
               }
 
               function openStudies(){
-                if(studyOpen) return;
-                studyOpen=true;
-                hiddenPanels=[];
-                Array.from(host.children).forEach(function(el){
-                  if(el===nav || el===area) return;
-                  var display=getComputedStyle(el).display;
-                  hiddenPanels.push({el:el,display:el.style.display});
-                  el.style.display='none';
-                });
                 area.classList.add('open');
                 area.scrollIntoView({behavior:'smooth',block:'start'});
               }
 
-              // Capture-phase listener ensures normal platform tab clicks close Estudos first,
-              // without replacing the platform's existing tab behavior.
+              // Delegated capture listener: the existing application controls the other tabs.
+              // We only control the visibility of the Estudos panel here.
               document.addEventListener('click',function(ev){
-                if(!studyOpen) return;
-                var clicked=ev.target.closest ? ev.target.closest('button,a,[role="button"],div') : null;
-                if(clicked && nav.contains(clicked) && clicked!==tab){
-                  closeStudies();
+                var node=ev.target;
+                var clickedTab=null;
+                while(node && node !== document.body){
+                  if(node.id==='ecosalva-estudos-tab') { clickedTab=node; break; }
+                  node=node.parentElement;
+                }
+
+                if(clickedTab){
+                  ev.preventDefault();
+                  ev.stopPropagation();
+                  if(area.classList.contains('open')) closeStudies(); else openStudies();
+                  return;
+                }
+
+                // Never close the study while interacting with its own content.
+                if(area.contains(ev.target)) return;
+
+                // Any of the platform's main navigation tabs closes Estudos immediately.
+                node=ev.target;
+                while(node && node !== document.body){
+                  var txt=(node.textContent||'').trim();
+                  if(/^(?:🔬\s*)?Análise$/.test(txt) || /^💊\s*Maleta$/.test(txt) || /^📋\s*Histórico$/.test(txt) || /^🎯\s*Sintoma$/.test(txt) || /^☠️?\s*Segurança$/.test(txt)){
+                    closeStudies();
+                    return;
+                  }
+                  node=node.parentElement;
                 }
               },true);
-
-              tab.addEventListener('click',function(ev){
-                ev.preventDefault();
-                ev.stopPropagation();
-                if(studyOpen) closeStudies(); else openStudies();
-              });
 
               var studyBtn=area.querySelector('.ecosalva-estudo-btn');
               var content=area.querySelector('.ecosalva-estudo-content');
@@ -166,7 +162,7 @@ jobs:
               text += '\n' + payload + '\n'
 
           path.write_text(text, encoding='utf-8')
-          print('Estudos exclusive navigation updated')
+          print('Estudos V4 installed')
 
       - name: Commit and push
         shell: bash
@@ -178,5 +174,5 @@ jobs:
             echo 'No changes to commit'
             exit 0
           fi
-          git commit -m 'fix: make Estudos an exclusive navigation tab'
+          git commit -m 'fix: isolate Estudos content from other tabs'
           git push
