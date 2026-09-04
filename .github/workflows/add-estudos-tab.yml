@@ -1,0 +1,103 @@
+name: Add Estudos tab
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/add-estudos-tab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  add-estudos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inject Estudos tab
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('index.html')
+          text = path.read_text(encoding='utf-8')
+          marker = 'ECOSALVA_ESTUDOS_TAB_V1'
+
+          if marker in text:
+              print('Estudos tab already present')
+              raise SystemExit(0)
+
+          payload = r'''<!-- ECOSALVA_ESTUDOS_TAB_V1 -->
+          <style>
+            #ecosalva-estudos-tab{cursor:pointer}
+            #ecosalva-estudos-panel{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.45);padding:24px;box-sizing:border-box}
+            #ecosalva-estudos-panel.open{display:flex;align-items:center;justify-content:center}
+            .ecosalva-estudos-card{width:min(760px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:16px;padding:24px;box-shadow:0 12px 40px rgba(0,0,0,.28);font-family:inherit}
+            .ecosalva-estudos-card h2{margin:0 0 18px;font-size:1.5rem}
+            .ecosalva-estudos-item{padding:14px 0;border-bottom:1px solid #ddd}
+            .ecosalva-estudos-item:last-child{border-bottom:0}
+            .ecosalva-estudos-item strong{display:block;margin-bottom:5px}
+            .ecosalva-estudos-close{float:right;border:0;background:transparent;font-size:26px;cursor:pointer;line-height:1}
+            @media(max-width:600px){#ecosalva-estudos-panel{padding:10px}.ecosalva-estudos-card{padding:18px}}
+          </style>
+          <script>
+          (function(){
+            function initEstudos(){
+              if(document.getElementById('ecosalva-estudos-tab')) return;
+              var tab=document.createElement('button');
+              tab.id='ecosalva-estudos-tab';
+              tab.type='button';
+              tab.textContent='Estudos';
+              tab.setAttribute('aria-label','Abrir Estudos');
+              tab.style.cssText='position:fixed;top:12px;right:12px;z-index:99998;padding:10px 16px;border-radius:10px;border:0;cursor:pointer;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,.2);';
+
+              var panel=document.createElement('div');
+              panel.id='ecosalva-estudos-panel';
+              panel.setAttribute('role','dialog');
+              panel.setAttribute('aria-modal','true');
+              panel.innerHTML='<div class="ecosalva-estudos-card"><button class="ecosalva-estudos-close" type="button" aria-label="Fechar">×</button><h2>Nove Certos da Enfermagem</h2>'+
+                '<div class="ecosalva-estudos-item"><strong>1. Paciente certo</strong>Confirmar a identificação correta do paciente.</div>'+ 
+                '<div class="ecosalva-estudos-item"><strong>2. Medicamento certo</strong>Conferir nome, apresentação e concentração.</div>'+ 
+                '<div class="ecosalva-estudos-item"><strong>3. Dose certa</strong>Verificar a dose prescrita e os cálculos necessários.</div>'+ 
+                '<div class="ecosalva-estudos-item"><strong>4. Via certa</strong>Confirmar a via de administração prescrita.</div>'+ 
+                '<div class="ecosalva-estudos-item"><strong>5. Horário certo</strong>Administrar no horário ou aprazamento correto.</div>'+ 
+                '<div class="ecosalva-estudos-item"><strong>6. Registro certo</strong>Registrar corretamente a administração e eventuais intercorrências.</div>'+ 
+                '<div class="ecosalva-estudos-item"><strong>7. Indicação/razão certa</strong>Confirmar se o medicamento é adequado à indicação clínica.</div>'+ 
+                '<div class="ecosalva-estudos-item"><strong>8. Resposta certa</strong>Avaliar o efeito esperado e possíveis reações após a administração.</div>'+ 
+                '<div class="ecosalva-estudos-item"><strong>9. Forma/apresentação certa</strong>Conferir a apresentação, formulação e características do medicamento antes de administrar.</div>'+ 
+                '<div style="margin-top:18px;font-weight:700">Memorização rápida: Paciente → Medicamento → Dose → Via → Horário → Registro → Indicação → Resposta → Forma.</div></div>';
+
+              document.body.appendChild(tab);
+              document.body.appendChild(panel);
+              tab.addEventListener('click',function(){panel.classList.add('open')});
+              panel.querySelector('.ecosalva-estudos-close').addEventListener('click',function(){panel.classList.remove('open')});
+              panel.addEventListener('click',function(e){if(e.target===panel) panel.classList.remove('open')});
+              document.addEventListener('keydown',function(e){if(e.key==='Escape') panel.classList.remove('open')});
+            }
+            if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initEstudos); else initEstudos();
+          })();
+          </script>'''
+
+          if re.search(r'</body\s*>', text, flags=re.I):
+              text = re.sub(r'</body\s*>', payload + '\n</body>', text, count=1, flags=re.I)
+          else:
+              text += '\n' + payload + '\n'
+
+          path.write_text(text, encoding='utf-8')
+          print('Estudos tab injected')
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+            exit 0
+          fi
+          git commit -m 'feat: add Estudos tab with Nove Certos'
+          git push
