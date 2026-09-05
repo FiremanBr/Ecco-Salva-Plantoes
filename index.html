@@ -5993,6 +5993,7 @@ function switchTab(tab, el) {
         n=n.parentElement;
       }
       if(area.contains(ev.target)) return;
+      if(ev.target.closest && ev.target.closest('.tab') && ev.target.closest('.tab')!==tab){ closeStudies(); return; }
       n=ev.target;
       while(n&&n!==document.body){
         var t=(n.textContent||'').trim();
