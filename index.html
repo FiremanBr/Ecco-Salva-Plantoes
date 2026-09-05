@@ -6012,15 +6012,33 @@ function switchTab(tab, el) {
 </script>
 <!-- ECCO_ESTUDOS_MARKER_FINAL -->
 <style>
-#ecosalva-estudos-tab.active, #ecosalva-estudos-tab.ecco-estudos-nav-active { position:relative !important; color:#60a5fa !important; }
-#ecosalva-estudos-tab.active::after, #ecosalva-estudos-tab.ecco-estudos-nav-active::after { content:"" !important; position:absolute !important; left:0 !important; right:0 !important; bottom:-2px !important; height:3px !important; border-radius:3px !important; background:#60a5fa !important; display:block !important; }
+#ecosalva-estudos-tab.active, #ecosalva-estudos-tab.ecco-estudos-nav-active { position:relative !important; color:#FF4FD8 !important; }
+#ecosalva-estudos-tab.active::after, #ecosalva-estudos-tab.ecco-estudos-nav-active::after { content:none !important; display:none !important; }
+#ecosalva-estudos-tab.ecco-estudos-nav-active { border-bottom:3px solid #FF4FD8 !important; }
 </style>
 <script>
 (function(){
+  var previousTab=null, guard=false;
   function mark(){
+    if(guard) return;
     var t=document.getElementById('ecosalva-estudos-tab');
     var a=document.getElementById('ecosalva-estudos-area');
-    if(t) t.classList.toggle('ecco-estudos-nav-active', !!(a && a.classList.contains('open')));
+    if(!t || !a) return;
+    var open=a.classList.contains('open');
+    if(open){
+      if(!previousTab) previousTab=document.querySelector('.tab.active:not(#ecosalva-estudos-tab)');
+      guard=true;
+      document.querySelectorAll('.tab.active:not(#ecosalva-estudos-tab)').forEach(function(x){x.classList.remove('active');});
+      t.classList.add('active');
+      guard=false;
+    }else if(previousTab){
+      setTimeout(function(){
+        if(document.querySelector('.tab.active:not(#ecosalva-estudos-tab)')) { previousTab=null; return; }
+        if(document.contains(previousTab)) previousTab.classList.add('active');
+        previousTab=null;
+      },0);
+    }
+    t.classList.toggle('ecco-estudos-nav-active',open);
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',mark); else mark();
   new MutationObserver(mark).observe(document.documentElement,{attributes:true,attributeFilter:['class','style'],childList:true,subtree:true});
