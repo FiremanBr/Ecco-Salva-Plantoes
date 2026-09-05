@@ -11,26 +11,45 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Patch Studies behavior
+      - name: Corrigir abas independentes
+        shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('index.html')
-          s = p.read_text(encoding='utf-8')
-          old = '''    function openStudies(){\n      area.classList.add('open');\n      tab.classList.add('active');\n      tab.setAttribute('aria-selected','true');\n    }\n    function closeStudies(){\n      area.classList.remove('open');\n      tab.classList.remove('active');\n      tab.setAttribute('aria-selected','false');\n    }'''
-          new = '''    var previousActiveTab=null;\n    var hiddenStudyNodes=[];\n    function findStudyNodes(){\n      var nodes=[];\n      var title=Array.from(document.querySelectorAll('body *')).find(function(el){\n        return (el.textContent||'').trim()==='🔬 ANÁLISE CLÍNICA';\n      });\n      if(title){\n        var box=title;\n        for(var i=0;i<5 && box.parentElement;i++){\n          box=box.parentElement;\n          var r=box.getBoundingClientRect();\n          if(r.width>300 && r.height>250) break;\n        }\n        nodes.push(box);\n      }\n      var btn=Array.from(document.querySelectorAll('button')).find(function(el){\n        return (el.textContent||'').replace(/\\s+/g,' ').trim()==='🔬 Analisar Paciente';\n      });\n      if(btn) nodes.push(btn);\n      return nodes.filter(function(el,i){return el && nodes.indexOf(el)===i;});\n    }\n    function openStudies(){\n      previousActiveTab=document.querySelector('.tab.active:not(#ecosalva-estudos-tab)');\n      document.querySelectorAll('.tab.active').forEach(function(t){ if(t!==tab) t.classList.remove('active'); });\n      hiddenStudyNodes=findStudyNodes();\n      hiddenStudyNodes.forEach(function(el){\n        el.dataset.ecoStudiesDisplay=el.style.display||'';\n        el.style.display='none';\n      });\n      area.classList.add('open');\n      tab.classList.add('active');\n      tab.setAttribute('aria-selected','true');\n    }\n    function closeStudies(){\n      area.classList.remove('open');\n      tab.classList.remove('active');\n      tab.setAttribute('aria-selected','false');\n      hiddenStudyNodes.forEach(function(el){\n        if(el) el.style.display=el.dataset.ecoStudiesDisplay||'';\n      });\n      hiddenStudyNodes=[];\n      if(previousActiveTab && document.body.contains(previousActiveTab)){\n        document.querySelectorAll('.tab.active').forEach(function(t){ if(t!==previousActiveTab) t.classList.remove('active'); });\n        previousActiveTab.classList.add('active');\n      }\n      previousActiveTab=null;\n    }'''
-          if old not in s:
-              raise SystemExit('target function block not found')
-          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='<!-- ECCO_ESTUDOS_TABS_INDEPENDENTES_V2 -->'
+          if marker in s:
+              print('Patch já aplicado.')
+              raise SystemExit(0)
+          old="""    var previousActiveTab=null;\n    var hiddenStudyNodes=[];\n    function findStudyNodes(){"""
+          new="""    var previousActiveTab=null;\n    var hiddenStudyNodes=[];\n    var hiddenStudyPanels=[];\n    function findStudyNodes(){"""
+          if old not in s: raise SystemExit('hiddenStudyNodes não encontrado')
+          s=s.replace(old,new,1)
+          old="""    function openStudies(){\n      previousActiveTab=document.querySelector('.tab.active:not(#ecosalva-estudos-tab)');\n      document.querySelectorAll('.tab.active').forEach(function(t){ if(t!==tab) t.classList.remove('active'); });\n      hiddenStudyNodes=findStudyNodes();"""
+          new="""    function openStudies(){\n      previousActiveTab=document.querySelector('.tab.active:not(#ecosalva-estudos-tab)');\n      hiddenStudyPanels=[];\n      document.querySelectorAll('.panel').forEach(function(p){\n        hiddenStudyPanels.push({el:p,active:p.classList.contains('active'),display:p.style.display||''});\n        p.classList.remove('active');\n        p.style.display='none';\n      });\n      document.querySelectorAll('.tab.active').forEach(function(t){ if(t!==tab) t.classList.remove('active'); });\n      hiddenStudyNodes=findStudyNodes();"""
+          if old not in s: raise SystemExit('openStudies não encontrado')
+          s=s.replace(old,new,1)
+          old="""      hiddenStudyNodes=[];\n      if(previousActiveTab && document.body.contains(previousActiveTab)){"""
+          new="""      hiddenStudyNodes=[];\n      hiddenStudyPanels.forEach(function(item){\n        if(!item.el) return;\n        item.el.style.display=item.display;\n        if(item.active) item.el.classList.add('active');\n        else item.el.classList.remove('active');\n      });\n      hiddenStudyPanels=[];\n      if(previousActiveTab && document.body.contains(previousActiveTab)){"""
+          if old not in s: raise SystemExit('closeStudies não encontrado')
+          s=s.replace(old,new,1)
+          patch=r'''<!-- ECCO_ESTUDOS_TABS_INDEPENDENTES_V2 -->
+<style>
+#ecosalva-estudos-tab.active,#ecosalva-estudos-tab.ecco-estudos-nav-active{position:relative!important;color:#60a5fa!important;background:transparent!important;border-bottom:0!important}
+#ecosalva-estudos-tab.active::after,#ecosalva-estudos-tab.ecco-estudos-nav-active::after{content:""!important;position:absolute!important;left:0!important;right:0!important;bottom:-2px!important;height:3px!important;border-radius:3px!important;background:#60a5fa!important;display:block!important}
+</style>
+'''
+          s=s.replace('</body>',patch+'\n</body>',1)
+          p.write_text(s,encoding='utf-8')
           PY
-      - name: Commit patch and remove temporary workflow
+      - name: Publicar e remover workflow temporário
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git diff --cached --quiet || git commit -m "fix: Estudos fecha aba anterior e esconde painel anterior"
-          git rm -f .github/workflows/fix-estudos-exclusive.yml
-          git commit -m "chore: remover workflow temporario de Estudos"
-          git fetch origin main
-          git rebase origin/main
+          git commit -m "fix: abas independentes e marcador de Estudos"
+          git rm -f .github/workflows/fix-estudos-exclusive.yml .github/workflows/fix-tabs-independence-once.yml || true
+          git commit -m "chore: remover workflows temporarios de abas" || true
           git push origin HEAD:main
