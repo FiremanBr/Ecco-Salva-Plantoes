@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - name: Corrigir handler, long press e painel de estudo
+      - name: Corrigir handler e restaurar ficha do Modo Estudo
         shell: bash
         run: |
           python - <<'PY'
@@ -29,101 +29,70 @@ jobs:
   if (!_favoritos.has(nome)) toggleFavorito(nome, ev);
   toggleMed(nome, el);
 }'''
-
           new = '''function handleMaletaMedClick(nome, el, ev) {
-  // Clique curto = selecionar/abrir o medicamento. NÃO altera favorito.
-  // Favorito é uma ação exclusiva do toque/clique prolongado (600 ms).
+  // Clique curto = selecionar o medicamento. Favorito NÃO é alterado.
+  // Favoritar continua sendo exclusivamente pelo toque/clique prolongado.
   if (el && el.dataset && el.dataset.skipClick === '1') return;
   toggleMed(nome, el);
-  if (_modoEstudo) {
-    setTimeout(() => abrirPainelModoEstudo(), 0);
-  }
+  if (_modoEstudo) setTimeout(() => abrirPainelModoEstudo(), 0);
 }'''
+          if old in s:
+              s = s.replace(old, new, 1)
+          elif 'function handleMaletaMedClick(nome, el, ev)' not in s:
+              raise SystemExit('Handler de medicamento nao encontrado; abortando.')
 
-          if old not in s:
-              raise SystemExit('Handler esperado nao encontrado; abortando para nao alterar comportamento indevido.')
-          s = s.replace(old, new, 1)
-
-          marker = '<!-- ECCO_FIX_MODO_ESTUDO_V1 -->'
+          marker = '<!-- ECCO_FIX_MODO_ESTUDO_V2 -->'
           if marker not in s:
-              patch = r'''<!-- ECCO_FIX_MODO_ESTUDO_V1 -->
+              patch = r'''<!-- ECCO_FIX_MODO_ESTUDO_V2 -->
 <style>
-  #modoEstudoPanel{
-    display:none;margin:10px 0 14px;padding:10px 12px;
-    background:var(--surface2);border:1px solid rgba(59,155,232,.35);
-    border-radius:10px;box-sizing:border-box;width:100%;
-  }
-  #modoEstudoPanel.open{display:block}
-  #modoEstudoPanel .estudo-title{
-    font-size:11px;font-weight:800;color:var(--blue);text-transform:uppercase;
-    letter-spacing:.5px;margin-bottom:8px;
-  }
-  #modoEstudoPanel .estudo-item{margin-bottom:9px}
-  #modoEstudoPanel .estudo-item:last-child{margin-bottom:0}
+#modoEstudoPanel{display:none;margin:10px 0 14px;padding:10px 12px;background:var(--surface2);border:1px solid rgba(59,155,232,.35);border-radius:10px;box-sizing:border-box;width:100%}
+#modoEstudoPanel.open{display:block}
+#modoEstudoPanel .estudo-title{font-size:11px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+#modoEstudoPanel .estudo-item{margin-bottom:9px}
+#modoEstudoPanel .estudo-item:last-child{margin-bottom:0}
 </style>
 <script>
 (function(){
-  function esc(v){
-    return String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c));
-  }
-
-  window.abrirPainelModoEstudo = function(){
-    const ativo = !!window._modoEstudo;
-    let panel = document.getElementById('modoEstudoPanel');
-    const controls = document.getElementById('maletaControls');
-    if (!panel && controls) {
-      panel = document.createElement('div');
-      panel.id = 'modoEstudoPanel';
-      controls.parentNode.insertBefore(panel, controls.nextSibling);
+  window.abrirPainelModoEstudo=function(){
+    const controls=document.getElementById('maletaControls');
+    if(!controls)return;
+    let panel=document.getElementById('modoEstudoPanel');
+    if(!panel){
+      panel=document.createElement('div');
+      panel.id='modoEstudoPanel';
+      controls.parentNode.insertBefore(panel,controls.nextSibling);
     }
-    if (!panel) return;
-
-    if (!ativo) {
+    if(!_modoEstudo || !selecionados.size){
       panel.classList.remove('open');
       panel.innerHTML='';
       return;
     }
-
-    const nomes = (window.selecionados && typeof window.selecionados[Symbol.iterator] === 'function')
-      ? Array.from(window.selecionados) : [];
-    if (!nomes.length) {
-      panel.classList.remove('open');
-      panel.innerHTML='';
-      return;
-    }
-
-    const cards = nomes.map(nome => {
-      try { return '<div class="estudo-item">'+window.buildCardFromDB(nome)+'</div>'; }
-      catch(e){ return '<div class="estudo-item"><strong>💊 '+esc(nome)+'</strong></div>'; }
+    const cards=[...selecionados].map(nome=>{
+      try{return '<div class="estudo-item">'+buildCardFromDB(nome)+'</div>';}
+      catch(e){return '<div class="estudo-item"><strong>💊 '+String(nome)+'</strong></div>';}
     }).join('');
-
-    panel.innerHTML = '<div class="estudo-title">📚 Ficha de estudo</div>'+cards;
+    panel.innerHTML='<div class="estudo-title">📚 Ficha de estudo</div>'+cards;
     panel.classList.add('open');
   };
 
-  // Garante que o botão desligado também remova o painel sem alterar a função original.
-  const originalToggle = window.toggleModoEstudo;
-  if (typeof originalToggle === 'function' && !originalToggle.__eccoWrapped) {
-    const wrapped = function(){
-      const r = originalToggle.apply(this, arguments);
-      setTimeout(() => {
-        if (window._modoEstudo) window.abrirPainelModoEstudo();
-        else window.abrirPainelModoEstudo();
-      }, 0);
+  const originalToggle=window.toggleModoEstudo;
+  if(typeof originalToggle==='function'&&!originalToggle.__eccoStudyFix){
+    const wrapped=function(){
+      const r=originalToggle.apply(this,arguments);
+      setTimeout(abrirPainelModoEstudo,0);
       return r;
     };
-    wrapped.__eccoWrapped = true;
-    window.toggleModoEstudo = wrapped;
+    wrapped.__eccoStudyFix=true;
+    window.toggleModoEstudo=wrapped;
   }
 })();
 </script>
 '''
-              s = s.replace('</body>', patch + '\n</body>', 1)
-
-          p.write_text(s, encoding='utf-8')
-          print('Correcao aplicada com sucesso.')
+              s=s.replace('</body>',patch+'\n</body>',1)
+          p.write_text(s,encoding='utf-8')
+          print('OK')
           PY
-      - name: Commit correcao e remover workflow temporario
+      - name: Commit e remover workflow temporario
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
