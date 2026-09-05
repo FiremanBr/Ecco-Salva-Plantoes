@@ -59,12 +59,60 @@ jobs:
           Path('anvisa-medicamentos.json').write_text(json.dumps({'fonte':'ANVISA Dados Abertos - Medicamentos Registrados no Brasil','atualizado_em':__import__('datetime').datetime.utcnow().isoformat()+'Z','registros':rows},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
           print('Registros indexados:',len(rows)); print('Colunas:',cols)
           PY
-      - name: Publicar base atualizada
+      - name: Garantir marcador visual da aba Estudos
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='<!-- ECCO_ESTUDOS_MARKER_V3 -->'
+          if marker not in s:
+              patch=r'''<!-- ECCO_ESTUDOS_MARKER_V3 -->
+<style>
+.ecco-estudos-nav-active{position:relative!important}
+.ecco-estudos-nav-active::after{content:""!important;position:absolute!important;left:0!important;right:0!important;bottom:-8px!important;height:3px!important;border-radius:3px!important;background:var(--blue,#3b9be8)!important;display:block!important}
+</style>
+<script>
+(function(){
+  function visible(el){var r=el.getBoundingClientRect(),c=getComputedStyle(el);return r.width>0&&r.height>0&&c.display!=='none'&&c.visibility!=='hidden'}
+  function estudosAberto(){
+    var all=[...document.querySelectorAll('body *')];
+    return all.some(function(el){
+      if(!visible(el))return false;
+      var t=(el.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+      if(t!=='📚 estudos'&&t!=='estudos'&&!t.endsWith(' estudos'))return false;
+      var r=el.getBoundingClientRect();
+      return r.width>0&&r.height>0;
+    }) && !!document.querySelector('[id*="estud" i], [class*="estud" i]');
+  }
+  function marcar(){
+    var tabs=[...document.querySelectorAll('a,button,[role="button"],.tab,.nav-tab,.nav-item')].filter(function(el){
+      if(!visible(el))return false;
+      var t=(el.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+      return t==='📚 estudos'||t==='estudos'||t.endsWith(' estudos');
+    });
+    var aberto=estudosAberto();
+    tabs.forEach(function(el){el.classList.toggle('ecco-estudos-nav-active',aberto)});
+  }
+  function init(){
+    marcar();
+    [100,300,700,1200].forEach(function(ms){setTimeout(marcar,ms)});
+    new MutationObserver(marcar).observe(document.body,{attributes:true,attributeFilter:['class','style','aria-current'],childList:true,subtree:true});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+'''
+              s=s.replace('</body>',patch+'\n</body>',1)
+              p.write_text(s,encoding='utf-8')
+          PY
+      - name: Publicar base e interface
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add anvisa-medicamentos.json
-          if git diff --cached --quiet; then echo 'Base sem alterações.'; exit 0; fi
-          git commit -m 'chore: atualizar base oficial de medicamentos da Anvisa'
+          git add anvisa-medicamentos.json index.html
+          if git diff --cached --quiet; then echo 'Sem alterações.'; exit 0; fi
+          git commit -m 'fix: marcador visual persistente da aba Estudos'
           git push
