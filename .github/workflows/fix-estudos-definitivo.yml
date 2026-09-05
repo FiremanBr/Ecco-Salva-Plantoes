@@ -10,36 +10,54 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Corrigir marcador Estudos sem interferir nas abas
+      - name: Corrigir funcionamento e cor da aba Estudos
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
-          marker = '<!-- ECCO_ESTUDOS_MARKER_FINAL -->'
-          if marker not in s:
-              raise SystemExit('Marcador Estudos não encontrado')
-          prefix, suffix = s.split(marker, 1)
-          suffix = re.sub(r'\s*<style>.*?</style>\s*<script>.*?</script>\s*$', '', suffix, flags=re.S)
-          suffix = re.sub(r'\s*<style>\s*#ecosalva-estudos-tab\.active.*?</style>', '', suffix, count=1, flags=re.S)
-          suffix = re.sub(r'\s*<script>\s*\(function\(\)\{\s*var previousTab=null, guard=false;.*?</script>', '', suffix, count=1, flags=re.S)
-          css = '''\n<!-- ECCO_ESTUDOS_COR_FINAL -->\n<style>\n#ecosalva-estudos-tab.active, #ecosalva-estudos-tab.ecco-estudos-nav-active { color:#FF4FD8 !important; border-bottom-color:#FF4FD8 !important; }\n#ecosalva-estudos-tab.active::after, #ecosalva-estudos-tab.ecco-estudos-nav-active::after { content:none !important; display:none !important; }\n</style>\n'''
-          p.write_text(prefix + marker + css + suffix, encoding='utf-8')
+
+          # A aba Estudos não deve esconder os painéis existentes. O código original
+          # de troca de abas continua responsável pela navegação normal.
+          s2 = re.sub(
+              r'function openStudies\(\)\{.*?\n    \}\n    function closeStudies\(\)\{.*?\n    \}',
+              '''function openStudies(){
+      area.classList.add('open');
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected','true');
+    }
+    function closeStudies(){
+      area.classList.remove('open');
+      tab.classList.remove('active');
+      tab.setAttribute('aria-selected','false');
+    }''',
+              s, count=1, flags=re.S)
+          if s2 == s:
+              raise SystemExit('Funções openStudies/closeStudies não encontradas')
+          s = s2
+
+          # Cor exclusiva e forte para Estudos; sem pseudo-elemento duplicado.
+          s = re.sub(
+              r'<!-- ECCO_ESTUDOS_FINAL_SAFE -->\s*<style>.*?</style>',
+              '''<!-- ECCO_ESTUDOS_FINAL_SAFE -->
+          <style>
+          #ecosalva-estudos-tab { color:#FF4FD8 !important; }
+          #ecosalva-estudos-tab.active { color:#FF4FD8 !important; border-bottom:3px solid #FF4FD8 !important; background:transparent !important; }
+          #ecosalva-estudos-tab.active::after { content:none !important; display:none !important; }
+          </style>''',
+              s, count=1, flags=re.S)
+          p.write_text(s, encoding='utf-8')
+          print('ESTUDOS_CORRIGIDO')
           PY
-      - name: Publicar correção
+      - name: Publicar correção e limpar temporários
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
-          git diff --cached --quiet && exit 0
-          git commit -m 'fix: Estudos sem bloquear outras abas'
-          git push
-      - name: Remover workflow temporário
-        run: |
-          rm -f .github/workflows/fix-estudos-definitivo.yml
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .github/workflows/fix-estudos-definitivo.yml
-          git commit -m 'chore: remover workflow temporario de Estudos' || exit 0
-          git push
+          git diff --cached --quiet || git commit -m 'fix: Estudos sem bloquear outras abas'
+          git push || true
+          rm -f .github/workflows/fix-estudos-definitivo.yml .github/workflows/fix-modo-estudo-favorito.yml scripts/.study-fix-trigger
+          git add -A
+          git diff --cached --quiet || git commit -m 'chore: remover workflows temporarios de Estudos'
+          git push || true
