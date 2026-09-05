@@ -9,67 +9,54 @@ permissions:
   contents: write
 jobs:
   fix:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - name: Corrigir Modo Estudo e favoritos
+      - name: Corrigir aba Estudos
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          old='''function handleMaletaMedClick(nome, el, ev) {
-  // Clique normal: mantém a seleção/ficha e também garante a estrela de favorito.
-  // O toque longo continua sendo usado para remover/adicionar manualmente.
-  if (el && el.dataset && el.dataset.skipClick === '1') return;
-  if (!_favoritos.has(nome)) toggleFavorito(nome, ev);
-  toggleMed(nome, el);
-}'''
-          new='''function handleMaletaMedClick(nome, el, ev) {
-  // Clique curto = selecionar o medicamento. NÃO altera favoritos.
-  // Favorito continua exclusivamente no toque/clique prolongado.
-  if (el && el.dataset && el.dataset.skipClick === '1') return;
-  toggleMed(nome, el);
-  if (_modoEstudo) setTimeout(() => abrirPainelModoEstudo(), 0);
-}'''
-          if old in s:
-              s=s.replace(old,new,1)
-          elif 'function handleMaletaMedClick(nome, el, ev)' not in s:
-              raise SystemExit('Handler nao encontrado.')
-          marker='<!-- ECCO_FIX_MODO_ESTUDO_FINAL -->'
+          marker='<!-- ECCO_FIX_ABA_ESTUDOS_ATIVA_V1 -->'
           if marker not in s:
-              patch=r'''<!-- ECCO_FIX_MODO_ESTUDO_FINAL -->
+              patch=r'''<!-- ECCO_FIX_ABA_ESTUDOS_ATIVA_V1 -->
 <style>
-#modoEstudoPanel{display:none;margin:10px 0 14px;padding:10px 12px;background:var(--surface2);border:1px solid rgba(59,155,232,.35);border-radius:10px;box-sizing:border-box;width:100%}
-#modoEstudoPanel.open{display:block}
-#modoEstudoPanel .estudo-title{font-size:11px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
-#modoEstudoPanel .estudo-item{margin-bottom:9px}
-#modoEstudoPanel .estudo-item:last-child{margin-bottom:0}
+/* Indicador visual da aba Estudos ativa. */
+.ecco-tab-estudos-ativa,
+[data-tab="estudos"].active,
+[data-tab="estudos"].selected,
+[data-tab="estudos"].aba-ativa,
+.tab-estudos.active,
+.tab-estudos.selected{
+  border-bottom:3px solid var(--blue,#3b9be8) !important;
+  box-shadow:inset 0 -3px 0 var(--blue,#3b9be8) !important;
+}
 </style>
 <script>
 (function(){
-  window.abrirPainelModoEstudo=function(){
-    const controls=document.getElementById('maletaControls');
-    if(!controls)return;
-    let panel=document.getElementById('modoEstudoPanel');
-    if(!panel){panel=document.createElement('div');panel.id='modoEstudoPanel';controls.parentNode.insertBefore(panel,controls.nextSibling)}
-    if(!_modoEstudo||!selecionados.size){panel.classList.remove('open');panel.innerHTML='';return}
-    panel.innerHTML='<div class="estudo-title">📚 Ficha de estudo</div>'+[...selecionados].map(nome=>'<div class="estudo-item">'+buildCardFromDB(nome)+'</div>').join('');
-    panel.classList.add('open');
-  };
-  const originalToggle=window.toggleModoEstudo;
-  if(typeof originalToggle==='function'&&!originalToggle.__eccoStudyFix){
-    const wrapped=function(){const r=originalToggle.apply(this,arguments);setTimeout(abrirPainelModoEstudo,0);return r};
-    wrapped.__eccoStudyFix=true;window.toggleModoEstudo=wrapped;
+  function marcarEstudos(){
+    const candidatos=[...document.querySelectorAll('a,button,div,span')];
+    candidatos.forEach(function(el){
+      const txt=(el.textContent||'').replace(/\s+/g,' ').trim();
+      if(!txt || !/📚?\s*Estudos/.test(txt)) return;
+      const ativo=el.classList.contains('active')||el.classList.contains('selected')||el.classList.contains('aba-ativa')||el.getAttribute('aria-current')==='page';
+      const vis=el.offsetParent!==null;
+      if(vis && ativo) el.classList.add('ecco-tab-estudos-ativa');
+      else if(!ativo) el.classList.remove('ecco-tab-estudos-ativa');
+    });
   }
+  marcarEstudos();
+  new MutationObserver(marcarEstudos).observe(document.body,{attributes:true,attributeFilter:['class','aria-current'],childList:true,subtree:true});
 })();
 </script>
 '''
               s=s.replace('</body>',patch+'\n</body>',1)
-          p.write_text(s,encoding='utf-8')
+              p.write_text(s,encoding='utf-8')
           print('OK')
           PY
       - name: Commit correcao
@@ -78,5 +65,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
-          git commit -m 'fix: restaurar Modo Estudo e favoritos por toque longo'
+          git commit -m 'fix: destacar aba Estudos quando ativa'
           git push
