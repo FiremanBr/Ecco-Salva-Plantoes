@@ -2,7 +2,7 @@ name: Fix Estudos final
 on:
   push:
     paths:
-      - '.github/workflows/fix-estudos-final.yml'
+      - '**'
   workflow_dispatch:
 
 jobs:
@@ -12,45 +12,29 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Corrigir navegação Estudos
+      - name: Corrigir navegacao Estudos
         run: |
           python - <<'PY'
           from pathlib import Path
           import re
-          p = Path('index.html')
-          s = p.read_text(encoding='utf-8')
-          s = re.sub(r'\s*<!-- ECCO_ESTUDOS_MARKER_FINAL -->.*?\n\s*</script>\s*$', '\n', s, flags=re.S)
-          fix = r'''
-<!-- ECCO_ESTUDOS_FIX_FINAL -->
-<style>
-#ecosalva-estudos-tab.active,#ecosalva-estudos-tab.ecco-estudos-nav-active{color:#FF4FD8!important}
-#ecosalva-estudos-tab.active::after,#ecosalva-estudos-tab.ecco-estudos-nav-active::after{content:none!important;display:none!important}
-#ecosalva-estudos-tab.ecco-estudos-nav-active{border-bottom:3px solid #FF4FD8!important}
-</style>
-<script>
-(function(){
-  function sync(){var t=document.getElementById('ecosalva-estudos-tab'),a=document.getElementById('ecosalva-estudos-area');if(t&&a)t.classList.toggle('ecco-estudos-nav-active',a.classList.contains('open'));}
-  document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('.tab');if(!t)return;if(t.id==='ecosalva-estudos-tab'){document.querySelectorAll('.tab.active').forEach(function(x){if(x!==t)x.classList.remove('active');});t.classList.add('active');setTimeout(sync,0);}else{var s=document.getElementById('ecosalva-estudos-tab');if(s)s.classList.remove('active','ecco-estudos-nav-active');setTimeout(sync,0);}},true);
-  setTimeout(sync,0);setTimeout(sync,500);setTimeout(sync,1500);
-})();
-</script>
-'''
-          s=s.rstrip()+'\n'+fix
-          p.write_text(s,encoding='utf-8')
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          s=re.sub(r'\s*<!-- ECCO_ESTUDOS_MARKER_FINAL -->.*?\n\s*</script>\s*$', '\n', s, flags=re.S)
+          s=re.sub(r'\s*<!-- ECCO_ESTUDOS_FIX_FINAL -->.*?\n\s*</script>\s*$', '\n', s, flags=re.S)
+          fix='''\n<!-- ECCO_ESTUDOS_FIX_FINAL -->\n<style>#ecosalva-estudos-tab.active,#ecosalva-estudos-tab.ecco-estudos-nav-active{color:#FF4FD8!important}#ecosalva-estudos-tab.active::after,#ecosalva-estudos-tab.ecco-estudos-nav-active::after{content:none!important;display:none!important}#ecosalva-estudos-tab.ecco-estudos-nav-active{border-bottom:3px solid #FF4FD8!important}</style>\n<script>\n(function(){\nfunction sync(){var t=document.getElementById('ecosalva-estudos-tab'),a=document.getElementById('ecosalva-estudos-area');if(t&&a)t.classList.toggle('ecco-estudos-nav-active',a.classList.contains('open'));}\ndocument.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('.tab');if(!t)return;if(t.id==='ecosalva-estudos-tab'){document.querySelectorAll('.tab.active').forEach(function(x){if(x!==t)x.classList.remove('active');});t.classList.add('active');setTimeout(sync,0);}else{var x=document.getElementById('ecosalva-estudos-tab');if(x)x.classList.remove('active','ecco-estudos-nav-active');setTimeout(sync,0);}},true);\nsetTimeout(sync,0);setTimeout(sync,500);setTimeout(sync,1500);\n})();\n</script>\n'''
+          p.write_text(s.rstrip()+fix,encoding='utf-8')
           PY
-      - name: Commitar correção
+      - name: Commitar correcao
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git diff --cached --quiet && exit 0
+          if git diff --cached --quiet; then exit 0; fi
           git commit -m "fix: restaurar navegacao das abas e cor exclusiva de Estudos"
           git push
-      - name: Remover workflow temporário
+      - name: Remover workflow temporario
         if: success()
         run: |
           git rm .github/workflows/fix-estudos-final.yml
           git commit -m "chore: remover workflow temporario de Estudos"
           git push
-
-# trigger fix
