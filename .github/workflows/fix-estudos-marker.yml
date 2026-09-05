@@ -1,0 +1,97 @@
+name: Fix Estudos marker
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-estudos-marker.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Aplicar marcador real da aba Estudos
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='<!-- ECCO_ESTUDOS_MARKER_V2 -->'
+          if marker not in s:
+              patch=r'''<!-- ECCO_ESTUDOS_MARKER_V2 -->
+<style>
+/* Marcador da aba ativa: aplicado diretamente ao item Estudos, sem depender de classes legadas. */
+.ecco-estudos-nav-active{
+  position:relative !important;
+}
+.ecco-estudos-nav-active::after{
+  content:"" !important;
+  position:absolute !important;
+  left:0 !important;
+  right:0 !important;
+  bottom:-8px !important;
+  height:3px !important;
+  border-radius:3px !important;
+  background:var(--blue,#3b9be8) !important;
+  display:block !important;
+}
+</style>
+<script>
+(function(){
+  function norm(v){return String(v||'').replace(/\s+/g,' ').trim().toLowerCase();}
+  function isStudiesVisible(){
+    const nodes=[...document.querySelectorAll('body *')];
+    return nodes.some(el=>{
+      const t=norm(el.textContent);
+      if(!t || !t.includes('estudos')) return false;
+      const r=el.getBoundingClientRect();
+      const cs=getComputedStyle(el);
+      return r.width>0 && r.height>0 && cs.display!=='none' && cs.visibility!=='hidden' && /estudos/.test(t) && (el.querySelector && el.querySelector('button'));
+    });
+  }
+  function mark(){
+    const all=[...document.querySelectorAll('a,button,[role="button"],.tab,.nav-tab,.nav-item')];
+    const tabs=all.filter(el=>{
+      const t=norm(el.textContent);
+      return t==='📚 estudos'||t==='estudos'||t.endsWith(' estudos')||t.includes('estudos');
+    });
+    const visibleStudies=isStudiesVisible();
+    tabs.forEach(el=>{
+      const rect=el.getBoundingClientRect();
+      const visible=rect.width>0 && rect.height>0 && getComputedStyle(el).display!=='none' && getComputedStyle(el).visibility!=='hidden';
+      if(visible && visibleStudies) el.classList.add('ecco-estudos-nav-active');
+      else el.classList.remove('ecco-estudos-nav-active');
+    });
+  }
+  function start(){
+    mark();
+    setTimeout(mark,100);
+    setTimeout(mark,400);
+    setTimeout(mark,1000);
+    new MutationObserver(mark).observe(document.body,{attributes:true,attributeFilter:['class','style','aria-current'],childList:true,subtree:true});
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
+})();
+</script>
+'''
+              s=s.replace('</body>',patch+'\n</body>',1)
+              p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit e remover workflow temporario
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix: marcador visual da aba Estudos' || true
+          git push
+          rm -f .github/workflows/fix-estudos-marker.yml
+          git add -u .github/workflows/fix-estudos-marker.yml
+          git commit -m 'chore: remover workflow temporario do marcador Estudos' || true
+          git push
