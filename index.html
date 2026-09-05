@@ -5962,11 +5962,6 @@ function switchTab(tab, el) {
       });
     }
     function openStudies(){
-      hidden=[];
-      findPanelRoots().forEach(function(el){
-        hidden.push({el:el,display:el.style.display,visibility:el.style.visibility});
-        el.style.setProperty('display','none','important');
-      });
       area.classList.add('open');
       tab.classList.add('active');
       tab.setAttribute('aria-selected','true');
@@ -5975,11 +5970,6 @@ function switchTab(tab, el) {
       area.classList.remove('open');
       tab.classList.remove('active');
       tab.setAttribute('aria-selected','false');
-      hidden.forEach(function(x){
-        if(x.display) x.el.style.display=x.display; else x.el.style.removeProperty('display');
-        if(x.visibility) x.el.style.visibility=x.visibility; else x.el.style.removeProperty('visibility');
-      });
-      hidden=[];
     }
 
     document.addEventListener('click',function(ev){
@@ -6013,6 +6003,7 @@ function switchTab(tab, el) {
 </script>
 <!-- ECCO_ESTUDOS_FINAL_SAFE -->
 <style>
-#ecosalva-estudos-tab.active{color:#FF4FD8!important;border-bottom:3px solid #FF4FD8!important}
-#ecosalva-estudos-tab.active::after{content:none!important;display:none!important}
+#ecosalva-estudos-tab { color:#FF4FD8 !important; }
+#ecosalva-estudos-tab.active { color:#FF4FD8 !important; border-bottom:3px solid #FF4FD8 !important; background:transparent !important; }
+#ecosalva-estudos-tab.active::after { content:none !important; display:none !important; }
 </style>
