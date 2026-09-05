@@ -20,15 +20,11 @@ jobs:
           marker = '<!-- ECCO_ESTUDOS_MARKER_FINAL -->'
           if marker not in s:
               raise SystemExit('Marcador Estudos não encontrado')
-          prefix = s.split(marker, 1)[0]
-          suffix = s.split(marker, 1)[1]
-          # Remove somente o bloco de correção experimental após o marcador.
+          prefix, suffix = s.split(marker, 1)
           suffix = re.sub(r'\s*<style>.*?</style>\s*<script>.*?</script>\s*$', '', suffix, flags=re.S)
-          # Caso o marcador esteja antes de conteúdo posterior, remove apenas os blocos conhecidos.
           suffix = re.sub(r'\s*<style>\s*#ecosalva-estudos-tab\.active.*?</style>', '', suffix, count=1, flags=re.S)
           suffix = re.sub(r'\s*<script>\s*\(function\(\)\{\s*var previousTab=null, guard=false;.*?</script>', '', suffix, count=1, flags=re.S)
-          css = '''\n<!-- ECCO_ESTUDOS_COR_FINAL -->\n<style>\n#ecosalva-estudos-tab.active, #ecosalva-estudos-tab.ecco-estudos-nav-active {\n  color: #FF4FD8 !important;\n  border-bottom-color: #FF4FD8 !important;\n}\n#ecosalva-estudos-tab.active::after, #ecosalva-estudos-tab.ecco-estudos-nav-active::after {\n  content: none !important;\n  display: none !important;\n}\n</style>\n'''
-          # O funcionamento das abas permanece exclusivamente no código original.
+          css = '''\n<!-- ECCO_ESTUDOS_COR_FINAL -->\n<style>\n#ecosalva-estudos-tab.active, #ecosalva-estudos-tab.ecco-estudos-nav-active { color:#FF4FD8 !important; border-bottom-color:#FF4FD8 !important; }\n#ecosalva-estudos-tab.active::after, #ecosalva-estudos-tab.ecco-estudos-nav-active::after { content:none !important; display:none !important; }\n</style>\n'''
           p.write_text(prefix + marker + css + suffix, encoding='utf-8')
           PY
       - name: Publicar correção
