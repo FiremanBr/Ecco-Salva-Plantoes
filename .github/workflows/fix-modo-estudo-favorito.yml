@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - '.github/workflows/fix-modo-estudo-favorito.yml'
+      - 'scripts/.study-fix-trigger'
   workflow_dispatch:
 permissions:
   contents: write
@@ -21,7 +22,6 @@ jobs:
           from pathlib import Path
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
-
           old = '''function handleMaletaMedClick(nome, el, ev) {
   // Clique normal: mantém a seleção/ficha e também garante a estrela de favorito.
   // O toque longo continua sendo usado para remover/adicionar manualmente.
@@ -31,7 +31,7 @@ jobs:
 }'''
           new = '''function handleMaletaMedClick(nome, el, ev) {
   // Clique curto = selecionar o medicamento. Favorito NÃO é alterado.
-  // Favoritar continua sendo exclusivamente pelo toque/clique prolongado.
+  // Favorito continua sendo exclusivamente pelo toque/clique prolongado.
   if (el && el.dataset && el.dataset.skipClick === '1') return;
   toggleMed(nome, el);
   if (_modoEstudo) setTimeout(() => abrirPainelModoEstudo(), 0);
@@ -40,7 +40,6 @@ jobs:
               s = s.replace(old, new, 1)
           elif 'function handleMaletaMedClick(nome, el, ev)' not in s:
               raise SystemExit('Handler de medicamento nao encontrado; abortando.')
-
           marker = '<!-- ECCO_FIX_MODO_ESTUDO_V2 -->'
           if marker not in s:
               patch = r'''<!-- ECCO_FIX_MODO_ESTUDO_V2 -->
@@ -74,7 +73,6 @@ jobs:
     panel.innerHTML='<div class="estudo-title">📚 Ficha de estudo</div>'+cards;
     panel.classList.add('open');
   };
-
   const originalToggle=window.toggleModoEstudo;
   if(typeof originalToggle==='function'&&!originalToggle.__eccoStudyFix){
     const wrapped=function(){
@@ -92,7 +90,7 @@ jobs:
           p.write_text(s,encoding='utf-8')
           print('OK')
           PY
-      - name: Commit e remover workflow temporario
+      - name: Commit e remover temporarios
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
@@ -100,7 +98,7 @@ jobs:
           git add index.html
           git commit -m 'fix: restaurar Modo Estudo e toque longo dos favoritos'
           git push
-          rm -f .github/workflows/fix-modo-estudo-favorito.yml
+          rm -f .github/workflows/fix-modo-estudo-favorito.yml scripts/.study-fix-trigger
           git add -A
           git commit -m 'chore: remover workflow temporario do Modo Estudo'
           git push
