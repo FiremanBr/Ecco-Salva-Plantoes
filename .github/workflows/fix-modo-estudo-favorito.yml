@@ -23,34 +23,18 @@ jobs:
           import re
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
-
-          # Estudos não pode esconder nenhum painel da aplicação.
           pat = r'function openStudies\(\)\{.*?\n    \}\n    function closeStudies\(\)\{.*?\n    \}'
-          repl = '''function openStudies(){
-      area.classList.add('open');
-      tab.classList.add('active');
-      tab.setAttribute('aria-selected','true');
-    }
-    function closeStudies(){
-      area.classList.remove('open');
-      tab.classList.remove('active');
-      tab.setAttribute('aria-selected','false');
-    }'''
+          repl = "function openStudies(){\n      area.classList.add('open');\n      tab.classList.add('active');\n      tab.setAttribute('aria-selected','true');\n    }\n    function closeStudies(){\n      area.classList.remove('open');\n      tab.classList.remove('active');\n      tab.setAttribute('aria-selected','false');\n    }"
           s2 = re.sub(pat, repl, s, count=1, flags=re.S)
           if s2 == s:
               raise SystemExit('openStudies/closeStudies não encontrados')
           s = s2
-
-          # Cor exclusiva da aba Estudos.
           csspat = r'<!-- ECCO_ESTUDOS_FINAL_SAFE -->\s*<style>.*?</style>'
-          css = '''<!-- ECCO_ESTUDOS_FINAL_SAFE -->
-          <style>
-          #ecosalva-estudos-tab { color:#FF4FD8 !important; }
-          #ecosalva-estudos-tab.active { color:#FF4FD8 !important; border-bottom:3px solid #FF4FD8 !important; background:transparent !important; }
-          #ecosalva-estudos-tab.active::after { content:none !important; display:none !important; }
-          </style>'''
-          s = re.sub(csspat, css, s, count=1, flags=re.S)
-          p.write_text(s, encoding='utf-8')
+          css = "<!-- ECCO_ESTUDOS_FINAL_SAFE -->\n<style>\n#ecosalva-estudos-tab { color:#FF4FD8 !important; }\n#ecosalva-estudos-tab.active { color:#FF4FD8 !important; border-bottom:3px solid #FF4FD8 !important; background:transparent !important; }\n#ecosalva-estudos-tab.active::after { content:none !important; display:none !important; }\n</style>"
+          s2 = re.sub(csspat, css, s, count=1, flags=re.S)
+          if s2 == s:
+              raise SystemExit('CSS da aba Estudos não encontrado')
+          p.write_text(s2, encoding='utf-8')
           print('OK')
           PY
       - name: Publicar e limpar
