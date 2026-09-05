@@ -1,0 +1,68 @@
+name: Fix fundo tarjas interacoes
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-interacao-fundo.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Aplicar fundo visual nas tarjas de interacoes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          marker = '<!-- ECCO_FIX_TARJA_INTERACAO_FUNDO_V1 -->'
+          if marker not in s:
+              patch = r'''<!-- ECCO_FIX_TARJA_INTERACAO_FUNDO_V1 -->
+<style>
+.ecco-interacao-tarja{
+  background:#24141b !important;
+  background-color:#24141b !important;
+  border-radius:10px !important;
+  box-sizing:border-box !important;
+}
+</style>
+<script>
+(function(){
+  function aplicarFundoTarjas(){
+    document.querySelectorAll('div').forEach(function(el){
+      if(el.classList.contains('ecco-interacao-tarja')) return;
+      const t=(el.textContent||'').replace(/\s+/g,' ').trim();
+      if(/^💊[^\n]*\+[^\n]*\S/.test(t) && t.length<900){
+        el.classList.add('ecco-interacao-tarja');
+      }
+    });
+  }
+  aplicarFundoTarjas();
+  new MutationObserver(aplicarFundoTarjas).observe(document.body,{childList:true,subtree:true});
+})();
+</script>
+'''
+              if '</body>' not in s:
+                  raise SystemExit('body nao encontrado')
+              s=s.replace('</body>',patch+'\n</body>',1)
+              p.write_text(s,encoding='utf-8')
+          print('OK')
+          PY
+      - name: Publicar e remover workflow temporario
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix: aplicar fundo nas tarjas de interacoes'
+          git push
+          rm -f .github/workflows/fix-interacao-fundo.yml
+          git add -A
+          git commit -m 'chore: remover workflow temporario das tarjas'
+          git push
