@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/add-estudos-tab.yml'
+      - 'scripts/.study-fix-trigger'
   workflow_dispatch:
 permissions:
   contents: write
