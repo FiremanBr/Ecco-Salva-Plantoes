@@ -4,7 +4,6 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/add-estudos-tab.yml'
-      - 'scripts/.study-fix-trigger'
   workflow_dispatch:
 permissions:
   contents: write
@@ -16,35 +15,89 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - name: Corrigir aba Estudos
+      - name: Corrigir aba Estudos e favoritos
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          pat=r'function openStudies\(\)\{.*?\n    \}\n    function closeStudies\(\)\{.*?\n    \}'
-          repl="function openStudies(){\n      area.classList.add('open');\n      tab.classList.add('active');\n      tab.setAttribute('aria-selected','true');\n    }\n    function closeStudies(){\n      area.classList.remove('open');\n      tab.classList.remove('active');\n      tab.setAttribute('aria-selected','false');\n    }"
-          s2=re.sub(pat,repl,s,count=1,flags=re.S)
-          if s2==s: raise SystemExit('openStudies/closeStudies não encontrados')
-          s=s2
-          csspat=r'<!-- ECCO_ESTUDOS_FINAL_SAFE -->\s*<style>.*?</style>'
-          css="<!-- ECCO_ESTUDOS_FINAL_SAFE -->\n<style>\n#ecosalva-estudos-tab { color:#FF4FD8 !important; }\n#ecosalva-estudos-tab.active { color:#FF4FD8 !important; border-bottom:3px solid #FF4FD8 !important; background:transparent !important; }\n#ecosalva-estudos-tab.active::after { content:none !important; display:none !important; }\n</style>"
-          s2=re.sub(csspat,css,s,count=1,flags=re.S)
-          if s2==s: raise SystemExit('CSS Estudos não encontrado')
-          p.write_text(s2,encoding='utf-8')
-          print('ESTUDOS_OK')
+          marker='<!-- ECCO_FIX_ESTUDOS_FAVORITOS_V2 -->'
+          if marker not in s:
+              patch=r'''<!-- ECCO_FIX_ESTUDOS_FAVORITOS_V2 -->
+<style>
+.ecco-tab-estudos-ativa{position:relative!important;color:var(--blue,#3b9be8)!important}
+.ecco-tab-estudos-ativa::after{content:"";position:absolute;left:8%;right:8%;bottom:-7px;height:3px;border-radius:3px;background:var(--blue,#3b9be8)!important;box-shadow:0 0 5px rgba(59,155,232,.55)}
+</style>
+<script>
+(function(){
+  const HOLD=650;
+  let press=null;
+  function marcarTab(){
+    const tabs=[...document.querySelectorAll('a,button,[role="tab"]')];
+    const tab=tabs.find(x=>/📚\s*Estudos/.test((x.textContent||'').replace(/\s+/g,' ').trim()));
+    if(!tab)return;
+    const painel=document.getElementById('estudos');
+    const ativo=(painel && getComputedStyle(painel).display!=='none') || document.body.dataset.aba==='estudos';
+    if(ativo)tab.classList.add('ecco-tab-estudos-ativa');
+  }
+  document.addEventListener('click',function(ev){
+    const el=ev.target.closest('a,button,[role="tab"]');
+    if(!el)return;
+    if(/📚\s*Estudos/.test((el.textContent||'').replace(/\s+/g,' ').trim())){
+      document.querySelectorAll('.ecco-tab-estudos-ativa').forEach(x=>x.classList.remove('ecco-tab-estudos-ativa'));
+      el.classList.add('ecco-tab-estudos-ativa');
+      setTimeout(marcarTab,100);
+    }
+  },true);
+  marcarTab();
+  new MutationObserver(marcarTab).observe(document.body,{attributes:true,attributeFilter:['class','style','data-aba'],childList:true,subtree:true});
+
+  function medEl(target){
+    return target&&target.closest?target.closest('[onclick*="handleMaletaMedClick"],.med-chip,.med-button,.med-item'):null;
+  }
+  function nomeMed(el){
+    if(!el)return '';
+    const oc=el.getAttribute('onclick')||'';
+    const m=oc.match(/handleMaletaMedClick\(\s*[\'\"]([^\'\"]+)[\'\"]/);
+    return m?m[1]:(el.dataset.nome||el.dataset.med||'').trim();
+  }
+  function clearPress(){if(press&&press.timer)clearTimeout(press.timer);press=null}
+  document.addEventListener('pointerdown',function(ev){
+    const el=medEl(ev.target);if(!el)return;
+    clearPress();
+    const nome=nomeMed(el);if(!nome)return;
+    press={el,nome,fired:false,timer:setTimeout(function(){
+      if(!press||press.el!==el)return;
+      press.fired=true;
+      try{if(typeof window.toggleFavorito==='function')window.toggleFavorito(nome,ev)}catch(e){console.error(e)}
+      el.dataset.eccoHold='1';
+    },HOLD)};
+  },true);
+  document.addEventListener('pointerup',function(ev){
+    if(!press)return;
+    const p=press;
+    if(p.fired){ev.preventDefault();ev.stopImmediatePropagation();setTimeout(function(){if(p.el)p.el.dataset.eccoHold='0'},0)}
+    clearPress();
+  },true);
+  document.addEventListener('pointercancel',clearPress,true);
+  document.addEventListener('click',function(ev){
+    const el=medEl(ev.target);
+    if(el&&el.dataset.eccoHold==='1'){ev.preventDefault();ev.stopImmediatePropagation();el.dataset.eccoHold='0'}
+  },true);
+})();
+</script>
+'''
+              if '</body>' not in s: raise SystemExit('body nao encontrado')
+              s=s.replace('</body>',patch+'\n</body>',1)
+              p.write_text(s,encoding='utf-8')
+          print('OK')
           PY
-      - name: Publicar e limpar temporários
+      - name: Commit correcao
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
-          git diff --cached --quiet || git commit -m 'fix: Estudos sem bloquear outras abas'
-          git push || true
-          rm -f .github/workflows/add-estudos-tab.yml .github/workflows/fix-modo-estudo-favorito.yml .github/workflows/fix-estudos-definitivo.yml scripts/.study-fix-trigger
-          git add -A
-          git diff --cached --quiet || git commit -m 'chore: remover workflows temporarios de Estudos'
-          git push || true
+          git commit -m 'fix: favoritos por toque longo e aba Estudos ativa'
+          git push
