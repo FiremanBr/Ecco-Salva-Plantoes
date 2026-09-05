@@ -5961,7 +5961,36 @@ function switchTab(tab, el) {
         return !roots.some(function(other,j){return i!==j&&other.contains(el)});
       });
     }
+    var previousActiveTab=null;
+    var hiddenStudyNodes=[];
+    function findStudyNodes(){
+      var nodes=[];
+      var title=Array.from(document.querySelectorAll('body *')).find(function(el){
+        return (el.textContent||'').trim()==='🔬 ANÁLISE CLÍNICA';
+      });
+      if(title){
+        var box=title;
+        for(var i=0;i<5 && box.parentElement;i++){
+          box=box.parentElement;
+          var r=box.getBoundingClientRect();
+          if(r.width>300 && r.height>250){ break; }
+        }
+        nodes.push(box);
+      }
+      var btn=Array.from(document.querySelectorAll('button')).find(function(el){
+        return (el.textContent||'').replace(/\s+/g,' ').trim()==='🔬 Analisar Paciente';
+      });
+      if(btn){ nodes.push(btn); }
+      return nodes.filter(function(el,i){return el && nodes.indexOf(el)===i;});
+    }
     function openStudies(){
+      previousActiveTab=document.querySelector('.tab.active:not(#ecosalva-estudos-tab)');
+      document.querySelectorAll('.tab.active').forEach(function(t){ if(t!==tab) t.classList.remove('active'); });
+      hiddenStudyNodes=findStudyNodes();
+      hiddenStudyNodes.forEach(function(el){
+        el.dataset.ecoStudiesDisplay=el.style.display||'';
+        el.style.display='none';
+      });
       area.classList.add('open');
       tab.classList.add('active');
       tab.setAttribute('aria-selected','true');
@@ -5970,6 +5999,15 @@ function switchTab(tab, el) {
       area.classList.remove('open');
       tab.classList.remove('active');
       tab.setAttribute('aria-selected','false');
+      hiddenStudyNodes.forEach(function(el){
+        if(el) el.style.display=el.dataset.ecoStudiesDisplay||'';
+      });
+      hiddenStudyNodes=[];
+      if(previousActiveTab && document.body.contains(previousActiveTab)){
+        document.querySelectorAll('.tab.active').forEach(function(t){ if(t!==previousActiveTab) t.classList.remove('active'); });
+        previousActiveTab.classList.add('active');
+      }
+      previousActiveTab=null;
     }
 
     document.addEventListener('click',function(ev){
