@@ -20,75 +20,56 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
+
+          # Remove o bloco experimental que estava usando MutationObserver para
+          # controlar as abas. Ele é a causa do bloqueio das demais abas.
+          marker = '<!-- ECCO_ESTUDOS_MARKER_FINAL -->'
+          if marker in s:
+              prefix, suffix = s.split(marker, 1)
+              suffix = re.sub(r'\s*<style>\s*#ecosalva-estudos-tab\.active.*?</style>', '', suffix, count=1, flags=re.S)
+              suffix = re.sub(r'\s*<script>\s*\(function\(\)\{\s*var previousTab=null, guard=false;.*?</script>', '', suffix, count=1, flags=re.S)
+              s = prefix + marker + suffix
+
+          # Clique curto no medicamento apenas seleciona; favorito fica no toque longo.
           old = '''function handleMaletaMedClick(nome, el, ev) {
-  // Clique normal: mantém a seleção/ficha e também garante a estrela de favorito.
-  // O toque longo continua sendo usado para remover/adicionar manualmente.
-  if (el && el.dataset && el.dataset.skipClick === '1') return;
-  if (!_favoritos.has(nome)) toggleFavorito(nome, ev);
-  toggleMed(nome, el);
-}'''
+            // Clique normal: mantém a seleção/ficha e também garante a estrela de favorito.
+            // O toque longo continua sendo usado para remover/adicionar manualmente.
+            if (el && el.dataset && el.dataset.skipClick === '1') return;
+            if (!_favoritos.has(nome)) toggleFavorito(nome, ev);
+            toggleMed(nome, el);
+          }'''
           new = '''function handleMaletaMedClick(nome, el, ev) {
-  // Clique curto = selecionar o medicamento. Favorito NÃO é alterado.
-  // Favorito continua sendo exclusivamente pelo toque/clique prolongado.
-  if (el && el.dataset && el.dataset.skipClick === '1') return;
-  toggleMed(nome, el);
-  if (_modoEstudo) setTimeout(() => abrirPainelModoEstudo(), 0);
-}'''
+            // Clique curto = selecionar o medicamento. Favorito NÃO é alterado.
+            // Favorito continua sendo exclusivamente pelo toque/clique prolongado.
+            if (el && el.dataset && el.dataset.skipClick === '1') return;
+            toggleMed(nome, el);
+            if (_modoEstudo) setTimeout(() => abrirPainelModoEstudo(), 0);
+          }'''
           if old in s:
               s = s.replace(old, new, 1)
-          elif 'function handleMaletaMedClick(nome, el, ev)' not in s:
-              raise SystemExit('Handler de medicamento nao encontrado; abortando.')
-          marker = '<!-- ECCO_FIX_MODO_ESTUDO_V2 -->'
-          if marker not in s:
-              patch = r'''<!-- ECCO_FIX_MODO_ESTUDO_V2 -->
+
+          # Cor exclusiva da aba Estudos, sem pseudo-elemento adicional.
+          color_marker = '<!-- ECCO_ESTUDOS_COR_FINAL -->'
+          if color_marker not in s:
+              patch = '''
+<!-- ECCO_ESTUDOS_COR_FINAL -->
 <style>
-#modoEstudoPanel{display:none;margin:10px 0 14px;padding:10px 12px;background:var(--surface2);border:1px solid rgba(59,155,232,.35);border-radius:10px;box-sizing:border-box;width:100%}
-#modoEstudoPanel.open{display:block}
-#modoEstudoPanel .estudo-title{font-size:11px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
-#modoEstudoPanel .estudo-item{margin-bottom:9px}
-#modoEstudoPanel .estudo-item:last-child{margin-bottom:0}
+#ecosalva-estudos-tab.active {
+  color: #FF4FD8 !important;
+  border-bottom-color: #FF4FD8 !important;
+}
+#ecosalva-estudos-tab.active::after {
+  content: none !important;
+  display: none !important;
+}
 </style>
-<script>
-(function(){
-  window.abrirPainelModoEstudo=function(){
-    const controls=document.getElementById('maletaControls');
-    if(!controls)return;
-    let panel=document.getElementById('modoEstudoPanel');
-    if(!panel){
-      panel=document.createElement('div');
-      panel.id='modoEstudoPanel';
-      controls.parentNode.insertBefore(panel,controls.nextSibling);
-    }
-    if(!_modoEstudo || !selecionados.size){
-      panel.classList.remove('open');
-      panel.innerHTML='';
-      return;
-    }
-    const cards=[...selecionados].map(nome=>{
-      try{return '<div class="estudo-item">'+buildCardFromDB(nome)+'</div>';}
-      catch(e){return '<div class="estudo-item"><strong>💊 '+String(nome)+'</strong></div>';}
-    }).join('');
-    panel.innerHTML='<div class="estudo-title">📚 Ficha de estudo</div>'+cards;
-    panel.classList.add('open');
-  };
-  const originalToggle=window.toggleModoEstudo;
-  if(typeof originalToggle==='function'&&!originalToggle.__eccoStudyFix){
-    const wrapped=function(){
-      const r=originalToggle.apply(this,arguments);
-      setTimeout(abrirPainelModoEstudo,0);
-      return r;
-    };
-    wrapped.__eccoStudyFix=true;
-    window.toggleModoEstudo=wrapped;
-  }
-})();
-</script>
 '''
-              s=s.replace('</body>',patch+'\n</body>',1)
-          p.write_text(s,encoding='utf-8')
-          print('OK')
+              s = s.replace('</body>', patch + '\n</body>', 1)
+          p.write_text(s, encoding='utf-8')
+          print('CORRECAO_OK')
           PY
       - name: Commit e remover temporarios
         shell: bash
@@ -96,9 +77,9 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
-          git commit -m 'fix: restaurar Modo Estudo e toque longo dos favoritos'
-          git push
-          rm -f .github/workflows/fix-modo-estudo-favorito.yml scripts/.study-fix-trigger
+          git commit -m 'fix: restaurar abas e corrigir Estudos' || true
+          git push || true
+          rm -f .github/workflows/fix-modo-estudo-favorito.yml scripts/.study-fix-trigger .github/workflows/fix-estudos-definitivo.yml
           git add -A
-          git commit -m 'chore: remover workflow temporario do Modo Estudo'
+          git commit -m 'chore: remover workflows temporarios de Estudos' || exit 0
           git push
