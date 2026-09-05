@@ -1,3 +1,4 @@
+# Correção visual temporária da aba Estudos
 name: Fix Estudos color and underline
 on:
   push:
