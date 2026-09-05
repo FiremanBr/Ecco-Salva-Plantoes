@@ -1,0 +1,51 @@
+name: Fix Estudos marker
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-estudos-marker-once.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar marcador visual
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='<!-- ECCO_ESTUDOS_MARKER_FINAL -->'
+          if marker not in s:
+              patch='''<!-- ECCO_ESTUDOS_MARKER_FINAL -->
+          <style>
+          #ecosalva-estudos-tab.active, #ecosalva-estudos-tab.ecco-estudos-nav-active { position:relative !important; color:#60a5fa !important; }
+          #ecosalva-estudos-tab.active::after, #ecosalva-estudos-tab.ecco-estudos-nav-active::after { content:"" !important; position:absolute !important; left:0 !important; right:0 !important; bottom:-2px !important; height:3px !important; border-radius:3px !important; background:#60a5fa !important; display:block !important; }
+          </style>
+          <script>
+          (function(){
+            function mark(){
+              var t=document.getElementById('ecosalva-estudos-tab');
+              var a=document.getElementById('ecosalva-estudos-area');
+              if(t) t.classList.toggle('ecco-estudos-nav-active', !!(a && a.classList.contains('open')));
+            }
+            if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',mark); else mark();
+            new MutationObserver(mark).observe(document.documentElement,{attributes:true,attributeFilter:['class','style'],childList:true,subtree:true});
+          })();
+          </script>
+          '''
+              s=s.replace('</body>',patch+'\n</body>',1)
+              p.write_text(s,encoding='utf-8')
+          PY
+      - name: Publicar e limpar workflow
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/fix-estudos-marker-once.yml
+          git add index.html
+          git commit -m 'fix: marcador visual da aba Estudos publicado'
+          git push
