@@ -1,0 +1,71 @@
+name: Fix independent tabs
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-tabs-independence-once.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Corrigir independência das abas
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='<!-- ECCO_ESTUDOS_TABS_INDEPENDENTES_V1 -->'
+          if marker in s:
+              print('Patch já aplicado.')
+              raise SystemExit(0)
+          old="""    var previousActiveTab=null;\n    var hiddenStudyNodes=[];\n    function findStudyNodes(){"""
+          new="""    var previousActiveTab=null;\n    var hiddenStudyNodes=[];\n    var hiddenStudyPanels=[];\n    function findStudyNodes(){"""
+          if old not in s: raise SystemExit('Bloco base hiddenStudyNodes não encontrado')
+          s=s.replace(old,new,1)
+          old="""    function openStudies(){\n      previousActiveTab=document.querySelector('.tab.active:not(#ecosalva-estudos-tab)');\n      document.querySelectorAll('.tab.active').forEach(function(t){ if(t!==tab) t.classList.remove('active'); });\n      hiddenStudyNodes=findStudyNodes();"""
+          new="""    function openStudies(){\n      previousActiveTab=document.querySelector('.tab.active:not(#ecosalva-estudos-tab)');\n      hiddenStudyPanels=[];\n      document.querySelectorAll('.panel').forEach(function(p){\n        hiddenStudyPanels.push({el:p,active:p.classList.contains('active'),display:p.style.display||''});\n        p.classList.remove('active');\n        p.style.display='none';\n      });\n      document.querySelectorAll('.tab.active').forEach(function(t){ if(t!==tab) t.classList.remove('active'); });\n      hiddenStudyNodes=findStudyNodes();"""
+          if old not in s: raise SystemExit('openStudies não encontrado')
+          s=s.replace(old,new,1)
+          old="""      hiddenStudyNodes=[];\n      if(previousActiveTab && document.body.contains(previousActiveTab)){"""
+          new="""      hiddenStudyNodes=[];\n      hiddenStudyPanels.forEach(function(item){\n        if(!item.el) return;\n        item.el.style.display=item.display;\n        if(item.active) item.el.classList.add('active');\n        else item.el.classList.remove('active');\n      });\n      hiddenStudyPanels=[];\n      if(previousActiveTab && document.body.contains(previousActiveTab)){"""
+          if old not in s: raise SystemExit('closeStudies não encontrado')
+          s=s.replace(old,new,1)
+          patch=r'''<!-- ECCO_ESTUDOS_TABS_INDEPENDENTES_V1 -->
+<style>
+#ecosalva-estudos-tab.active,
+#ecosalva-estudos-tab.ecco-estudos-nav-active{
+  position:relative !important;
+  color:#60a5fa !important;
+  background:transparent !important;
+  border-bottom:0 !important;
+}
+#ecosalva-estudos-tab.active::after,
+#ecosalva-estudos-tab.ecco-estudos-nav-active::after{
+  content:"" !important;
+  position:absolute !important;
+  left:0 !important;
+  right:0 !important;
+  bottom:-2px !important;
+  height:3px !important;
+  border-radius:3px !important;
+  background:#60a5fa !important;
+  display:block !important;
+}
+</style>
+'''
+          s=s.replace('</body>',patch+'\n</body>',1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Publicar e limpar workflow
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/fix-tabs-independence-once.yml
+          git add index.html
+          git commit -m 'fix: tornar abas independentes e marcador de Estudos'
+          git push
