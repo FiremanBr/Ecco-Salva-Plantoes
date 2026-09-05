@@ -1,0 +1,94 @@
+name: Fix UI two errors
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Aplicar correcoes
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" = "github-actions[bot]" ]; then exit 0; fi
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='<!-- ECCO_FIX_UI_TWO_ERRORS_V1 -->'
+          if marker not in s:
+              patch=r'''<!-- ECCO_FIX_UI_TWO_ERRORS_V1 -->
+<style>
+.ecco-tab-estudos-ativa{position:relative!important;color:var(--blue,#3b9be8)!important}
+.ecco-tab-estudos-ativa::after{content:"";position:absolute;left:8%;right:8%;bottom:-7px;height:3px;border-radius:3px;background:var(--blue,#3b9be8)!important;box-shadow:0 0 5px rgba(59,155,232,.55)}
+</style>
+<script>
+(function(){
+  const HOLD=650;
+  let press=null;
+  function marcarEstudos(){
+    const tabs=[...document.querySelectorAll('a,button,[role="tab"]')];
+    const tab=tabs.find(x=>/📚\s*Estudos/.test((x.textContent||'').replace(/\s+/g,' ').trim()));
+    if(!tab)return;
+    const painel=document.getElementById('estudos');
+    const ativo=(painel&&getComputedStyle(painel).display!=='none')||document.body.dataset.aba==='estudos';
+    if(ativo)tab.classList.add('ecco-tab-estudos-ativa');
+  }
+  document.addEventListener('click',function(ev){
+    const el=ev.target.closest('a,button,[role="tab"]');
+    if(!el)return;
+    if(/📚\s*Estudos/.test((el.textContent||'').replace(/\s+/g,' ').trim())){
+      document.querySelectorAll('.ecco-tab-estudos-ativa').forEach(x=>x.classList.remove('ecco-tab-estudos-ativa'));
+      el.classList.add('ecco-tab-estudos-ativa');
+      setTimeout(marcarEstudos,100);
+    }
+  },true);
+  marcarEstudos();
+  new MutationObserver(marcarEstudos).observe(document.body,{attributes:true,attributeFilter:['class','style','data-aba'],childList:true,subtree:true});
+
+  function medEl(target){return target&&target.closest?target.closest('[onclick*="handleMaletaMedClick"],.med-chip,.med-button,.med-item'):null}
+  function nomeMed(el){
+    if(!el)return '';
+    const oc=el.getAttribute('onclick')||'';
+    const m=oc.match(/handleMaletaMedClick\(\s*[\'\"]([^\'\"]+)[\'\"]/);
+    return m?m[1]:(el.dataset.nome||el.dataset.med||'').trim();
+  }
+  function clearPress(){if(press&&press.timer)clearTimeout(press.timer);press=null}
+  document.addEventListener('pointerdown',function(ev){
+    const el=medEl(ev.target);if(!el)return;
+    clearPress();
+    const nome=nomeMed(el);if(!nome)return;
+    press={el,nome,fired:false,timer:setTimeout(function(){
+      if(!press||press.el!==el)return;
+      press.fired=true;
+      try{if(typeof window.toggleFavorito==='function')window.toggleFavorito(nome,ev)}catch(e){console.error(e)}
+      el.dataset.eccoHold='1';
+    },HOLD)};
+  },true);
+  document.addEventListener('pointerup',function(ev){
+    if(!press)return;
+    const p=press;
+    if(p.fired){ev.preventDefault();ev.stopImmediatePropagation();setTimeout(function(){if(p.el)p.el.dataset.eccoHold='0'},0)}
+    clearPress();
+  },true);
+  document.addEventListener('pointercancel',clearPress,true);
+  document.addEventListener('click',function(ev){
+    const el=medEl(ev.target);
+    if(el&&el.dataset.eccoHold==='1'){ev.preventDefault();ev.stopImmediatePropagation();el.dataset.eccoHold='0'}
+  },true);
+})();
+</script>
+'''
+              s=s.replace('</body>',patch+'\n</body>',1)
+              p.write_text(s,encoding='utf-8')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix: corrigir favoritos por toque longo e aba Estudos'
+          git push
