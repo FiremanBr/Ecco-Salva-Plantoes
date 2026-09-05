@@ -1,0 +1,137 @@
+name: Fix Modo Estudo e favoritos
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-modo-estudo-favorito.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Corrigir handler, long press e painel de estudo
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          old = '''function handleMaletaMedClick(nome, el, ev) {
+  // Clique normal: mantém a seleção/ficha e também garante a estrela de favorito.
+  // O toque longo continua sendo usado para remover/adicionar manualmente.
+  if (el && el.dataset && el.dataset.skipClick === '1') return;
+  if (!_favoritos.has(nome)) toggleFavorito(nome, ev);
+  toggleMed(nome, el);
+}'''
+
+          new = '''function handleMaletaMedClick(nome, el, ev) {
+  // Clique curto = selecionar/abrir o medicamento. NÃO altera favorito.
+  // Favorito é uma ação exclusiva do toque/clique prolongado (600 ms).
+  if (el && el.dataset && el.dataset.skipClick === '1') return;
+  toggleMed(nome, el);
+  if (_modoEstudo) {
+    setTimeout(() => abrirPainelModoEstudo(), 0);
+  }
+}'''
+
+          if old not in s:
+              raise SystemExit('Handler esperado nao encontrado; abortando para nao alterar comportamento indevido.')
+          s = s.replace(old, new, 1)
+
+          marker = '<!-- ECCO_FIX_MODO_ESTUDO_V1 -->'
+          if marker not in s:
+              patch = r'''<!-- ECCO_FIX_MODO_ESTUDO_V1 -->
+<style>
+  #modoEstudoPanel{
+    display:none;margin:10px 0 14px;padding:10px 12px;
+    background:var(--surface2);border:1px solid rgba(59,155,232,.35);
+    border-radius:10px;box-sizing:border-box;width:100%;
+  }
+  #modoEstudoPanel.open{display:block}
+  #modoEstudoPanel .estudo-title{
+    font-size:11px;font-weight:800;color:var(--blue);text-transform:uppercase;
+    letter-spacing:.5px;margin-bottom:8px;
+  }
+  #modoEstudoPanel .estudo-item{margin-bottom:9px}
+  #modoEstudoPanel .estudo-item:last-child{margin-bottom:0}
+</style>
+<script>
+(function(){
+  function esc(v){
+    return String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c));
+  }
+
+  window.abrirPainelModoEstudo = function(){
+    const ativo = !!window._modoEstudo;
+    let panel = document.getElementById('modoEstudoPanel');
+    const controls = document.getElementById('maletaControls');
+    if (!panel && controls) {
+      panel = document.createElement('div');
+      panel.id = 'modoEstudoPanel';
+      controls.parentNode.insertBefore(panel, controls.nextSibling);
+    }
+    if (!panel) return;
+
+    if (!ativo) {
+      panel.classList.remove('open');
+      panel.innerHTML='';
+      return;
+    }
+
+    const nomes = (window.selecionados && typeof window.selecionados[Symbol.iterator] === 'function')
+      ? Array.from(window.selecionados) : [];
+    if (!nomes.length) {
+      panel.classList.remove('open');
+      panel.innerHTML='';
+      return;
+    }
+
+    const cards = nomes.map(nome => {
+      try { return '<div class="estudo-item">'+window.buildCardFromDB(nome)+'</div>'; }
+      catch(e){ return '<div class="estudo-item"><strong>💊 '+esc(nome)+'</strong></div>'; }
+    }).join('');
+
+    panel.innerHTML = '<div class="estudo-title">📚 Ficha de estudo</div>'+cards;
+    panel.classList.add('open');
+  };
+
+  // Garante que o botão desligado também remova o painel sem alterar a função original.
+  const originalToggle = window.toggleModoEstudo;
+  if (typeof originalToggle === 'function' && !originalToggle.__eccoWrapped) {
+    const wrapped = function(){
+      const r = originalToggle.apply(this, arguments);
+      setTimeout(() => {
+        if (window._modoEstudo) window.abrirPainelModoEstudo();
+        else window.abrirPainelModoEstudo();
+      }, 0);
+      return r;
+    };
+    wrapped.__eccoWrapped = true;
+    window.toggleModoEstudo = wrapped;
+  }
+})();
+</script>
+'''
+              s = s.replace('</body>', patch + '\n</body>', 1)
+
+          p.write_text(s, encoding='utf-8')
+          print('Correcao aplicada com sucesso.')
+          PY
+      - name: Commit correcao e remover workflow temporario
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix: restaurar Modo Estudo e toque longo dos favoritos'
+          git push
+          rm -f .github/workflows/fix-modo-estudo-favorito.yml
+          git add -A
+          git commit -m 'chore: remover workflow temporario do Modo Estudo'
+          git push
