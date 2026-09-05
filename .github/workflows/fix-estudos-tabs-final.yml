@@ -1,0 +1,46 @@
+name: Fix Estudos tabs final
+on:
+  push:
+    paths:
+      - '**'
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Liberar troca entre abas
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for i in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old="""      if(area.contains(ev.target)) return;\n      n=ev.target;"""
+          new="""      if(area.contains(ev.target)) return;\n      if(ev.target.closest && ev.target.closest('.tab') && ev.target.closest('.tab')!==tab){ closeStudies(); return; }\n      n=ev.target;"""
+          if old not in s:
+              raise SystemExit('trecho esperado nao encontrado')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+            git add index.html
+            git commit -m "fix: permitir troca normal entre todas as abas" || exit 0
+            if git push; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Remover workflow temporario
+        if: success()
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
+          git rm .github/workflows/fix-estudos-tabs-final.yml || true
+          git commit -m "chore: remover workflow temporario das abas" || exit 0
+          git push || true
