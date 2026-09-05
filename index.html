@@ -6010,12 +6010,8 @@ function switchTab(tab, el) {
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',makeStudies); else makeStudies();
 })();
 </script>
-<!-- ECCO_ESTUDOS_FIX_FINAL -->
-<style>#ecosalva-estudos-tab.active,#ecosalva-estudos-tab.ecco-estudos-nav-active{color:#FF4FD8!important}#ecosalva-estudos-tab.active::after,#ecosalva-estudos-tab.ecco-estudos-nav-active::after{content:none!important;display:none!important}#ecosalva-estudos-tab.ecco-estudos-nav-active{border-bottom:3px solid #FF4FD8!important}</style>
-<script>
-(function(){
-function sync(){var t=document.getElementById('ecosalva-estudos-tab'),a=document.getElementById('ecosalva-estudos-area');if(t&&a)t.classList.toggle('ecco-estudos-nav-active',a.classList.contains('open'));}
-document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('.tab');if(!t)return;if(t.id==='ecosalva-estudos-tab'){document.querySelectorAll('.tab.active').forEach(function(x){if(x!==t)x.classList.remove('active');});t.classList.add('active');setTimeout(sync,0);}else{var x=document.getElementById('ecosalva-estudos-tab');if(x)x.classList.remove('active','ecco-estudos-nav-active');setTimeout(sync,0);}},true);
-setTimeout(sync,0);setTimeout(sync,500);setTimeout(sync,1500);
-})();
-</script>
+<!-- ECCO_ESTUDOS_FINAL_SAFE -->
+<style>
+#ecosalva-estudos-tab.active{color:#FF4FD8!important;border-bottom:3px solid #FF4FD8!important}
+#ecosalva-estudos-tab.active::after{content:none!important;display:none!important}
+</style>
