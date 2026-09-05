@@ -1,0 +1,93 @@
+name: Fix Estudos final
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-estudos-final.yml'
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Corrigir navegação Estudos
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          # Remove the previous experimental marker block completely.
+          s = re.sub(r'\s*<!-- ECCO_ESTUDOS_MARKER_FINAL -->.*?\n\s*</script>\s*$', '\n', s, flags=re.S)
+
+          fix = r'''
+<!-- ECCO_ESTUDOS_FIX_FINAL -->
+<style>
+#ecosalva-estudos-tab.active,
+#ecosalva-estudos-tab.ecco-estudos-nav-active {
+  color: #FF4FD8 !important;
+}
+#ecosalva-estudos-tab.active::after,
+#ecosalva-estudos-tab.ecco-estudos-nav-active::after {
+  content: none !important;
+  display: none !important;
+}
+#ecosalva-estudos-tab.ecco-estudos-nav-active {
+  border-bottom: 3px solid #FF4FD8 !important;
+}
+</style>
+<script>
+(function(){
+  function syncEstudos(){
+    var tab = document.getElementById('ecosalva-estudos-tab');
+    var area = document.getElementById('ecosalva-estudos-area');
+    if (!tab || !area) return;
+    var open = area.classList.contains('open');
+    tab.classList.toggle('ecco-estudos-nav-active', open);
+  }
+
+  document.addEventListener('click', function(ev){
+    var tab = ev.target.closest && ev.target.closest('.tab');
+    if (!tab) return;
+    var estudos = tab.id === 'ecosalva-estudos-tab';
+    if (estudos) {
+      document.querySelectorAll('.tab.active').forEach(function(t){
+        if (t !== tab) t.classList.remove('active');
+      });
+      tab.classList.add('active');
+      setTimeout(syncEstudos, 0);
+    } else {
+      var estudosTab = document.getElementById('ecosalva-estudos-tab');
+      if (estudosTab) {
+        estudosTab.classList.remove('active', 'ecco-estudos-nav-active');
+      }
+      setTimeout(syncEstudos, 0);
+    }
+  }, true);
+
+  setTimeout(syncEstudos, 0);
+  setTimeout(syncEstudos, 500);
+  setTimeout(syncEstudos, 1500);
+})();
+</script>
+'''
+          s = s.rstrip() + '\n' + fix
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commitar correção
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: restaurar navegação das abas e cor exclusiva de Estudos"
+          git push
+      - name: Remover workflow temporário
+        if: success()
+        run: |
+          git rm .github/workflows/fix-estudos-final.yml
+          git commit -m "chore: remover workflow temporario de Estudos"
+          git push
