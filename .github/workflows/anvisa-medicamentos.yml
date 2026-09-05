@@ -4,7 +4,6 @@ on:
   push:
     paths:
       - '.github/workflows/anvisa-medicamentos.yml'
-      - 'scripts/.study-fix-trigger2'
   workflow_dispatch:
   schedule:
     - cron: '17 4 * * 1'
@@ -18,64 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Corrigir Modo Estudo e favoritos
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-          old='''function handleMaletaMedClick(nome, el, ev) {
-  // Clique normal: mantém a seleção/ficha e também garante a estrela de favorito.
-  // O toque longo continua sendo usado para remover/adicionar manualmente.
-  if (el && el.dataset && el.dataset.skipClick === '1') return;
-  if (!_favoritos.has(nome)) toggleFavorito(nome, ev);
-  toggleMed(nome, el);
-}'''
-          new='''function handleMaletaMedClick(nome, el, ev) {
-  // Clique curto = selecionar o medicamento. NÃO altera favoritos.
-  // Favorito continua exclusivamente no toque/clique prolongado.
-  if (el && el.dataset && el.dataset.skipClick === '1') return;
-  toggleMed(nome, el);
-  if (_modoEstudo) setTimeout(() => abrirPainelModoEstudo(), 0);
-}'''
-          if old in s:
-              s=s.replace(old,new,1)
-          elif 'function handleMaletaMedClick(nome, el, ev)' not in s:
-              raise SystemExit('Handler de medicamento nao encontrado.')
-          marker='<!-- ECCO_FIX_MODO_ESTUDO_V3 -->'
-          if marker not in s:
-              patch=r'''<!-- ECCO_FIX_MODO_ESTUDO_V3 -->
-<style>
-#modoEstudoPanel{display:none;margin:10px 0 14px;padding:10px 12px;background:var(--surface2);border:1px solid rgba(59,155,232,.35);border-radius:10px;box-sizing:border-box;width:100%}
-#modoEstudoPanel.open{display:block}
-#modoEstudoPanel .estudo-title{font-size:11px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
-#modoEstudoPanel .estudo-item{margin-bottom:9px}
-#modoEstudoPanel .estudo-item:last-child{margin-bottom:0}
-</style>
-<script>
-(function(){
-  window.abrirPainelModoEstudo=function(){
-    const controls=document.getElementById('maletaControls');
-    if(!controls)return;
-    let panel=document.getElementById('modoEstudoPanel');
-    if(!panel){panel=document.createElement('div');panel.id='modoEstudoPanel';controls.parentNode.insertBefore(panel,controls.nextSibling)}
-    if(!_modoEstudo||!selecionados.size){panel.classList.remove('open');panel.innerHTML='';return}
-    panel.innerHTML='<div class="estudo-title">📚 Ficha de estudo</div>'+[...selecionados].map(nome=>'<div class="estudo-item">'+buildCardFromDB(nome)+'</div>').join('');
-    panel.classList.add('open');
-  };
-  const originalToggle=window.toggleModoEstudo;
-  if(typeof originalToggle==='function'&&!originalToggle.__eccoStudyFix){
-    const wrapped=function(){const r=originalToggle.apply(this,arguments);setTimeout(abrirPainelModoEstudo,0);return r};
-    wrapped.__eccoStudyFix=true;window.toggleModoEstudo=wrapped;
-  }
-})();
-</script>
-'''
-              s=s.replace('</body>',patch+'\n</body>',1)
-          p.write_text(s,encoding='utf-8')
-          print('Modo Estudo corrigido')
-          PY
       - name: Baixar e indexar dados oficiais da ANVISA
         shell: bash
         run: |
@@ -123,7 +64,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html anvisa-medicamentos.json
-          if git diff --cached --quiet; then echo 'Sem alterações.'; exit 0; fi
-          git commit -m 'fix: atualizar Modo Estudo e base ANVISA'
+          git add anvisa-medicamentos.json
+          if git diff --cached --quiet; then echo 'Base sem alterações.'; exit 0; fi
+          git commit -m 'chore: atualizar base oficial de medicamentos da Anvisa'
           git push
