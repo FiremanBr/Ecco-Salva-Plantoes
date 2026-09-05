@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - name: Corrigir handler e restaurar ficha do Modo Estudo
+      - name: Corrigir aba Estudos
         shell: bash
         run: |
           python - <<'PY'
@@ -24,62 +24,44 @@ jobs:
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
 
-          # Remove o bloco experimental que estava usando MutationObserver para
-          # controlar as abas. Ele é a causa do bloqueio das demais abas.
-          marker = '<!-- ECCO_ESTUDOS_MARKER_FINAL -->'
-          if marker in s:
-              prefix, suffix = s.split(marker, 1)
-              suffix = re.sub(r'\s*<style>\s*#ecosalva-estudos-tab\.active.*?</style>', '', suffix, count=1, flags=re.S)
-              suffix = re.sub(r'\s*<script>\s*\(function\(\)\{\s*var previousTab=null, guard=false;.*?</script>', '', suffix, count=1, flags=re.S)
-              s = prefix + marker + suffix
+          # Estudos não pode esconder nenhum painel da aplicação.
+          pat = r'function openStudies\(\)\{.*?\n    \}\n    function closeStudies\(\)\{.*?\n    \}'
+          repl = '''function openStudies(){
+      area.classList.add('open');
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected','true');
+    }
+    function closeStudies(){
+      area.classList.remove('open');
+      tab.classList.remove('active');
+      tab.setAttribute('aria-selected','false');
+    }'''
+          s2 = re.sub(pat, repl, s, count=1, flags=re.S)
+          if s2 == s:
+              raise SystemExit('openStudies/closeStudies não encontrados')
+          s = s2
 
-          # Clique curto no medicamento apenas seleciona; favorito fica no toque longo.
-          old = '''function handleMaletaMedClick(nome, el, ev) {
-            // Clique normal: mantém a seleção/ficha e também garante a estrela de favorito.
-            // O toque longo continua sendo usado para remover/adicionar manualmente.
-            if (el && el.dataset && el.dataset.skipClick === '1') return;
-            if (!_favoritos.has(nome)) toggleFavorito(nome, ev);
-            toggleMed(nome, el);
-          }'''
-          new = '''function handleMaletaMedClick(nome, el, ev) {
-            // Clique curto = selecionar o medicamento. Favorito NÃO é alterado.
-            // Favorito continua sendo exclusivamente pelo toque/clique prolongado.
-            if (el && el.dataset && el.dataset.skipClick === '1') return;
-            toggleMed(nome, el);
-            if (_modoEstudo) setTimeout(() => abrirPainelModoEstudo(), 0);
-          }'''
-          if old in s:
-              s = s.replace(old, new, 1)
-
-          # Cor exclusiva da aba Estudos, sem pseudo-elemento adicional.
-          color_marker = '<!-- ECCO_ESTUDOS_COR_FINAL -->'
-          if color_marker not in s:
-              patch = '''
-<!-- ECCO_ESTUDOS_COR_FINAL -->
-<style>
-#ecosalva-estudos-tab.active {
-  color: #FF4FD8 !important;
-  border-bottom-color: #FF4FD8 !important;
-}
-#ecosalva-estudos-tab.active::after {
-  content: none !important;
-  display: none !important;
-}
-</style>
-'''
-              s = s.replace('</body>', patch + '\n</body>', 1)
+          # Cor exclusiva da aba Estudos.
+          csspat = r'<!-- ECCO_ESTUDOS_FINAL_SAFE -->\s*<style>.*?</style>'
+          css = '''<!-- ECCO_ESTUDOS_FINAL_SAFE -->
+          <style>
+          #ecosalva-estudos-tab { color:#FF4FD8 !important; }
+          #ecosalva-estudos-tab.active { color:#FF4FD8 !important; border-bottom:3px solid #FF4FD8 !important; background:transparent !important; }
+          #ecosalva-estudos-tab.active::after { content:none !important; display:none !important; }
+          </style>'''
+          s = re.sub(csspat, css, s, count=1, flags=re.S)
           p.write_text(s, encoding='utf-8')
-          print('CORRECAO_OK')
+          print('OK')
           PY
-      - name: Commit e remover temporarios
+      - name: Publicar e limpar
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
-          git commit -m 'fix: restaurar abas e corrigir Estudos' || true
+          git diff --cached --quiet || git commit -m 'fix: Estudos sem bloquear outras abas'
           git push || true
-          rm -f .github/workflows/fix-modo-estudo-favorito.yml scripts/.study-fix-trigger .github/workflows/fix-estudos-definitivo.yml
+          rm -f .github/workflows/fix-modo-estudo-favorito.yml .github/workflows/fix-estudos-definitivo.yml scripts/.study-fix-trigger
           git add -A
-          git commit -m 'chore: remover workflows temporarios de Estudos' || exit 0
-          git push
+          git diff --cached --quiet || git commit -m 'chore: remover workflows temporarios'
+          git push || true
