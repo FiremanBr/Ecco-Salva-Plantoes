@@ -1,0 +1,39 @@
+name: Fix tabs mobile layout
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ajustar navegação das abas no celular
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='ECCO_TABS_MOBILE_LAYOUT_V1'
+          if marker in s:
+              print('já aplicado')
+              raise SystemExit(0)
+          patch='''\n<!-- ECCO_TABS_MOBILE_LAYOUT_V1 -->\n<style id="ecco-tabs-mobile-layout">\n@media (max-width:700px){\n  .tab{flex:0 0 auto !important;white-space:nowrap !important;}\n}\n</style>\n<script>\n(function(){\n  function fixTabsMobile(){\n    var tabs=Array.from(document.querySelectorAll('.tab')).filter(function(t){return t.id!=='' || (t.textContent||'').trim();});\n    if(!tabs.length) return;\n    var parent=tabs[0].parentElement;\n    if(!parent) return;\n    var same=tabs.every(function(t){return t.parentElement===parent;});\n    if(!same) return;\n    parent.style.overflowX='auto';\n    parent.style.overflowY='hidden';\n    parent.style.webkitOverflowScrolling='touch';\n    parent.style.scrollbarWidth='none';\n    parent.style.display='flex';\n    parent.style.flexWrap='nowrap';\n    parent.style.alignItems='stretch';\n    parent.querySelectorAll('.tab').forEach(function(t){\n      t.style.flex='0 0 auto';\n      t.style.whiteSpace='nowrap';\n    });\n    var studies=document.getElementById('ecosalva-estudos-tab');\n    if(studies && studies.classList.contains('active')){\n      studies.scrollIntoView({block:'nearest',inline:'nearest'});\n    }\n  }\n  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',fixTabsMobile);\n  else fixTabsMobile();\n  window.addEventListener('resize',fixTabsMobile);\n})();\n</script>\n'''
+          if '</body>' not in s: raise SystemExit('</body> não encontrado')
+          s=s.replace('</body>',patch+'</body>',1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Publicar e limpar workflow
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix: ajustar navegação das abas no celular'
+          rm -f .github/workflows/fix-tabs-mobile-layout.yml
+          git add .github/workflows/fix-tabs-mobile-layout.yml
+          git commit -m 'chore: remover workflow temporario das abas'
+          git push origin HEAD:main
