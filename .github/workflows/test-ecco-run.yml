@@ -1,0 +1,19 @@
+name: Test Ecco Actions
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "actions-ok" > .github/actions-test-marker.txt
+      - run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/actions-test-marker.txt
+          git commit -m 'test: actions executou' || true
+          git push || true
