@@ -5963,6 +5963,7 @@ function switchTab(tab, el) {
     }
     var previousActiveTab=null;
     var hiddenStudyNodes=[];
+    var hiddenStudyPanels=[];
     function findStudyNodes(){
       var nodes=[];
       var title=Array.from(document.querySelectorAll('body *')).find(function(el){
@@ -5985,6 +5986,12 @@ function switchTab(tab, el) {
     }
     function openStudies(){
       previousActiveTab=document.querySelector('.tab.active:not(#ecosalva-estudos-tab)');
+      hiddenStudyPanels=[];
+      document.querySelectorAll('.panel').forEach(function(p){
+        hiddenStudyPanels.push({el:p,active:p.classList.contains('active'),display:p.style.display||''});
+        p.classList.remove('active');
+        p.style.display='none';
+      });
       document.querySelectorAll('.tab.active').forEach(function(t){ if(t!==tab) t.classList.remove('active'); });
       hiddenStudyNodes=findStudyNodes();
       hiddenStudyNodes.forEach(function(el){
@@ -6003,6 +6010,13 @@ function switchTab(tab, el) {
         if(el) el.style.display=el.dataset.ecoStudiesDisplay||'';
       });
       hiddenStudyNodes=[];
+      hiddenStudyPanels.forEach(function(item){
+        if(!item.el) return;
+        item.el.style.display=item.display;
+        if(item.active) item.el.classList.add('active');
+        else item.el.classList.remove('active');
+      });
+      hiddenStudyPanels=[];
       if(previousActiveTab && document.body.contains(previousActiveTab)){
         document.querySelectorAll('.tab.active').forEach(function(t){ if(t!==previousActiveTab) t.classList.remove('active'); });
         previousActiveTab.classList.add('active');
