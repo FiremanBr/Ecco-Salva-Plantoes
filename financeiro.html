@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#12352b">
+<title>Meu Financeiro | Serviços</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#18231f;background:#f3f6f4}*{box-sizing:border-box}body{margin:0}header{background:#12352b;color:#fff;padding:24px 16px}header .wrap,main{max-width:900px;margin:auto}h1{font-size:1.5rem;margin:0 0 5px}header p{margin:0;color:#d3e3db;font-size:.95rem}.wrap{padding:0 4px}main{padding:18px 14px 44px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}.card,.panel,.entry{background:white;border:1px solid #dce5df;border-radius:14px;padding:15px}.label{color:#65736c;font-size:.83rem}.value{font-weight:750;font-size:clamp(1.05rem,3vw,1.45rem);margin-top:6px;overflow-wrap:anywhere}.green{color:#157347}.red{color:#b42318}h2{font-size:1.1rem;margin:0 0 14px}.panel{margin-bottom:18px}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field{display:flex;flex-direction:column;gap:5px}.field.full{grid-column:1/-1}label{font-size:.88rem;font-weight:650}input,select,button{font:inherit}input,select{width:100%;min-height:43px;border:1px solid #cbd7cf;border-radius:9px;padding:9px;background:#fff;color:#18231f}button{border:0;border-radius:9px;padding:11px 14px;cursor:pointer;font-weight:700}.primary{background:#176344;color:white}.secondary{background:#e8efeb;color:#173d2e}.danger{background:#fff0ef;color:#a5271d}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.filters{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.list{display:grid;gap:10px}.entrytop,.line,.net{display:flex;justify-content:space-between;gap:10px;align-items:center}.entrytop{align-items:flex-start}.entrytitle{font-weight:750}.muted{color:#65736c;font-size:.86rem}.line{font-size:.9rem;margin-top:9px}.net{border-top:1px solid #e6ece8;padding-top:10px;margin-top:10px;font-weight:750}.empty{text-align:center;color:#65736c;padding:25px 10px}.note{font-size:.82rem;color:#65736c;line-height:1.5;margin-top:12px}.pill{display:inline-block;background:#edf4ef;border-radius:20px;padding:4px 8px;font-size:.78rem;color:#25533f}@media(max-width:560px){.cards{grid-template-columns:1fr 1fr}.cards .card:last-child{grid-column:1/-1}.formgrid,.filters{grid-template-columns:1fr}.field.full{grid-column:auto}header{padding:20px 14px}main{padding:14px 10px 35px}}
+</style></head>
+<body>
+<header><div class="wrap"><h1>Meu Financeiro</h1><p>Controle simples dos serviços, rendimentos e despesas</p></div></header>
+<main>
+<section class="cards">
+<div class="card"><div class="label">Total de entradas</div><div class="value green" id="sumIn">R$ 0,00</div></div>
+<div class="card"><div class="label">Total de despesas</div><div class="value red" id="sumOut">R$ 0,00</div></div>
+<div class="card"><div class="label">Saldo líquido</div><div class="value" id="sumNet">R$ 0,00</div></div>
+</section>
+<section class="panel">
+<h2 id="formTitle">＋ Lançar serviço realizado</h2>
+<form id="entryForm">
+<div class="formgrid">
+<div class="field"><label for="date">Data do serviço</label><input id="date" type="date" required></div>
+<div class="field"><label for="project">Empresa ou projeto</label><select id="project" required><option>ECCO SALVA</option><option>CCATS</option><option>EXTREMO</option><option>FORTALECER PARA CUIDAR</option></select></div>
+<div class="field full"><label for="desc">Descrição (opcional)</label><input id="desc" maxlength="140" placeholder="Ex.: plantão, aula, treinamento"></div>
+<div class="field"><label for="income">Quanto ganhei (R$)</label><input id="income" type="number" min="0" step="0.01" placeholder="0,00" required></div>
+<div class="field"><label for="transport">Deslocamento (R$)</label><input id="transport" type="number" min="0" step="0.01" value="0" required></div>
+<div class="field"><label for="food">Alimentação (R$)</label><input id="food" type="number" min="0" step="0.01" value="0" required></div>
+<div class="field"><label>Saldo deste serviço</label><div class="value green" id="preview">R$ 0,00</div></div>
+</div>
+<div class="actions"><button class="primary" type="submit" id="saveBtn">Salvar lançamento</button><button class="secondary" type="button" id="cancelEdit" hidden>Cancelar edição</button></div>
+</form>
+<p class="note">Saldo = rendimento − deslocamento − alimentação. Registra o valor recebido ou combinado conforme o teu critério, mantendo o mesmo padrão nos lançamentos.</p>
+</section>
+<section class="panel">
+<h2>Histórico financeiro</h2>
+<div class="filters"><div class="field"><label for="filterProject">Projeto</label><select id="filterProject"><option value="">Todos os projetos</option><option>ECCO SALVA</option><option>CCATS</option><option>EXTREMO</option><option>FORTALECER PARA CUIDAR</option></select></div><div class="field"><label for="filterMonth">Mês</label><input type="month" id="filterMonth"></div></div>
+<div class="actions" style="margin-top:0;margin-bottom:14px"><button class="secondary" id="exportBtn" type="button">Exportar CSV</button><button class="secondary" id="backupBtn" type="button">Baixar backup</button><button class="secondary" id="restoreBtn" type="button">Restaurar backup</button><input id="restoreFile" type="file" accept="application/json,.json" hidden></div>
+<div id="history" class="list"><div class="empty">Nenhum serviço registrado ainda. Teu primeiro lançamento começa acima.</div></div>
+<p class="note">Privacidade e sincronização: esta versão salva os dados neste navegador/dispositivo. O link abre tanto no computador quanto no celular, mas os lançamentos não sincronizam automaticamente entre eles. Usa “Baixar backup” e “Restaurar backup” para transferir os dados, ou exporta CSV para uma planilha. A hospedagem é estática pelo GitHub Pages.</p>
+</section>
+</main>
+<script>
+const KEY='meuFinanceiroServicos_v1';
+let entries=[];let editingId=null;
+const $=id=>document.getElementById(id);
+const money=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const num=id=>Math.max(0,Number($(id).value)||0);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function load(){try{const v=JSON.parse(localStorage.getItem(KEY)||'[]');entries=Array.isArray(v)?v:[]}catch{entries=[]}}
+function persist(){localStorage.setItem(KEY,JSON.stringify(entries))}
+function preview(){$('preview').textContent=money(num('income')-num('transport')-num('food'));$('preview').className='value '+(num('income')-num('transport')-num('food')<0?'red':'green')}
+function filtered(){return entries.filter(e=>(!$('filterProject').value||e.project===$('filterProject').value)&&(!$('filterMonth').value||e.date.slice(0,7)===$('filterMonth').value)).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id)}
+function render(){const arr=filtered();const inc=arr.reduce((s,e)=>s+e.income,0),out=arr.reduce((s,e)=>s+e.transport+e.food,0);$('sumIn').textContent=money(inc);$('sumOut').textContent=money(out);$('sumNet').textContent=money(inc-out);$('sumNet').className='value '+(inc-out<0?'red':'green');
+$('history').innerHTML=arr.length?arr.map(e=>'<article class="entry"><div class="entrytop"><div><div class="entrytitle">'+esc(e.project)+'</div><div class="muted">'+e.date.split('-').reverse().join('/')+(e.desc?' · '+esc(e.desc):'')+'</div></div><button type="button" class="secondary" data-edit="'+e.id+'">Editar</button></div><div class="line"><span class="muted">Rendimento</span><strong class="green">'+money(e.income)+'</strong></div><div class="line"><span class="muted">Deslocamento</span><span>'+money(e.transport)+'</span></div><div class="line"><span class="muted">Alimentação</span><span>'+money(e.food)+'</span></div><div class="net"><span>Saldo do serviço</span><span class="'+(e.income-e.transport-e.food<0?'red':'green')+'">'+money(e.income-e.transport-e.food)+'</span></div><div class="actions"><button type="button" class="danger" data-delete="'+e.id+'">Excluir</button></div></article>').join(''):'<div class="empty">Nenhum lançamento neste filtro.</div>'}
+function resetForm(){$('entryForm').reset();$('date').value=new Date().toLocaleDateString('en-CA');$('transport').value='0';$('food').value='0';editingId=null;$('formTitle').textContent='＋ Lançar serviço realizado';$('saveBtn').textContent='Salvar lançamento';$('cancelEdit').hidden=true;preview()}
+$('entryForm').addEventListener('submit',e=>{e.preventDefault();const record={id:editingId??Date.now(),date:$('date').value,project:$('project').value,desc:$('desc').value.trim(),income:num('income'),transport:num('transport'),food:num('food')};if(editingId!==null)entries=entries.map(x=>x.id===editingId?record:x);else entries.push(record);persist();resetForm();render()});
+['income','transport','food'].forEach(id=>$(id).addEventListener('input',preview));
+$('cancelEdit').addEventListener('click',resetForm);
+$('history').addEventListener('click',e=>{const edit=e.target.closest('[data-edit]'),del=e.target.closest('[data-delete]');if(edit){const x=entries.find(x=>x.id===Number(edit.dataset.edit));if(!x)return;editingId=x.id;$('date').value=x.date;$('project').value=x.project;$('desc').value=x.desc;$('income').value=x.income;$('transport').value=x.transport;$('food').value=x.food;$('formTitle').textContent='Editar lançamento';$('saveBtn').textContent='Salvar alterações';$('cancelEdit').hidden=false;preview();window.scrollTo({top:0,behavior:'smooth'})}if(del){const x=entries.find(x=>x.id===Number(del.dataset.delete));if(x&&confirm('Excluir o lançamento de '+x.project+' em '+x.date.split('-').reverse().join('/')+'?')){entries=entries.filter(y=>y.id!==x.id);persist();render()}}});
+$('filterProject').addEventListener('change',render);$('filterMonth').addEventListener('change',render);
+function download(name,content,type){const a=document.createElement('a'),u=URL.createObjectURL(new Blob([content],{type}));a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
+$('exportBtn').addEventListener('click',()=>{const arr=filtered();const csv=[['Data','Projeto','Descrição','Rendimento','Deslocamento','Alimentação','Saldo'],...arr.map(e=>[e.date,e.project,e.desc,e.income.toFixed(2),e.transport.toFixed(2),e.food.toFixed(2),(e.income-e.transport-e.food).toFixed(2)])].map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n');download('historico-financeiro.csv','\ufeff'+csv,'text/csv;charset=utf-8;')});
+$('backupBtn').addEventListener('click',()=>download('backup-financeiro.json',JSON.stringify(entries,null,2),'application/json'));
+$('restoreBtn').addEventListener('click',()=>$('restoreFile').click());
+$('restoreFile').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!Array.isArray(d)||!d.every(x=>x.date&&x.project&&Number.isFinite(Number(x.income))))throw Error();if(confirm('Restaurar este backup? Os lançamentos atuais serão substituídos.')){entries=d;persist();render();resetForm();alert('Backup restaurado.')}}catch{alert('Não foi possível restaurar. Seleciona um backup JSON válido.')}e.target.value=''});
+load();resetForm();render();
+</script></body></html>
