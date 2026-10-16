@@ -51,11 +51,11 @@ $('loginForm').onsubmit=async e=>{
   finally{btn.disabled=false}
 };
 (async()=>{
-  authPanel.hidden=false;
+  authPanel.hidden=true;
   try{
     const {data:authData,error}=await supabaseClient.auth.getSession();if(error)throw error;
     if(authData.session){sessionUser=authData.session.user;await initialCloudSync()}
-    else sayAuth('Entre com o e-mail e a senha que você criou no Supabase.');
-  }catch(err){console.error(err);sayAuth('Não foi possível conectar à nuvem: '+(err.message||'verifique a configuração do Supabase.'))}
+    else {authPanel.hidden=false;sayAuth('Entre com o e-mail e a senha que você criou no Supabase.');}
+  }catch(err){console.error(err);authPanel.hidden=false;sayAuth('Não foi possível conectar à nuvem: '+(err.message||'verifique a configuração do Supabase.'))}
 })();
 </script></html>
