@@ -242,6 +242,8 @@ async function initSupabaseAuth(){
   else showAuthOverlay('login');
 
   window._supabaseClient.auth.onAuthStateChange(async (_event,session2)=>{
+    // Evita piscar a tela de login se o Supabase emitir uma sessão inicial vazia após já termos recuperado a sessão salva.
+    if(_event==='INITIAL_SESSION' && _authUser && !session2) return;
     _authUser=session2?.user||null;
     updateUserBadge();
     if(_authUser){
