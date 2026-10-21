@@ -34,9 +34,11 @@ async function tokenUser(req: Request) {
   const hash = await sha256(token);
   const { data: session } = await db.from("cronograma_login_sessoes").select("email,expira_em").eq("token_hash", hash).maybeSingle();
   if (!session || new Date(session.expira_em) <= new Date()) return null;
-  const { data: user } = await db.from("cronograma_login_usuarios").select("email,nome,papel,ativo").eq("email", session.email).maybeSingle();
+  const { data: user } = await db.from("cronograma_login_usuarios").select("email,nome,ativo").eq("email", session.email).maybeSingle();
   if (!user?.ativo) return null;
-  return user;
+  const { data: member } = await db.from("cronograma_membros").select("email,nome,papel,ativo").eq("email", session.email).maybeSingle();
+  if (!member?.ativo) return null;
+  return { email: user.email, nome: member.nome || user.nome, papel: member.papel };
 }
 const tables = new Set(["cronograma_membros","cronograma_municipios","cronograma_profissionais","cronograma_metas","cronograma_conteudos","cronograma_aulas","cronograma_aula_conteudos"]);
 const adminOnly = new Set(["cronograma_municipios","cronograma_profissionais","cronograma_metas","cronograma_conteudos","cronograma_membros"]);
