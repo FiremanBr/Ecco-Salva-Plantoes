@@ -1,35 +1,48 @@
-# Cronograma de Aulas — instalação inicial
+# Cronograma de Aulas — configuração e uso
 
-A interface está em `cronograma-aulas.html`; o esquema e as regras de segurança do banco estão em `supabase-cronograma-aulas.sql`.
+A interface está em `cronograma-aulas.html`; o esquema do banco está em `supabase-cronograma-aulas.sql`.
 
-## Configuração obrigatória antes do primeiro acesso
+## Situação atual
 
-1. Abra o projeto Supabase já usado pela plataforma Ecco Salva.
-2. Em **SQL Editor**, abra `supabase-cronograma-aulas.sql`.
-3. **Antes de executar**, substitua `admin@seu-dominio.com` no INSERT final pelo e-mail real da conta que será administradora, em letras minúsculas.
-4. Crie essa conta em **Authentication → Users** (ou use uma conta já existente no mesmo projeto Supabase).
-5. Execute o SQL completo. Ele cria tabelas separadas para profissionais, municípios, metas, conteúdos, aulas, registros de execução e membros, com RLS e bloqueio de sobreposição de horário.
-6. Acesse a plataforma publicada e entre com o e-mail e a senha dessa conta.
-7. Na aba **Equipe e acessos**, autorize os e-mails da equipe e escolha o perfil. Cada integrante também precisa ter uma conta em **Authentication → Users** com o mesmo e-mail.
+- O projeto Supabase escolhido é `meu-financeiro-extras`, já utilizado pelo sistema financeiro. As tabelas do cronograma usam o prefixo `cronograma_` para separação lógica.
+- O esquema SQL foi executado no painel do Supabase; a tabela `cronograma_membros` foi conferida e contém o administrador `joseluizpurific@gmail.com` com `papel = admin` e `ativo = true`.
+- A página HTML já contém a URL e a chave pública do projeto `meu-financeiro-extras`.
+- A publicação mais recente do GitHub Pages foi confirmada como concluída com sucesso. Ainda é necessário testar o login e as operações na interface.
+
+## Acesso de administrador
+
+1. A conta `joseluizpurific@gmail.com` já existe em Supabase Authentication > Users.
+2. A tabela `cronograma_membros` já autoriza esse endereço como administrador.
+3. Acesse a página Cronograma de Aulas publicada e entre usando a senha dessa conta no projeto Supabase `meu-financeiro-extras`.
+
+## Cadastro da equipe
+
+Para cada integrante:
+1. Crie a conta de autenticação em Supabase > Authentication > Users (ou use uma conta já existente no mesmo projeto).
+2. Na plataforma, abra **Equipe e acessos** e cadastre o mesmo e-mail com o perfil apropriado.
+3. O integrante acessa a plataforma com esse e-mail e sua senha.
+
+A plataforma não cria usuários de autenticação diretamente, pois isso exigiria uma função segura no servidor. Não compartilhe senhas entre integrantes.
 
 ## Perfis
 
-- **Administrador:** gerencia membros, profissionais, municípios, metas e programas de conteúdo; também pode agendar e registrar aulas.
-- **Equipe:** consulta os cadastros, agenda aulas, registra a execução e atualiza observações. Não pode gerenciar cadastros-base nem apagar aulas.
+- **Administrador:** gerencia membros, profissionais, municípios, metas e conteúdos; também pode agendar e registrar aulas.
+- **Equipe:** consulta cadastros, agenda aulas, registra execução e atualiza observações. Não pode gerenciar cadastros-base nem excluir aulas.
 
-## Regras importantes
+## Regras
 
-- As metas são totais por profissional e município para todo o projeto.
-- Agendar ou ministrar uma aula consome uma unidade da meta; cancelar devolve a unidade.
-- A plataforma verifica conflitos de horário no navegador e o banco também impede sobreposição para o mesmo profissional, inclusive se duas pessoas tentarem salvar ao mesmo tempo.
-- Os registros são compartilhados pelo Supabase. Não limpe os dados nem desative as políticas de segurança para corrigir problemas de acesso.
-- A criação de contas de autenticação não é feita diretamente pela página, pois isso exigiria uma função segura no servidor. O administrador cria as contas em Supabase Authentication e depois autoriza os e-mails na plataforma.
+- Metas são totais por profissional e município para todo o projeto.
+- A plataforma contabiliza aulas agendadas e ministradas; aulas canceladas não consomem a meta.
+- A aplicação verifica conflitos de horário e o banco impede sobreposição para o mesmo profissional, inclusive entre municípios.
+- O cronograma usa tabelas e políticas próprias. Mesmo assim, como o projeto Supabase é compartilhado com o financeiro, mantenha políticas RLS ativas e nunca coloque uma chave `service_role` ou `secret` no HTML.
 
-## Testes recomendados
+## Testes antes de uso real
 
-1. Criar dois municípios, um profissional, uma meta e dois conteúdos.
-2. Agendar uma aula no primeiro município.
-3. Tentar agendar o mesmo profissional no mesmo horário no segundo município: deve bloquear.
-4. Agendar uma aula em horário diferente: deve aceitar.
-5. Registrar a execução e conferir o saldo da meta.
-6. Entrar com uma conta de equipe e confirmar que os cadastros-base não podem ser alterados.
+1. Entrar como administrador.
+2. Cadastrar dois municípios, um profissional, uma meta e conteúdos.
+3. Agendar uma aula.
+4. Tentar agendar o mesmo profissional em horário sobreposto em outro município; o banco deve rejeitar.
+5. Marcar execução e conferir a meta.
+6. Entrar com conta de equipe e verificar que não consegue alterar cadastros-base.
+7. Entrar no segundo dispositivo e confirmar que os dados aparecem.
+
