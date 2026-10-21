@@ -1,7 +1,12 @@
 -- Plataforma Cronograma de Aulas — schema seguro para Supabase
--- Execute este arquivo inteiro no SQL Editor do projeto Supabase usado pela plataforma.
+-- Execute este arquivo inteiro no SQL Editor do projeto Supabase escolhido.
+-- O script cria/altera somente objetos com o prefixo cronograma_, além da extensão btree_gist
+-- necessária à regra de conflito de horários. Não modifica tabelas financeiras existentes.
+-- A transação evita deixar parte do esquema aplicada se ocorrer erro durante a execução.
 -- Antes de liberar a equipe: crie a conta do administrador em Authentication > Users,
 -- substitua o e-mail abaixo pelo e-mail exato e execute o INSERT final deste arquivo.
+
+begin;
 
 create extension if not exists btree_gist;
 
@@ -200,4 +205,6 @@ grant execute on function public.cronograma_is_admin() to authenticated;
 -- 3) Execute este INSERT; depois o administrador poderá cadastrar a equipe dentro da plataforma.
 insert into public.cronograma_membros (email, nome, papel, ativo)
 values ('joseluizpurific@gmail.com', 'José Luiz', 'admin', true)
-on conflict (email) do update set papel = 'admin', ativo = true;
+on conflict (email) do update set nome = excluded.nome, papel = 'admin', ativo = true;
+
+commit;
