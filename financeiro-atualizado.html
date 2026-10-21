@@ -3,7 +3,7 @@ const SUPABASE_URL="https://scmcwtutmrgtvfqjepuv.supabase.co";const SUPABASE_KEY
 const K='meuFinanceiroServicos_v1';let data=[],edit=null;const $=x=>document.getElementById(x),cash=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),num=x=>Math.max(0,Number($(x).value)||0),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));function load(){try{data=JSON.parse(localStorage.getItem(K)||'[]');if(!Array.isArray(data))data=[]}catch{data=[]}}function persist(){localStorage.setItem(K,JSON.stringify(data));if(sessionUser&&cloudReady)queueCloudSync()}function preview(){$('prev').textContent=cash(num('income')-num('transport')-num('food'))}function subset(){return data.filter(x=>(!$('fp').value||x.project===$('fp').value)&&(!$('fm').value||x.date.slice(0,7)===$('fm').value)).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id)}function chart(){let ms=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],s=Array(12).fill(0),y=$('year').value;data.filter(x=>x.date.startsWith(y+'-')).forEach(x=>s[+x.date.slice(5,7)-1]+=(+x.income||0)-(+x.transport||0)-(+x.food||0));let max=Math.max(1,...s.map(v=>Math.abs(v)));$('bars').innerHTML=s.map((v,i)=>'<div class="col" title="'+ms[i]+': '+cash(v)+'"><div class="bv">'+(v?(v<0?'-':'')+'R$'+(Math.abs(v)>=1000?(Math.abs(v)/1000).toFixed(1)+'k':Math.round(Math.abs(v))):'')+'</div><div class="track"><div class="bar" style="background:'+(v<0?'#b42318':'#27835c')+';height:'+(v?Math.max(2,Math.abs(v)/max*100):0)+'%"></div></div><div class="ml">'+ms[i]+'</div></div>').join('')}function render(){let a=subset(),inc=a.reduce((s,x)=>s+x.income,0),out=a.reduce((s,x)=>s+x.transport+x.food,0),net=inc-out;[['bi',inc],['bo',out],['bn',net]].forEach(([id,n])=>$(id).textContent=cash(n));$('bn').style.color=net<0?'#ffb8b2':'white';$('history').innerHTML=a.length?a.map(x=>'<article class="entry"><div class="entrytop"><div><b>'+esc(x.project)+'</b><div class="muted">'+x.date.split('-').reverse().join('/')+(x.desc?' · '+esc(x.desc):'')+'</div></div><button class="secondary" data-edit="'+x.id+'">Editar</button></div><div class="line"><span class="muted">Rendimento</span><b class="g">'+cash(x.income)+'</b></div><div class="line"><span class="muted">Deslocamento</span><span>'+cash(x.transport)+'</span></div><div class="line"><span class="muted">Alimentação</span><span>'+cash(x.food)+'</span></div><div class="net"><span>Saldo</span><span class="'+(x.income-x.transport-x.food<0?'r':'g')+'">'+cash(x.income-x.transport-x.food)+'</span></div><div class="actions"><button class="danger" data-del="'+x.id+'">Excluir</button></div></article>').join(''):'<div class="empty">Nenhum lançamento neste período.</div>';chart()}function reset(){$('form').reset();$('date').value=new Date().toLocaleDateString('en-CA');$('transport').value='0';$('food').value='0';edit=null;$('ft').textContent='＋ Lançar serviço';$('cancel').hidden=true;preview()}$('form').onsubmit=e=>{e.preventDefault();let x={id:edit??Date.now(),date:$('date').value,project:$('project').value,desc:$('desc').value.trim(),income:num('income'),transport:num('transport'),food:num('food')};data=edit===null?[...data,x]:data.map(y=>y.id===edit?x:y);persist();reset();render()};['income','transport','food'].forEach(x=>$(x).oninput=preview);$('cancel').onclick=reset;$('fp').onchange=render;$('fm').onchange=render;$('year').onchange=chart;$('history').onclick=e=>{let a=e.target.closest('[data-edit]'),d=e.target.closest('[data-del]');if(a){let x=data.find(y=>y.id===+a.dataset.edit);edit=x.id;['date','project','desc','income','transport','food'].forEach(k=>$(k).value=x[k]);$('ft').textContent='Editar lançamento';$('cancel').hidden=false;preview();scrollTo({top:0,behavior:'smooth'})}if(d&&confirm('Excluir lançamento?')){data=data.filter(x=>x.id!==+d.dataset.del);persist();render()}};function dl(n,c,t){let a=document.createElement('a'),u=URL.createObjectURL(new Blob([c],{type:t}));a.href=u;a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}$('csv').onclick=()=>{let a=subset(),c=[['Data','Projeto','Descrição','Rendimento','Deslocamento','Alimentação','Saldo'],...a.map(x=>[x.date,x.project,x.desc,x.income,x.transport,x.food,x.income-x.transport-x.food])].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n');dl('historico-financeiro.csv','\ufeff'+c,'text/csv')};$('backup').onclick=()=>dl('backup-financeiro.json',JSON.stringify(data,null,2),'application/json');$('restore').onclick=()=>$('file').click();$('file').onchange=async e=>{try{let d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d)||!d.every(x=>x.date&&x.project&&Number.isFinite(+x.income)))throw 0;if(confirm('Substituir os dados atuais pelo backup?')){data=d;persist();reset();render();alert('Backup restaurado')}}catch{alert('Backup inválido')}e.target.value=''};load();let years=[...new Set([new Date().getFullYear(),...data.map(x=>+x.date.slice(0,4))])].sort((a,b)=>b-a);$('year').innerHTML=years.map(y=>'<option>'+y+'</option>').join('');reset();render();
 
 const authPanel=$('authPanel'),authMsg=$('authMsg');
-function sayAuth(message){authMsg.textContent=message||'';const s=$('syncStatus');if(s){s.textContent=message||'';s.style.display=message?'block':'none';s.style.background=/sincronizad[oa]/i.test(message)?'#d1e7dd':/não foi possível|erro|falha|inválid/i.test(message)?'#f8d7da':'#fff3cd';s.style.color=/sincronizad[oa]/i.test(message)?'#0f5132':/não foi possível|erro|falha|inválid/i.test(message)?'#842029':'#664d03'}}
+let syncStatusTimer=null;function sayAuth(message){authMsg.textContent=message||'';const s=$('syncStatus');if(syncStatusTimer){clearTimeout(syncStatusTimer);syncStatusTimer=null}if(s){s.textContent=message||'';s.style.display=message?'block':'none';const ok=/sincronizad[oa]|sincronização concluída/i.test(message);const bad=/não foi possível|erro|falha|inválid|demorou mais/i.test(message);s.style.background=ok?'#d1e7dd':bad?'#f8d7da':'#fff3cd';s.style.color=ok?'#0f5132':bad?'#842029':'#664d03';if(ok)syncStatusTimer=setTimeout(()=>{s.style.display='none';s.textContent=''},4500)}}
 function cloudToLocal(r){return {id:Number(r.id),date:r.data,project:r.projeto,desc:r.descricao||'',income:Number(r.rendimento)||0,transport:Number(r.deslocamento)||0,food:Number(r.alimentacao)||0}}
 function localToCloud(x){return {id:Number(x.id),user_id:sessionUser.id,data:x.date,projeto:x.project,descricao:x.desc||'',rendimento:Number(x.income)||0,deslocamento:Number(x.transport)||0,alimentacao:Number(x.food)||0}}
 function cloudRequestWithTimeout(promise,label,ms=15000){
@@ -20,8 +20,8 @@ async function initialCloudSync(){
   );
   if(error)throw new Error('Falha ao consultar os lançamentos: '+error.message);
   sayAuth('Dados recebidos. Enviando lançamentos pendentes…');
-  const merged=new Map((rows||[]).map(r=>{const x=cloudToLocal(r);return [x.id,x]}));
-  data.forEach(x=>merged.set(Number(x.id),x));
+  const merged=new Map(data.map(x=>[Number(x.id),x]));
+  (rows||[]).forEach(r=>{const x=cloudToLocal(r);merged.set(x.id,x)});
   data=Array.from(merged.values()).sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id);
   localStorage.setItem(K,JSON.stringify(data));
   if(data.length){
@@ -34,21 +34,22 @@ async function initialCloudSync(){
   }
   cloudReady=true;authPanel.hidden=true;reset();render();sayAuth('Sincronização concluída. Seus lançamentos foram enviados para a nuvem.');
 }
+async function pullCloudUpdates(){
+  if(!sessionUser||!cloudReady)return;
+  const {data:rows,error}=await supabaseClient.from('servicos_financeiros').select('id,data,projeto,descricao,rendimento,deslocamento,alimentacao,user_id').eq('user_id',sessionUser.id);
+  if(error)throw error;
+  const merged=new Map(data.map(x=>[Number(x.id),x]));
+  (rows||[]).forEach(r=>{const x=cloudToLocal(r);merged.set(x.id,x)});
+  const next=Array.from(merged.values()).sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id);
+  if(JSON.stringify(next)!==JSON.stringify(data)){data=next;localStorage.setItem(K,JSON.stringify(data));render()}
+}
 async function syncCloud(){
   if(!sessionUser||!cloudReady)return;
   if(data.length){
     const {error}=await supabaseClient.from('servicos_financeiros').upsert(data.map(localToCloud),{onConflict:'id'});
     if(error)throw error;
   }
-  const {data:rows,error:readError}=await supabaseClient.from('servicos_financeiros').select('id').eq('user_id',sessionUser.id);
-  if(readError)throw readError;
-  const keep=new Set(data.map(x=>String(x.id)));
-  for(const row of (rows||[])){
-    if(!keep.has(String(row.id))){
-      const {error}=await supabaseClient.from('servicos_financeiros').delete().eq('id',row.id).eq('user_id',sessionUser.id);
-      if(error)throw error;
-    }
-  }
+  await pullCloudUpdates();
   sayAuth('Sincronizado com a nuvem.');
 }
 function queueCloudSync(){
@@ -67,7 +68,7 @@ $('loginForm').onsubmit=async e=>{
   authPanel.hidden=true;
   try{
     const {data:authData,error}=await supabaseClient.auth.getSession();if(error)throw error;
-    if(authData.session){sessionUser=authData.session.user;await initialCloudSync()}
+    if(authData.session){sessionUser=authData.session.user;await initialCloudSync();setInterval(()=>pullCloudUpdates().catch(err=>console.error('Falha ao atualizar lançamentos da nuvem:',err)),15000)}
     else {authPanel.hidden=false;sayAuth('Entre com o e-mail e a senha que você criou no Supabase.');}
   }catch(err){console.error(err);authPanel.hidden=false;sayAuth('Não foi possível conectar à nuvem: '+(err.message||'verifique a configuração do Supabase.'))}
 })();
