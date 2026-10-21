@@ -6,20 +6,33 @@ const authPanel=$('authPanel'),authMsg=$('authMsg');
 function sayAuth(message){authMsg.textContent=message||'';const s=$('syncStatus');if(s){s.textContent=message||'';s.style.display=message?'block':'none';s.style.background=/sincronizad[oa]/i.test(message)?'#d1e7dd':/não foi possível|erro|falha|inválid/i.test(message)?'#f8d7da':'#fff3cd';s.style.color=/sincronizad[oa]/i.test(message)?'#0f5132':/não foi possível|erro|falha|inválid/i.test(message)?'#842029':'#664d03'}}
 function cloudToLocal(r){return {id:Number(r.id),date:r.data,project:r.projeto,desc:r.descricao||'',income:Number(r.rendimento)||0,transport:Number(r.deslocamento)||0,food:Number(r.alimentacao)||0}}
 function localToCloud(x){return {id:Number(x.id),user_id:sessionUser.id,data:x.date,projeto:x.project,descricao:x.desc||'',rendimento:Number(x.income)||0,deslocamento:Number(x.transport)||0,alimentacao:Number(x.food)||0}}
+function cloudRequestWithTimeout(promise,label,ms=15000){
+  let timer;
+  const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label+' demorou mais de 15 segundos. Verifique a conexão com a nuvem e as permissões do banco.')),ms)});
+  return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
+}
 async function initialCloudSync(){
-  sayAuth('Conectando e sincronizando seus lançamentos…');
-  const {data:rows,error}=await supabaseClient.from('servicos_financeiros').select('id,data,projeto,descricao,rendimento,deslocamento,alimentacao,user_id');
-  if(error)throw error;
+  sayAuth('Conectando à nuvem e consultando seus lançamentos…');
+  if(!sessionUser)throw new Error('Nenhuma sessão autenticada foi encontrada. Entre novamente.');
+  const {data:rows,error}=await cloudRequestWithTimeout(
+    supabaseClient.from('servicos_financeiros').select('id,data,projeto,descricao,rendimento,deslocamento,alimentacao,user_id').eq('user_id',sessionUser.id),
+    'A consulta dos lançamentos'
+  );
+  if(error)throw new Error('Falha ao consultar os lançamentos: '+error.message);
+  sayAuth('Dados recebidos. Enviando lançamentos pendentes…');
   const merged=new Map((rows||[]).map(r=>{const x=cloudToLocal(r);return [x.id,x]}));
   data.forEach(x=>merged.set(Number(x.id),x));
   data=Array.from(merged.values()).sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id);
   localStorage.setItem(K,JSON.stringify(data));
   if(data.length){
     const payload=data.map(localToCloud);
-    const {error:upsertError}=await supabaseClient.from('servicos_financeiros').upsert(payload,{onConflict:'id'});
-    if(upsertError)throw upsertError;
+    const {error:upsertError}=await cloudRequestWithTimeout(
+      supabaseClient.from('servicos_financeiros').upsert(payload,{onConflict:'id'}),
+      'O envio dos lançamentos'
+    );
+    if(upsertError)throw new Error('Falha ao gravar os lançamentos na nuvem: '+upsertError.message);
   }
-  cloudReady=true;authPanel.hidden=true;reset();render();
+  cloudReady=true;authPanel.hidden=true;reset();render();sayAuth('Sincronização concluída. Seus lançamentos foram enviados para a nuvem.');
 }
 async function syncCloud(){
   if(!sessionUser||!cloudReady)return;
