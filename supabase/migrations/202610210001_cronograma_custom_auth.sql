@@ -43,4 +43,15 @@ on conflict (email) do update set
  password_hash=case when public.cronograma_login_usuarios.password_hash='PENDING_SETUP' then excluded.password_hash else public.cronograma_login_usuarios.password_hash end,
  password_salt=case when public.cronograma_login_usuarios.password_salt='PENDING_SETUP' then excluded.password_salt else public.cronograma_login_usuarios.password_salt end;
 
+-- Mantém os papéis compatíveis com a interface existente (admin/equipe).
+insert into public.cronograma_membros(email,nome,papel,ativo)
+values
+ ('joseluizpurific@gmail.com','José Luiz','admin',true),
+ ('elisansbrum@gmail.com','Elisandra Dos Santos Brum','equipe',true),
+ ('caamaier@gmail.com','Claudiomiro Maier Rodrigues','equipe',true)
+on conflict (email) do update set
+ nome=excluded.nome,
+ papel=excluded.papel,
+ ativo=true;
+
 commit;
