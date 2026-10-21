@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Configurar acessos — Cronograma</title>
+<style>
+body{font:16px system-ui,sans-serif;background:#f3f6f4;color:#18231f;margin:0;padding:24px}.card{max-width:520px;margin:4vh auto;background:white;border:1px solid #dce5df;border-radius:14px;padding:22px}label{display:block;font-weight:650;margin:14px 0 5px}input,select,button{box-sizing:border-box;width:100%;padding:11px;border:1px solid #cbd7cf;border-radius:8px;font:inherit}button{background:#176344;color:white;border:0;font-weight:700;margin-top:18px;cursor:pointer}.warn{background:#fff3cd;padding:12px;border-radius:8px;font-size:.9rem}.status{white-space:pre-wrap;margin-top:14px}small{color:#65736c}
+</style>
+<div class="card">
+<h2>Configurar senhas dos coordenadores</h2>
+<p class="warn"><b>Uso administrativo:</b> abra somente em computador confiável. Nunca envie o segredo de configuração ou senhas por mensagem. Depois de configurar as três contas, remova o segredo do Supabase ou altere-o.</p>
+<form id="f">
+<label>Segredo de configuração (CRONOGRAMA_SETUP_SECRET)</label><input id="secret" type="password" autocomplete="off" required>
+<label>Conta</label><select id="email"><option value="joseluizpurific@gmail.com">José Luiz — administrador</option><option value="elisansbrum@gmail.com">Elisandra Dos Santos Brum — coordenadora</option><option value="caamaier@gmail.com">Claudiomiro Maier Rodrigues — coordenador</option></select>
+<label>Nova senha (mínimo 12 caracteres)</label><input id="pw" type="password" minlength="12" autocomplete="new-password" required>
+<label>Confirmar senha</label><input id="pw2" type="password" minlength="12" autocomplete="new-password" required>
+<button type="submit">Configurar senha</button>
+</form><div id="status" class="status" role="status"></div>
+<small>Este formulário não armazena a senha nem o segredo no navegador. Configure cada conta separadamente.</small>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+$('f').onsubmit=async e=>{e.preventDefault();$('status').textContent='Configurando…';if($('pw').value!==$('pw2').value){$('status').textContent='As senhas não conferem.';return}if($('pw').value.length<12){$('status').textContent='Use pelo menos 12 caracteres.';return}
+try{const r=await fetch('https://scmcwtutmrgtvfqjepuv.supabase.co/functions/v1/cronograma-access',{method:'POST',headers:{'Content-Type':'application/json','apikey':'sb_publishable_hY9zdmh_439L9FDsfsJCwA_AKy4TcFs','x-setup-secret':$('secret').value},body:JSON.stringify({action:'setup',email:$('email').value,password:$('pw').value})});const j=await r.json();if(!r.ok)throw new Error(j.error||'Falha ao configurar.');$('status').textContent='Senha configurada para '+j.email+'. Guarde-a em um gerenciador de senhas.';$('pw').value='';$('pw2').value=''}catch(err){$('status').textContent=err.message||'Erro de conexão.'}
+};
+</script></html>

@@ -61,7 +61,7 @@
     <div class="panel"><h2>Programas cadastrados</h2><div id="contentList"></div></div>
    </section>
    <section id="tab-equipe" class="tab hidden">
-    <div class="panel"><h2>Autorizar integrante da equipe</h2><p class="note">Esta área é somente para conceder acesso ao sistema (login). Instrutores já cadastrados em Profissionais não precisam ser adicionados aqui, a menos que também precisem entrar na plataforma. Para permitir login, a pessoa precisa ter uma conta de autenticação no Supabase; o convite automático ainda não está configurado.</p><form id="memberForm" class="grid"><div class="field"><label>Nome</label><input id="memberName" required></div><div class="field"><label>E-mail da conta</label><input id="memberEmail" type="email" required></div><div class="field"><label>Perfil</label><select id="memberRole"><option value="equipe">Equipe</option><option value="admin">Administrador</option></select></div><div class="field"><label>&nbsp;</label><button class="primary" type="submit">Autorizar acesso</button></div></form></div>
+    <div class="panel"><h2>Acesso dos coordenadores</h2><p class="note">O login próprio está restrito às três contas autorizadas: administrador e dois coordenadores. Instrutores cadastrados em Profissionais não recebem acesso à plataforma. Para criar ou redefinir senhas, use o procedimento de configuração segura do servidor; não cadastre senhas nesta tela.</p></div>
     <div class="panel"><h2>Usuários autorizados</h2><div id="memberList"></div></div>
    </section>
   </section>
@@ -70,9 +70,50 @@
 <div id="mobilebar" class="mobilebar hidden"><span data-goto="dashboard">▦ Início</span><span data-goto="agenda">▦ Agenda</span><span data-goto="profissionais">♙ Profissionais</span><span data-goto="metas">◎ Metas</span></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL="https://scmcwtutmrgtvfqjepuv.supabase.co";
-const SUPABASE_KEY="sb_publishable_hY9zdmh_439L9FDsfsJCwA_AKy4TcFs";
-const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const ACCESS_URL="https://scmcwtutmrgtvfqjepuv.supabase.co/functions/v1/cronograma-access";
+const ACCESS_KEY="sb_publishable_hY9zdmh_439L9FDsfsJCwA_AKy4TcFs";
+const ACCESS_TOKEN_KEY="cronograma_access_token";
+let accessToken=sessionStorage.getItem(ACCESS_TOKEN_KEY)||"";
+async function accessRequest(body, setupSecret){
+ const headers={"Content-Type":"application/json","apikey":ACCESS_KEY};
+ if(accessToken)headers.Authorization="Bearer "+accessToken;
+ if(setupSecret)headers["x-setup-secret"]=setupSecret;
+ const response=await fetch(ACCESS_URL,{method:"POST",headers,body:JSON.stringify(body)});
+ const result=await response.json().catch(()=>({error:"Resposta inválida do servidor."}));
+ if(!response.ok)return {data:null,error:{message:result.error||"Falha na solicitação.",code:result.code}};
+ return {data:result.data!==undefined?result.data:result,error:null};
+}
+class AccessQuery{
+ constructor(table){this.table=table;this.op="select";this.columns="*";this.filters=[];this.ordering=null;this.values=null;this.returning=null;this.singleMode=null;this.conflict="email"}
+ select(columns="*"){if(this.op==="select")this.columns=columns;else this.returning=columns;return this}
+ order(column,options={}){this.ordering={column,ascending:options.ascending!==false};return this}
+ eq(column,value){this.filters.push({op:"eq",column,value});return this}
+ neq(column,value){this.filters.push({op:"neq",column,value});return this}
+ is(column,value){this.filters.push({op:"is",column,value});return this}
+ maybeSingle(){this.singleMode="maybe";return this}
+ single(){this.singleMode="one";return this}
+ insert(values){this.op="insert";this.values=values;return this}
+ upsert(values,options={}){this.op="upsert";this.values=values;this.conflict=options.onConflict||"email";return this}
+ update(values){this.op="update";this.values=values;return this}
+ delete(){this.op="delete";return this}
+ async execute(){
+  const result=await accessRequest({action:"query",table:this.table,op:this.op,columns:this.columns,filters:this.filters,order:this.ordering,values:this.values,returning:this.returning,onConflict:this.conflict,single:this.singleMode});
+  if(result.error)return result;
+  return {data:result.data,error:null};
+ }
+ then(resolve,reject){return this.execute().then(resolve,reject)}
+}
+const sb={
+ from(table){return new AccessQuery(table)},
+ rpc(name){return {then(resolve,reject){const p=name==="cronograma_is_admin"?accessRequest({action:"me"}).then(r=>r.error?{data:null,error:r.error}:{data:r.data.user.papel==="admin",error:null}):Promise.resolve({data:null,error:{message:"Função não suportada."}});return p.then(resolve,reject)}}},
+ auth:{
+  async signInWithPassword({email,password}){const r=await accessRequest({action:"login",email,password});if(r.error)return {data:null,error:r.error};accessToken=r.data.token;sessionStorage.setItem(ACCESS_TOKEN_KEY,accessToken);return {data:{user:{email:r.data.user.email,id:r.data.user.email}},error:null}},
+  async getUser(){if(!accessToken)return {data:{user:null},error:null};const r=await accessRequest({action:"me"});if(r.error){accessToken="";sessionStorage.removeItem(ACCESS_TOKEN_KEY);return {data:{user:null},error:r.error}}return {data:{user:{email:r.data.user.email,id:r.data.user.email}},error:null}},
+  async getSession(){const r=await this.getUser();return {data:{session:r.data.user?{user:r.data.user}:null},error:r.error||null}},
+  async signOut(){await accessRequest({action:"logout"});accessToken="";sessionStorage.removeItem(ACCESS_TOKEN_KEY);return {error:null}},
+  async resetPasswordForEmail(){return {error:{message:"A recuperação automática ainda não está habilitada. Solicite ao administrador a redefinição segura da senha."}}}
+ }
+};
 const $=id=>document.getElementById(id), esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])), today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 let user=null,role='equipe',db={members:[],cities:[],professionals:[],goals:[],contents:[],lessons:[],lessonContents:[]},editingLesson=null,noticeTimer=null;
 function msg(text,type){const el=$('globalMessage');el.textContent=text;el.className='notice'+(type?' '+type:'');el.classList.remove('hidden');clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>el.classList.add('hidden'),6500)}
@@ -133,8 +174,7 @@ $('professionalForm').onsubmit=e=>{e.preventDefault();if(role!=='admin')return;r
 $('cityForm').onsubmit=e=>{e.preventDefault();if(role!=='admin')return;runAction(()=>insert('cronograma_municipios',{nome:$('cityName').value.trim()}),'Município cadastrado.').then(()=>{$('cityForm').reset()})}
 $('goalForm').onsubmit=async e=>{e.preventDefault();if(role!=='admin')return;const vals={profissional_id:$('goalProfessional').value,municipio_id:$('goalCity').value,total_aulas:Number($('goalTotal').value),observacoes:$('goalNotes').value.trim()};await runAction(async()=>{const id=$('goalForm').dataset.editId;if(id){const r=await sb.from('cronograma_metas').update(vals).eq('id',id);if(r.error)throw r.error;delete $('goalForm').dataset.editId}else await insert('cronograma_metas',vals)},'Meta salva.');$('goalForm').reset()}
 $('contentForm').onsubmit=e=>{e.preventDefault();if(role!=='admin')return;runAction(()=>insert('cronograma_conteudos',{profissional_id:$('contentProfessional').value,titulo:$('contentTitle').value.trim(),descricao:$('contentDescription').value.trim(),ordem:Number($('contentOrder').value)}),'Conteúdo programático adicionado.').then(()=>{$('contentForm').reset();$('contentOrder').value='1'})}
-$('memberEmail').addEventListener('change',()=>{const email=$('memberEmail').value.trim().toLowerCase();const match=db.professionals.find(p=>String(p.email||'').trim().toLowerCase()===email);if(match&&!$('memberName').value.trim())$('memberName').value=match.nome;});
-$('memberForm').onsubmit=e=>{e.preventDefault();if(role!=='admin')return;const email=$('memberEmail').value.trim().toLowerCase();runAction(async()=>{const r=await sb.from('cronograma_membros').upsert({email,nome:$('memberName').value.trim(),papel:$('memberRole').value,ativo:true},{onConflict:'email'});if(r.error)throw r.error},'Acesso autorizado na lista. Para entrar no sistema, a pessoa também precisa ter conta de autenticação no Supabase.').then(()=>{$('memberForm').reset()})}
+
 $('memberList').onchange=e=>{const sel=e.target.closest('[data-member-role]');if(sel&&role==='admin'){const email=sel.dataset.memberRole;runAction(async()=>{const r=await sb.from('cronograma_membros').update({papel:sel.value}).eq('email',email);if(r.error)throw r.error},'Perfil atualizado.')}};
 (async()=>{try{const r=await sb.auth.getSession();if(r.data.session){user=r.data.session.user;await showApp()}}catch(e){console.error(e)}})();
 </script>
