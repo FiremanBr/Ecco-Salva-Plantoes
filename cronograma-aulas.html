@@ -70,9 +70,50 @@
 <div id="mobilebar" class="mobilebar hidden"><span data-goto="dashboard">▦ Início</span><span data-goto="agenda">▦ Agenda</span><span data-goto="profissionais">♙ Profissionais</span><span data-goto="metas">◎ Metas</span></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL="https://scmcwtutmrgtvfqjepuv.supabase.co";
-const SUPABASE_KEY="sb_publishable_hY9zdmh_439L9FDsfsJCwA_AKy4TcFs";
-const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const ACCESS_URL="https://scmcwtutmrgtvfqjepuv.supabase.co/functions/v1/cronograma-access";
+const ACCESS_KEY="sb_publishable_hY9zdmh_439L9FDsfsJCwA_AKy4TcFs";
+const ACCESS_TOKEN_KEY="cronograma_access_token";
+let accessToken=sessionStorage.getItem(ACCESS_TOKEN_KEY)||"";
+async function accessRequest(body, setupSecret){
+ const headers={"Content-Type":"application/json","apikey":ACCESS_KEY};
+ if(accessToken)headers.Authorization="Bearer "+accessToken;
+ if(setupSecret)headers["x-setup-secret"]=setupSecret;
+ const response=await fetch(ACCESS_URL,{method:"POST",headers,body:JSON.stringify(body)});
+ const result=await response.json().catch(()=>({error:"Resposta inválida do servidor."}));
+ if(!response.ok)return {data:null,error:{message:result.error||"Falha na solicitação.",code:result.code}};
+ return {data:result.data!==undefined?result.data:result,error:null};
+}
+class AccessQuery{
+ constructor(table){this.table=table;this.op="select";this.columns="*";this.filters=[];this.ordering=null;this.values=null;this.returning=null;this.singleMode=null;this.conflict="email"}
+ select(columns="*"){if(this.op==="select")this.columns=columns;else this.returning=columns;return this}
+ order(column,options={}){this.ordering={column,ascending:options.ascending!==false};return this}
+ eq(column,value){this.filters.push({op:"eq",column,value});return this}
+ neq(column,value){this.filters.push({op:"neq",column,value});return this}
+ is(column,value){this.filters.push({op:"is",column,value});return this}
+ maybeSingle(){this.singleMode="maybe";return this}
+ single(){this.singleMode="one";return this}
+ insert(values){this.op="insert";this.values=values;return this}
+ upsert(values,options={}){this.op="upsert";this.values=values;this.conflict=options.onConflict||"email";return this}
+ update(values){this.op="update";this.values=values;return this}
+ delete(){this.op="delete";return this}
+ async execute(){
+  const result=await accessRequest({action:"query",table:this.table,op:this.op,columns:this.columns,filters:this.filters,order:this.ordering,values:this.values,returning:this.returning,onConflict:this.conflict,single:this.singleMode});
+  if(result.error)return result;
+  return {data:result.data,error:null};
+ }
+ then(resolve,reject){return this.execute().then(resolve,reject)}
+}
+const sb={
+ from(table){return new AccessQuery(table)},
+ rpc(name){return {then(resolve,reject){const p=name==="cronograma_is_admin"?accessRequest({action:"me"}).then(r=>r.error?{data:null,error:r.error}:{data:r.data.user.papel==="admin",error:null}):Promise.resolve({data:null,error:{message:"Função não suportada."}});return p.then(resolve,reject)}}},
+ auth:{
+  async signInWithPassword({email,password}){const r=await accessRequest({action:"login",email,password});if(r.error)return {data:null,error:r.error};accessToken=r.data.token;sessionStorage.setItem(ACCESS_TOKEN_KEY,accessToken);return {data:{user:{email:r.data.user.email,id:r.data.user.email}},error:null}},
+  async getUser(){if(!accessToken)return {data:{user:null},error:null};const r=await accessRequest({action:"me"});if(r.error){accessToken="";sessionStorage.removeItem(ACCESS_TOKEN_KEY);return {data:{user:null},error:r.error}}return {data:{user:{email:r.data.user.email,id:r.data.user.email}},error:null}},
+  async getSession(){const r=await this.getUser();return {data:{session:r.data.user?{user:r.data.user}:null},error:r.error||null}},
+  async signOut(){await accessRequest({action:"logout"});accessToken="";sessionStorage.removeItem(ACCESS_TOKEN_KEY);return {error:null}},
+  async resetPasswordForEmail(){return {error:{message:"A recuperação automática ainda não está habilitada. Solicite ao administrador a redefinição segura da senha."}}}
+ }
+};
 const $=id=>document.getElementById(id), esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])), today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 let user=null,role='equipe',db={members:[],cities:[],professionals:[],goals:[],contents:[],lessons:[],lessonContents:[]},editingLesson=null,noticeTimer=null;
 function msg(text,type){const el=$('globalMessage');el.textContent=text;el.className='notice'+(type?' '+type:'');el.classList.remove('hidden');clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>el.classList.add('hidden'),6500)}
