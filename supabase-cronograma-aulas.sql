@@ -196,8 +196,8 @@ grant execute on function public.cronograma_is_admin() to authenticated;
 
 -- CONFIGURAÇÃO INICIAL OBRIGATÓRIA:
 -- 1) Crie primeiro a conta do administrador em Supabase > Authentication > Users.
--- 2) Troque admin@seu-dominio.com pelo e-mail dessa conta (em minúsculas).
+-- 2) O e-mail do administrador já está configurado como joseluizpurific@gmail.com.
 -- 3) Execute este INSERT; depois o administrador poderá cadastrar a equipe dentro da plataforma.
 insert into public.cronograma_membros (email, nome, papel, ativo)
-values ('admin@seu-dominio.com', 'Administrador', 'admin', true)
+values ('joseluizpurific@gmail.com', 'José Luiz', 'admin', true)
 on conflict (email) do update set papel = 'admin', ativo = true;
