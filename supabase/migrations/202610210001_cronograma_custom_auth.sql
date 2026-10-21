@@ -31,7 +31,7 @@ revoke all on public.cronograma_login_sessoes from anon, authenticated;
 
 -- Seed de identidades sem senha: o endpoint de bootstrap cria hashes e senhas
 -- via fluxo protegido por CRONOGRAMA_SETUP_SECRET. Não preencher hashes manualmente.
-insert into public.cronograma_login_usuarios as current_user(email,nome,papel,ativo,password_hash,password_salt)
+insert into public.cronograma_login_usuarios as existing_user(email,nome,papel,ativo,password_hash,password_salt)
 values
  ('joseluizpurific@gmail.com','José Luiz','admin',true,'PENDING_SETUP','PENDING_SETUP'),
  ('elisansbrum@gmail.com','Elisandra Dos Santos Brum','coordenador',true,'PENDING_SETUP','PENDING_SETUP'),
@@ -40,8 +40,8 @@ on conflict (email) do update set
  nome=excluded.nome,
  papel=excluded.papel,
  ativo=true,
- password_hash=case when current_user.password_hash='PENDING_SETUP' then excluded.password_hash else public.cronograma_login_usuarios.password_hash end,
- password_salt=case when current_user.password_salt='PENDING_SETUP' then excluded.password_salt else public.cronograma_login_usuarios.password_salt end;
+ password_hash=case when existing_user.password_hash='PENDING_SETUP' then excluded.password_hash else public.cronograma_login_usuarios.password_hash end,
+ password_salt=case when existing_user.password_salt='PENDING_SETUP' then excluded.password_salt else public.cronograma_login_usuarios.password_salt end;
 
 -- Mantém os papéis compatíveis com a interface existente (admin/equipe).
 insert into public.cronograma_membros(email,nome,papel,ativo)
