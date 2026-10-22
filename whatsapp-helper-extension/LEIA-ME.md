@@ -1,20 +1,17 @@
 # Extensão EcoSalva — Reutilizar WhatsApp Web
 
-Esta extensão direciona os botões do cronograma para a aba já aberta do WhatsApp Web, em vez de criar uma nova aba a cada envio.
+Esta extensão encaminha o pedido do cronograma para a aba já aberta do WhatsApp Web.
 
-## Instalação no Chrome
+## Instalação ou atualização
 
-1. Baixe a pasta `whatsapp-helper-extension` deste repositório (ou baixe o repositório como ZIP e extraia).
-2. No Chrome, abra `chrome://extensions`.
-3. Ative **Modo do desenvolvedor**.
-4. Clique em **Carregar sem compactação** e selecione a pasta `whatsapp-helper-extension`.
-5. Deixe o WhatsApp Web aberto e entre na sua conta normalmente.
-6. Recarregue a página do cronograma EcoSalva.
+1. Baixe o ZIP do repositório e extraia.
+2. Abra `chrome://extensions`.
+3. Na extensão EcoSalva, clique em **Recarregar** (ícone de atualização). Se o arquivo foi baixado novamente em outra pasta, use **Carregar sem compactação** e selecione a pasta `whatsapp-helper-extension`.
+4. Recarregue a página do cronograma EcoSalva.
+5. Deixe o WhatsApp Web conectado e teste o botão.
 
-## Uso
+## Observação
 
-Clique em **Revisar e enviar pelo WhatsApp** e revise a mensagem. A extensão reutilizará a aba existente do WhatsApp Web. Se nenhuma aba estiver aberta, abrirá uma única aba.
+A extensão tenta fazer o WhatsApp tratar a rota dentro da aba existente. O WhatsApp Web é uma aplicação proprietária e não oferece uma API pública documentada para abrir conversas dentro da aplicação sem navegação; por isso, o comportamento deve ser validado no Chrome. Se o WhatsApp ainda mostrar recarregamento completo, essa abordagem não foi suficiente.
 
-## Privacidade
-
-A extensão só responde a mensagens da página do cronograma e só aceita URLs do caminho de envio do domínio `web.whatsapp.com`. Não lê conversas nem mensagens recebidas.
+A extensão só aceita URLs do domínio `web.whatsapp.com` e caminho `/send`. Não lê conversas nem mensagens recebidas.
