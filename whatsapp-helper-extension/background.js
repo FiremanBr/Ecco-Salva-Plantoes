@@ -7,7 +7,15 @@ chrome.runtime.onMessage.addListener((message) => {
   chrome.tabs.query({ url: "https://web.whatsapp.com/*" }, (tabs) => {
     const existing = tabs.find(tab => Number.isInteger(tab.id));
     if (existing) {
-      chrome.tabs.update(existing.id, { url: target.href, active: true }, () => {
+      // Mantém a aba e a sessão. A navegação é solicitada ao conteúdo do WhatsApp,
+      // em vez de atualizar a URL da aba pelo Chrome.
+      chrome.tabs.sendMessage(existing.id, { type: "ECOSALVA_NAVIGATE_CHAT", url: target.href }, () => {
+        if (chrome.runtime.lastError) {
+          // Fallback quando o content script ainda não estiver disponível.
+          chrome.tabs.update(existing.id, { url: target.href, active: true });
+        } else {
+          chrome.tabs.update(existing.id, { active: true });
+        }
         if (existing.windowId !== undefined) chrome.windows.update(existing.windowId, { focused: true });
       });
     } else {
