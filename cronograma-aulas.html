@@ -73,8 +73,7 @@
 const SUPABASE_URL="https://scmcwtutmrgtvfqjepuv.supabase.co";
 const SUPABASE_KEY="sb_publishable_hY9zdmh_439L9FDsfsJCwA_AKy4TcFs";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-let eccoSalvaWhatsAppWindow=null;
-function openEccoWhatsApp(url){if(!eccoSalvaWhatsAppWindow||eccoSalvaWhatsAppWindow.closed){eccoSalvaWhatsAppWindow=window.open(url,'eccoSalvaWhatsApp');}else{eccoSalvaWhatsAppWindow.location.href=url;eccoSalvaWhatsAppWindow.focus();}if(eccoSalvaWhatsAppWindow)eccoSalvaWhatsAppWindow.focus();}
+function openEccoWhatsApp(url){const waWindow=window.open(url,'eccoSalvaWhatsApp');if(waWindow)waWindow.focus();else msg('O navegador bloqueou a janela do WhatsApp. Permita pop-ups para este site.','bad');}
 const $=id=>document.getElementById(id), esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])), today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 let user=null,role='equipe',db={members:[],cities:[],professionals:[],goals:[],contents:[],lessons:[],lessonContents:[]},editingLesson=null,noticeTimer=null;
 function msg(text,type){const el=$('globalMessage');el.textContent=text;el.className='notice'+(type?' '+type:'');el.classList.remove('hidden');clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>el.classList.add('hidden'),6500)}
