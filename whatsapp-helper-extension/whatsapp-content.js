@@ -1,22 +1,16 @@
-// Solicita ao roteador SPA do WhatsApp Web a abertura do chat sem clicar em link
-// nem fazer navegação completa. A interface é proprietária; o comportamento pode variar.
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (!message || message.type !== "ECOSALVA_NAVIGATE_CHAT" || typeof message.url !== "string") return;
+// Tenta deixar o próprio WhatsApp Web tratar o clique no link, para que o roteador
+// interno abra a conversa sem uma navegação completa. A interface pode mudar com atualizações.
+chrome.runtime.onMessage.addListener((message) => {
+  if (!message || message.type !== "ECOSALVA_OPEN_CHAT_LINK" || typeof message.url !== "string") return;
   let target;
-  try { target = new URL(message.url); } catch { sendResponse({ ok: false, reason: "invalid-url" }); return; }
-  if (target.origin !== location.origin || !target.pathname.startsWith("/send")) {
-    sendResponse({ ok: false, reason: "invalid-origin-or-path" });
-    return;
-  }
+  try { target = new URL(message.url); } catch { return; }
+  if (target.origin !== location.origin || !target.pathname.startsWith("/send")) return;
 
-  try {
-    // Atualiza a rota usando a History API, sem acionar uma navegação de documento.
-    history.pushState({}, "", target.href);
-    window.dispatchEvent(new PopStateEvent("popstate", { state: {} }));
-    window.dispatchEvent(new Event("hashchange"));
-    sendResponse({ ok: true });
-  } catch (error) {
-    sendResponse({ ok: false, reason: "spa-navigation-failed" });
-  }
-  return true;
+  const link = document.createElement("a");
+  link.href = target.href;
+  link.style.display = "none";
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 });
