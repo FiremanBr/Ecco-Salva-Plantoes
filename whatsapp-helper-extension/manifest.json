@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "EcoSalva — Reutilizar WhatsApp Web",
-  "version": "1.0.0",
-  "description": "Abre mensagens do cronograma EcoSalva na aba existente do WhatsApp Web.",
+  "version": "1.1.0",
+  "description": "Encaminha mensagens do cronograma para a aba existente do WhatsApp Web.",
   "permissions": [
     "tabs"
   ],
@@ -19,6 +19,15 @@
         "content.js"
       ],
       "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://web.whatsapp.com/*"
+      ],
+      "js": [
+        "whatsapp-content.js"
+      ],
+      "run_at": "document_idle"
     }
   ],
   "background": {
