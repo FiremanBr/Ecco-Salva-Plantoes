@@ -7,9 +7,14 @@ chrome.runtime.onMessage.addListener((message) => {
   chrome.tabs.query({ url: "https://web.whatsapp.com/*" }, (tabs) => {
     const existing = tabs.find(tab => Number.isInteger(tab.id));
     if (existing) {
-      // Navegação normal para o link oficial, reutilizando a aba já aberta.
-      // Não simula eventos da SPA: isso pode deixar o WhatsApp preso carregando.
-      chrome.tabs.update(existing.id, { url: target.href, active: true }, () => {
+      // Pede à própria interface do WhatsApp para tratar o link, sem forçar tabs.update.
+      chrome.tabs.sendMessage(existing.id, { type: "ECOSALVA_OPEN_CHAT_LINK", url: target.href }, () => {
+        if (chrome.runtime.lastError) {
+          // Se o content script não estiver disponível, não força uma navegação inesperada.
+          console.warn("EcoSalva: não foi possível encaminhar o link à interface do WhatsApp.");
+        }
+      });
+      chrome.tabs.update(existing.id, { active: true }, () => {
         if (existing.windowId !== undefined) chrome.windows.update(existing.windowId, { focused: true });
       });
     } else {
