@@ -68,12 +68,20 @@
  </div>
 </main>
 <div id="mobilebar" class="mobilebar hidden"><span data-goto="dashboard">▦ Início</span><span data-goto="agenda">▦ Agenda</span><span data-goto="profissionais">♙ Profissionais</span><span data-goto="metas">◎ Metas</span></div>
+<div id="whatsappCopyModal" class="hidden" style="position:fixed;inset:0;background:#0008;z-index:20;padding:18px;overflow:auto">
+ <div class="panel" style="max-width:650px;margin:8vh auto;background:white;box-shadow:0 12px 40px #0003">
+  <div class="section-title"><div><h2>Mensagem para copiar</h2><div class="note">Copie o texto e cole manualmente na conversa do WhatsApp.</div></div><button id="closeWhatsAppCopy" class="secondary" type="button">Fechar</button></div>
+  <textarea id="whatsappCopyText" rows="10" style="min-height:220px"></textarea>
+  <div class="actions"><button id="copyWhatsAppText" class="primary" type="button">Copiar mensagem</button><button id="selectWhatsAppText" class="secondary" type="button">Selecionar texto</button></div>
+  <p id="whatsappCopyStatus" class="note" role="status"></p>
+ </div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL="https://scmcwtutmrgtvfqjepuv.supabase.co";
 const SUPABASE_KEY="sb_publishable_hY9zdmh_439L9FDsfsJCwA_AKy4TcFs";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-function openEccoWhatsApp(url){try{const parsed=new URL(url);if(parsed.origin!=='https://web.whatsapp.com'||!parsed.pathname.startsWith('/send'))throw new Error('URL inválida');window.postMessage({type:'ECOSALVA_OPEN_WHATSAPP',url:parsed.href},'*');msg('Solicitação enviada para abrir a conversa na aba existente do WhatsApp. Confira o destinatário e revise a mensagem antes de enviar.','ok')}catch(err){msg('Não foi possível encaminhar ao WhatsApp. Confira o endereço e a extensão EcoSalva.','bad')}}
+function openEccoWhatsApp(text){const modal=$('whatsappCopyModal'),area=$('whatsappCopyText');area.value=text;modal.classList.remove('hidden');$('whatsappCopyStatus').textContent='';area.focus();area.select()}
 const $=id=>document.getElementById(id), esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])), today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 let user=null,role='equipe',db={members:[],cities:[],professionals:[],goals:[],contents:[],lessons:[],lessonContents:[]},editingLesson=null,noticeTimer=null;
 function msg(text,type){const el=$('globalMessage');el.textContent=text;el.className='notice'+(type?' '+type:'');el.classList.remove('hidden');clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>el.classList.add('hidden'),6500)}
@@ -106,7 +114,7 @@ $('logoutBtn').onclick=async()=>{await sb.auth.signOut();user=null;$('appView').
 
 $('nav').onclick=e=>{const b=e.target.closest('[data-tab]');if(b)go(b.dataset.tab)};
 document.body.addEventListener('click',e=>{const day=e.target.closest('[data-day]');if(day){const date=day.dataset.day;const dateInput=$('lessonDate');if(dateInput){dateInput.value=date;$('lessonFormTitle').textContent='Agendar aula em '+date.split('-').reverse().join('/');const form=$('lessonForm');if(form)form.scrollIntoView({behavior:'smooth',block:'center'});dateInput.focus({preventScroll:true});}}const goto=e.target.closest('[data-goto]');if(goto)go(goto.dataset.goto);
-const wa=e.target.closest('[data-whatsapp-lesson]');if(wa){const l=db.lessons.find(x=>x.id===wa.dataset.whatsappLesson),p=l&&db.professionals.find(x=>x.id===l.profissional_id),phone=String(p&&p.telefone||'').replace(/\D/g,'');if(!l||!p||phone.length<10){msg('Confira o telefone cadastrado para este profissional.','bad')}else{const number=phone.startsWith('55')?phone:'55'+phone,contents=db.lessonContents.filter(x=>x.aula_id===l.id).map(x=>x.titulo_snapshot),message='Olá, '+p.nome+'! Tudo bem?\n\nPassando para lembrar da próxima aula programada:\n📅 Data: '+l.data_aula.split('-').reverse().join('/')+'\n🕒 Horário: '+l.hora_inicio.slice(0,5)+' às '+l.hora_fim.slice(0,5)+'\n📍 Município: '+nameOf(db.cities,l.municipio_id)+(l.titulo?'\n📚 Aula: '+l.titulo:'')+(contents.length?'\n📋 Conteúdo previsto: '+contents.join(', '):'')+'\n\nPor favor, confirme o recebimento. Obrigado!';const edited=prompt('Revise a mensagem antes de abrir o WhatsApp:',message);if(edited!==null&&edited.trim())openEccoWhatsApp('https://web.whatsapp.com/send?phone='+number+'&text='+encodeURIComponent(edited));}}
+const wa=e.target.closest('[data-whatsapp-lesson]');if(wa){const l=db.lessons.find(x=>x.id===wa.dataset.whatsappLesson),p=l&&db.professionals.find(x=>x.id===l.profissional_id),phone=String(p&&p.telefone||'').replace(/\D/g,'');if(!l||!p||phone.length<10){msg('Confira o telefone cadastrado para este profissional.','bad')}else{const number=phone.startsWith('55')?phone:'55'+phone,contents=db.lessonContents.filter(x=>x.aula_id===l.id).map(x=>x.titulo_snapshot),message='Olá, '+p.nome+'! Tudo bem?\n\nPassando para lembrar da próxima aula programada:\n📅 Data: '+l.data_aula.split('-').reverse().join('/')+'\n🕒 Horário: '+l.hora_inicio.slice(0,5)+' às '+l.hora_fim.slice(0,5)+'\n📍 Município: '+nameOf(db.cities,l.municipio_id)+(l.titulo?'\n📚 Aula: '+l.titulo:'')+(contents.length?'\n📋 Conteúdo previsto: '+contents.join(', '):'')+'\n\nPor favor, confirme o recebimento. Obrigado!';openEccoWhatsApp(message);}}
 const edit=e.target.closest('[data-edit-lesson]');if(edit)editLesson(edit.dataset.editLesson);
 const finish=e.target.closest('[data-finish]');if(finish)finishLesson(finish.dataset.finish);
 const cancel=e.target.closest('[data-cancel]');if(cancel&&confirm('Cancelar esta aula? A vaga será devolvida à meta do município.'))runAction(()=>update('cronograma_aulas',cancel.dataset.cancel,{status:'cancelada'}),'Aula cancelada; saldo atualizado.');
@@ -121,6 +129,10 @@ const tcon=e.target.closest('[data-toggle-content]');if(tcon){const c=db.content
 const eg=e.target.closest('[data-edit-goal]');if(eg){const g=db.goals.find(x=>x.id===eg.dataset.editGoal);$('goalProfessional').value=g.profissional_id;$('goalCity').value=g.municipio_id;$('goalTotal').value=g.total_aulas;$('goalNotes').value=g.observacoes||'';$('goalForm').dataset.editId=g.id;go('metas')}
 const mt=e.target.closest('[data-member-toggle]');if(mt){const m=db.members.find(x=>x.email===mt.dataset.memberToggle);runAction(async()=>{const r=await sb.from('cronograma_membros').update({ativo:!m.ativo}).eq('email',m.email);if(r.error)throw r.error},'Acesso atualizado.')}
 });
+$('closeWhatsAppCopy').onclick=()=> $('whatsappCopyModal').classList.add('hidden');
+$('selectWhatsAppText').onclick=()=>{$('whatsappCopyText').focus();$('whatsappCopyText').select();$('whatsappCopyStatus').textContent='Texto selecionado. Use Ctrl+C para copiar.'};
+$('copyWhatsAppText').onclick=async()=>{const area=$('whatsappCopyText');try{await navigator.clipboard.writeText(area.value);$('whatsappCopyStatus').textContent='Mensagem copiada. Agora cole no WhatsApp.'}catch(e){area.focus();area.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}$('whatsappCopyStatus').textContent=ok?'Mensagem copiada. Agora cole no WhatsApp.':'Texto selecionado. Use Ctrl+C para copiar.'}};
+$('whatsappCopyModal').addEventListener('click',e=>{if(e.target===$('whatsappCopyModal'))$('whatsappCopyModal').classList.add('hidden')});
 $('lessonProfessional').onchange=()=>{populateSelect('lessonContents',db.contents.filter(c=>c.ativo&&c.profissional_id===$('lessonProfessional').value),'');renderAgenda()}
 $('lessonCity').onchange=renderAgenda;$('lessonDate').onchange=renderAgenda;$('lessonStart').onchange=renderAgenda;$('lessonEnd').onchange=renderAgenda;
 ['agendaMonth','agendaCity','agendaProfessional','agendaStatus'].forEach(id=>$(id).addEventListener('change',renderAgenda));
