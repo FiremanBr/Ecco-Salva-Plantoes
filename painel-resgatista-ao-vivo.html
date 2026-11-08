@@ -27,7 +27,7 @@ async function requestPasswordRecovery(){
 }
 
 window.requestPasswordRecovery=requestPasswordRecovery;
-document.getElementById("forgotBtn")?.addEventListener("click",()=>{const status=document.getElementById("loginError");status.textContent="Iniciando recuperação...";requestPasswordRecovery().catch(e=>{status.textContent="Erro inesperado: "+(e?.message||String(e));});});
+
 
 let recoveryMode=false;
 
