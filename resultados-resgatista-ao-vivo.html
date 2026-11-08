@@ -18,7 +18,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 function render(d){
  el("title").textContent=d.turma.titulo;el("subtitle").textContent="Desempenho coletivo — "+d.total+" avaliação(ões) concluída(s)";el("classTag").textContent="TURMA "+d.turma.codigo;
  el("total").textContent=d.total;el("average").textContent=Number(d.average).toFixed(1).replace(".",",");el("highest").textContent=d.highest===null?"—":Number(d.highest).toFixed(1).replace(".",",");el("rate").textContent=Number(d.overallRate).toFixed(1).replace(".",",")+"%";
- const max=Math.max(1,d.total*10);
+ const max=Math.max(1,d.total);
  el("chart").innerHTML=d.questions.map(q=>{const c=q.correct,w=q.wrong,b=q.unanswered;const hC=c/max*100,hW=w/max*100,hB=b/max*100;const pct=d.total?Math.round(c/d.total*100):0;return '<div class="col"><div class="pct">'+pct+'%</div><div class="stack" title="Questão '+q.question+': '+c+' acertos, '+w+' erros, '+b+' em branco"><div class="seg blank" style="height:'+hB+'%"></div><div class="seg wrong" style="height:'+hW+'%"></div><div class="seg correct" style="height:'+hC+'%"></div></div><div class="qname">Q'+q.question+'</div><div class="counts">'+c+' ✓<br>'+w+' ✕<br>'+b+' —</div></div>'}).join("");
  el("updated").textContent="Atualizado às "+new Date().toLocaleTimeString("pt-BR");
 }
