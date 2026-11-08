@@ -8,8 +8,8 @@
 <div class="grid"><div class="tile"><small>Alunos que finalizaram</small><div class="value" id="total">0</div></div><div class="tile"><small>Média da turma</small><div class="value" id="average">0,0</div></div><div class="tile"><small>Maior nota</small><div class="value" id="highest">—</div></div><div class="tile"><small>Aproveitamento geral</small><div class="value" id="rate">—</div></div></div>
 <section class="section"><h2>Desempenho por questão</h2><div id="questions"></div></section><section class="section"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px"><h2 style="margin:0">Resultados dos alunos</h2><button class="danger" id="deleteClass">Excluir todos os resultados desta turma</button></div><div style="overflow-x:auto"><table><thead><tr><th>Aluno</th><th>Acertos</th><th>Nota</th><th>Finalização</th><th>Ação</th></tr></thead><tbody id="students"><tr><td colspan="5" class="empty">Aguardando a primeira prova...</td></tr></tbody></table></div></section><div class="foot">Atualização automática a cada 8 segundos • Acesso restrito ao instrutor</div></div>
 <script>
-const URL="https://zxdnyadoouqfmfptypae.supabase.co",KEY="sb_publishable_gz5e_tvJCK4SRx_qRsB0mw_i68TjbsS",code=new URLSearchParams(location.search).get("turma")||"10.1",sb=window.supabase.createClient(URL,KEY),$=id=>document.getElementById(id);let timer;
-$("deleteClass").addEventListener("click",deleteClassResults);
+const URL="https://zxdnyadoouqfmfptypae.supabase.co",KEY="sb_publishable_gz5e_tvJCK4SRx_qRsB0mw_i68TjbsS",code=new URLSearchParams(location.search).get("turma")||"10.1",sb=window.supabase?.createClient?window.supabase.createClient(URL,KEY):null,$=id=>document.getElementById(id);let timer;
+$("deleteClass")?.addEventListener("click",deleteClassResults);
 const recoveryRedirect="https://firemanbr.github.io/Ecco-Salva-Plantoes/painel-resgatista-ao-vivo.html?turma="+encodeURIComponent(code);
 async function requestPasswordRecovery(){
  const status=$("loginError"),button=$("forgotBtn"),email=$("email")?.value.trim();
@@ -18,7 +18,7 @@ async function requestPasswordRecovery(){
  button.disabled=true;button.textContent="Enviando solicitação...";
  status.textContent="Conectando ao serviço de recuperação do Supabase...";
  try{
-  if(!window.supabase||!sb||!sb.auth)throw new Error("Biblioteca de autenticação não carregou. Atualize a página com Ctrl+F5.");
+  if(!window.supabase||!sb||!sb.auth)throw new Error("A biblioteca do Supabase não carregou. Verifique a conexão e atualize com Ctrl+F5.");
   const result=await sb.auth.resetPasswordForEmail(email,{redirectTo:recoveryRedirect});
   if(result.error)throw result.error;
   status.textContent="O Supabase aceitou a solicitação. Verifique Entrada, Spam e Todos os e-mails. Se não chegar em alguns minutos, avise para verificarmos os registros de envio.";
