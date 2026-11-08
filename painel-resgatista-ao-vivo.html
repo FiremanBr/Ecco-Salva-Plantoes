@@ -10,7 +10,7 @@
 <script>
 const URL="https://zxdnyadoouqfmfptypae.supabase.co",KEY="sb_publishable_gz5e_tvJCK4SRx_qRsB0mw_i68TjbsS",code=new URLSearchParams(location.search).get("turma")||"10.1",sb=window.supabase.createClient(URL,KEY),$=id=>document.getElementById(id);let timer;
 $("deleteClass").addEventListener("click",deleteClassResults);
-const recoveryRedirect=location.origin+location.pathname+location.search;
+const recoveryRedirect="https://firemanbr.github.io/Ecco-Salva-Plantoes/painel-resgatista-ao-vivo.html?turma="+encodeURIComponent(code);
 let recoveryMode=false;
 $("forgotBtn").addEventListener("click",async()=>{const status=$("loginError");const email=$("email").value.trim();if(!email){status.textContent="Informe seu e-mail acima antes de solicitar a recuperação."; $("email").focus();return;}status.textContent="Solicitando recuperação de senha...";if(!window.supabase||!sb?.auth){status.textContent="A conexão com o serviço de autenticação não carregou. Atualize a página (Ctrl+F5) e tente novamente.";return;}try{const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:recoveryRedirect});if(error)throw error;status.textContent="Solicitação aceita pelo Supabase. Verifique a caixa de entrada e o spam."; }catch(e){status.textContent="Erro ao solicitar: "+(e.message||"falha de conexão com o Supabase.");}});
 sb.auth.onAuthStateChange((event)=>{if(event==="PASSWORD_RECOVERY"){recoveryMode=true;$("loginForm").classList.add("hidden");$("forgotBtn").classList.add("hidden");$("recoveryForm").classList.remove("hidden");$("loginError").textContent="Link validado. Cadastre sua nova senha.";}});
