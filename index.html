@@ -6187,5 +6187,38 @@ function switchTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t=>{if((t.getAttribute('onclick')||'').includes("'rotina'"))t.addEventListener('click',()=>setTimeout(()=>rotinaCarregarLista(),150));});
 })();
 </script>
+
+<!-- ECCO_TABS_MOBILE_LAYOUT_V1 -->
+<style id="ecco-tabs-mobile-layout">
+@media (max-width:700px){
+  .tab{flex:0 0 auto !important;white-space:nowrap !important;}
+}
+</style>
+<script>
+(function(){
+  function fixTabsMobile(){
+    var tabs=Array.from(document.querySelectorAll('.tab')).filter(function(t){return (t.textContent||'').trim();});
+    if(!tabs.length) return;
+    var parent=tabs[0].parentElement;
+    if(!parent) return;
+    var same=tabs.every(function(t){return t.parentElement===parent;});
+    if(!same) return;
+    parent.style.overflowX='auto';
+    parent.style.overflowY='hidden';
+    parent.style.webkitOverflowScrolling='touch';
+    parent.style.scrollbarWidth='none';
+    parent.style.display='flex';
+    parent.style.flexWrap='nowrap';
+    parent.style.alignItems='stretch';
+    parent.querySelectorAll('.tab').forEach(function(t){
+      t.style.flex='0 0 auto';
+      t.style.whiteSpace='nowrap';
+    });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',fixTabsMobile);
+  else fixTabsMobile();
+  window.addEventListener('resize',fixTabsMobile);
+})();
+</script>
 </body>
 </html>
