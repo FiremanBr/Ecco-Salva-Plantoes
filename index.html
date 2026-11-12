@@ -653,6 +653,7 @@ function updateUserBadge(){
     </div>
   </div>
   <div class="tabs">
+    <button class="tab" data-color="#22C7B8" onclick="switchTab('rotina',this)">📷 Rotina</button>
     <button class="tab active" data-color="#3B9BE8" onclick="switchTab('analise',this)">🔬 Análise</button>
     <button class="tab" data-color="#22C97A" onclick="switchTab('maleta',this)">💊 Maleta</button>
     <button class="tab" data-color="#A78BFA" onclick="switchTab('historico',this)">📋 Histórico</button>
@@ -662,6 +663,32 @@ function updateUserBadge(){
 </div>
 
 <div class="main">
+  <div class="panel" id="panel-rotina">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px">
+      <div style="font-size:15px;font-weight:800;margin-bottom:4px">📷 Medicações de rotina do paciente</div>
+      <div style="font-size:11px;color:var(--text-muted);line-height:1.5">Fotografe a tela do SMART, receita ou relação de medicamentos. A leitura será organizada por classe farmacológica.</div>
+      <label style="display:block;font-size:10px;font-weight:800;color:var(--blue);margin:12px 0 5px">IDENTIFICAÇÃO DO PACIENTE</label>
+      <input id="rotinaPaciente" type="text" placeholder="Nome ou identificação do paciente" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font:12px Inter,sans-serif;outline:none">
+      <div style="display:flex;gap:7px;margin-top:9px">
+        <button type="button" onclick="document.getElementById('rotinaFotoInput').click()" style="flex:1;background:var(--blue);border:0;border-radius:8px;padding:10px;color:white;font:700 12px Inter,sans-serif">📸 Fotografar / escolher imagem</button>
+        <button type="button" onclick="rotinaLimparFoto()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;color:var(--text-muted);font:700 11px Inter,sans-serif">Limpar</button>
+      </div>
+      <input id="rotinaFotoInput" type="file" accept="image/*" capture="environment" style="display:none" onchange="rotinaFotoSelecionada(this)">
+      <div id="rotinaFotoStatus" style="font-size:10px;color:var(--text-muted);margin-top:7px">Nenhuma imagem selecionada. A foto não será armazenada no histórico.</div>
+      <div style="margin-top:12px">
+        <label style="display:block;font-size:10px;font-weight:800;color:var(--blue);margin-bottom:5px">TEXTO RECONHECIDO (CONFIRA E CORRIJA ANTES DE ORGANIZAR)</label>
+        <textarea id="rotinaTextoOCR" rows="6" placeholder="O texto extraído da fotografia aparecerá aqui. Você também pode digitar ou corrigir os medicamentos manualmente." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font:12px/1.5 Inter,sans-serif;resize:vertical;outline:none"></textarea>
+      </div>
+      <button id="rotinaBtnOrganizar" type="button" onclick="rotinaOrganizar()" style="width:100%;margin-top:9px;background:var(--green);border:0;border-radius:8px;padding:11px;color:#062719;font:800 12px Inter,sans-serif">🧠 Organizar medicamentos por categoria</button>
+    </div>
+    <div id="rotinaResultado"></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-top:10px">
+      <div style="font-size:12px;font-weight:800;margin-bottom:7px">💾 Registros salvos</div>
+      <div id="rotinaSalvos" style="font-size:11px;color:var(--text-muted)">Carregue os registros para consultar listas anteriores.</div>
+      <button type="button" onclick="rotinaCarregarLista()" style="margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--text);font:700 10px Inter,sans-serif">↻ Atualizar lista</button>
+    </div>
+    <div style="font-size:10px;color:var(--text-dim);line-height:1.5;margin:10px 2px">A dose prescrita será transcrita somente quando estiver legível na imagem. A dose máxima exibida é uma referência geral, não uma orientação individual. Confirme sempre princípio ativo, apresentação, bula vigente, função renal/hepática, indicação e prescrição. Não utilizar esta ficha isoladamente para administrar medicamentos.</div>
+  </div>
   <div class="panel" id="panel-maleta">
     <div id="maletaGrid"></div>
   </div>
@@ -6061,3 +6088,102 @@ function switchTab(tab, el) {
 #ecosalva-estudos-tab.active { color:#FF4FD8 !important; border-bottom:3px solid #FF4FD8 !important; background:transparent !important; }
 #ecosalva-estudos-tab.active::after { content:none !important; display:none !important; }
 </style>
+
+
+<script id="feature-medicamentos-rotina">
+(function(){
+  let registroId=null, medicamentos=[];
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const el=id=>document.getElementById(id);
+  window.rotinaLimparFoto=function(){if(el('rotinaFotoInput'))el('rotinaFotoInput').value='';el('rotinaFotoStatus').textContent='Nenhuma imagem selecionada. A foto não será armazenada no histórico.';};
+  window.rotinaFotoSelecionada=function(input){
+    const file=input?.files?.[0];if(!file)return;
+    if(!file.type.startsWith('image/')){alert('Selecione uma imagem válida.');return;}
+    el('rotinaFotoStatus').textContent='Preparando imagem para leitura...';
+    const reader=new FileReader();
+    reader.onload=e=>{const img=new Image();img.onload=async()=>{
+      try{
+        let w=img.width,h=img.height;const max=1800;
+        if(w>max||h>max){if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;}}
+        const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;canvas.getContext('2d').drawImage(img,0,0,w,h);
+        el('rotinaFotoStatus').textContent='Lendo texto da imagem...';
+        const texto=await extrairTextoVision(canvas.toDataURL('image/jpeg',0.88).split(',')[1]);
+        if(!texto){el('rotinaFotoStatus').textContent='Não foi possível ler. Tente outra foto, com foco e boa iluminação.';return;}
+        el('rotinaTextoOCR').value=texto;el('rotinaFotoStatus').textContent='Leitura concluída. Revise nomes e concentrações antes de organizar.';
+      }catch(err){el('rotinaFotoStatus').textContent='Falha na leitura: '+(err.message||err);}
+    };img.onerror=()=>el('rotinaFotoStatus').textContent='Não foi possível abrir a imagem.';img.src=e.target.result;};
+    reader.onerror=()=>el('rotinaFotoStatus').textContent='Erro ao carregar a imagem.';reader.readAsDataURL(file);
+  };
+  window.rotinaOrganizar=async function(){
+    const texto=el('rotinaTextoOCR').value.trim(),paciente=el('rotinaPaciente').value.trim(),btn=el('rotinaBtnOrganizar');
+    if(!texto){alert('Fotografe a relação ou digite os medicamentos primeiro.');return;}
+    btn.disabled=true;btn.textContent='⏳ Organizando medicamentos...';
+    el('rotinaResultado').innerHTML='<div style="padding:14px;text-align:center;color:var(--text-muted);font-size:12px">Identificando medicamentos e organizando informações...</div>';
+    try{
+      const sys=[
+        'Você é um assistente farmacêutico clínico. Organize medicamentos de uso contínuo extraídos de lista ou prescrição.',
+        'Não invente medicamentos, princípios ativos, concentrações, posologias ou doses. Diferencie o que foi lido no documento de referência farmacológica geral.',
+        'Identifique somente medicamentos presentes no texto. Se houver dúvida de leitura, marque CONFIRMAR IDENTIFICAÇÃO e não complete por suposição.',
+        'Para cada medicamento informe categoria farmacológica, princípio ativo, composição/concentração por unidade (mg, mcg, g, mg/mL etc.) somente se confirmável, finalidade, orientação em relação às refeições (antes, durante, após, independente ou depende da formulação) somente quando consistente para aquela apresentação, posologia prescrita apenas se expressa no texto e dose máxima diária de referência adulta apenas quando confiável e aplicável, incluindo via/indicação/condições. Se não for seguro generalizar, diga: Não informar sem confirmar indicação, apresentação e bula.',
+        'Não transforme dose máxima em dose recomendada ao paciente. Não sugira dose individual. Não presuma que todo medicamento deve ser tomado antes ou depois das refeições.',
+        'Retorne SOMENTE JSON válido: {"medicamentos":[{"nome":"","principio_ativo":"","categoria":"","composicao_concentracao":"","para_que_serve":"","horario_refeicao":"","posologia_lida_no_documento":"","dose_maxima_referencia_adulto":"","observacoes_seguranca":"","confianca_identificacao":"alta|moderada|baixa"}]}. Se nenhum medicamento identificável, retorne {"medicamentos":[]}.'
+      ].join(' ');
+      const resp=await callGroqServer([{role:'system',content:sys},{role:'user',content:'Identificação: '+(paciente||'não informada')+'\nTexto da lista SMART/receita:\n'+texto}],{model:'qwen/qwen3.6-27b',max_tokens:3800,temperature:0,response_format:{type:'json_object'}});
+      const parsed=extrairJSONBuscaRobusto(resp?.choices?.[0]?.message?.content||'{}');
+      medicamentos=Array.isArray(parsed.medicamentos)?parsed.medicamentos:[];registroId=null;render();
+      if(!medicamentos.length)el('rotinaResultado').innerHTML='<div style="padding:12px;border:1px solid var(--accent);border-radius:9px;font-size:12px">Nenhum medicamento foi identificado com segurança. Confira a imagem ou digite os nomes manualmente.</div>';
+    }catch(e){el('rotinaResultado').innerHTML='<div style="padding:12px;border:1px solid var(--accent);border-radius:9px;font-size:12px">Erro ao organizar: '+esc(e.message||e)+'</div>';}
+    finally{btn.disabled=false;btn.textContent='🧠 Organizar medicamentos por categoria';}
+  };
+  function render(){
+    const root=el('rotinaResultado');if(!medicamentos.length){root.innerHTML='';return;}
+    const grupos={};medicamentos.forEach((m,i)=>{const c=m.categoria||'Categoria a confirmar';(grupos[c] ||= []).push({...m,_i:i});});
+    let html='';
+    Object.keys(grupos).forEach(cat=>{
+      html+='<section style="margin-bottom:10px;border:1px solid var(--border);border-radius:11px;overflow:hidden;background:var(--surface)"><div style="padding:9px 11px;background:var(--surface2);font-size:12px;font-weight:800;color:var(--blue)">'+esc(cat)+' ('+grupos[cat].length+')</div>';
+      grupos[cat].forEach(m=>{
+        html+='<article style="padding:11px;border-top:1px solid var(--border)"><div style="font-size:13px;font-weight:800;margin-bottom:5px">💊 '+esc(m.nome||'Medicamento não identificado')+'</div><div style="font-size:10px;color:var(--text-muted);line-height:1.65">';
+        const fields=[['Princípio ativo',m.principio_ativo],['Composição/concentração',m.composicao_concentracao],['Para que serve',m.para_que_serve],['Refeições',m.horario_refeicao],['Posologia no documento',m.posologia_lida_no_documento],['Dose máxima de referência (adulto)',m.dose_maxima_referencia_adulto],['Cuidados',m.observacoes_seguranca],['Confiança na identificação',m.confianca_identificacao]];
+        fields.forEach(f=>{html+='<div><b>'+f[0]+':</b> '+esc(f[1]||'Não confirmado')+'</div>';});
+        html+='</div><button type="button" onclick="rotinaRemoverMedicamento('+m._i+')" style="margin-top:7px;background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--accent);font:700 10px Inter,sans-serif">Remover este item</button></article>';
+      });html+='</section>';
+    });
+    root.innerHTML=html+'<button type="button" onclick="rotinaSalvar()" style="width:100%;background:var(--green);border:0;border-radius:9px;padding:12px;color:#062719;font:800 12px Inter,sans-serif">💾 Salvar lista do paciente</button>';
+  }
+  window.rotinaRemoverMedicamento=i=>{medicamentos.splice(i,1);render();};
+  window.rotinaSalvar=async function(){
+    if(!window._authUser){alert('Entre no sistema para salvar.');return;}
+    const nome=el('rotinaPaciente').value.trim();if(!nome){alert('Informe a identificação do paciente.');el('rotinaPaciente').focus();return;}
+    if(!medicamentos.length){alert('Não há medicamentos organizados para salvar.');return;}
+    const payload={nome_paciente:nome,medicamentos:medicamentos,texto_ocr:el('rotinaTextoOCR').value.trim(),updated_at:new Date().toISOString()};
+    try{
+      const q=registroId
+        ? await window._supabaseClient.from('medicamentos_rotina_pacientes').update(payload).eq('id',registroId).eq('user_id',window._authUser.id).select('id').single()
+        : await window._supabaseClient.from('medicamentos_rotina_pacientes').insert({...payload,user_id:window._authUser.id}).select('id').single();
+      if(q.error)throw q.error;registroId=q.data.id;alert('Lista de medicações salva.');await rotinaCarregarLista();
+    }catch(e){alert('Não foi possível salvar: '+(e.message||e));}
+  };
+  window.rotinaCarregarLista=async function(){
+    if(!window._authUser){el('rotinaSalvos').textContent='Entre no sistema para consultar os registros.';return;}
+    const box=el('rotinaSalvos');box.textContent='Carregando...';
+    try{
+      const q=await window._supabaseClient.from('medicamentos_rotina_pacientes').select('id,nome_paciente,created_at,updated_at').eq('user_id',window._authUser.id).order('updated_at',{ascending:false}).limit(50);
+      if(q.error)throw q.error;if(!q.data?.length){box.textContent='Nenhuma lista salva ainda.';return;}
+      box.innerHTML=q.data.map(r=>'<div style="display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid var(--border)"><button type="button" onclick="rotinaAbrirRegistro(\''+r.id+'\')" style="flex:1;min-width:0;text-align:left;background:transparent;border:0;color:var(--text);font:700 11px Inter,sans-serif;overflow-wrap:anywhere">📄 '+esc(r.nome_paciente)+'<span style="display:block;color:var(--text-muted);font-size:9px;font-weight:400">'+new Date(r.updated_at).toLocaleString('pt-BR')+'</span></button><button type="button" onclick="rotinaExcluirRegistro(\''+r.id+'\')" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:5px 7px;color:var(--accent);font:700 10px Inter,sans-serif">Excluir</button></div>').join('');
+    }catch(e){box.textContent='Erro ao carregar registros: '+(e.message||e);}
+  };
+  window.rotinaAbrirRegistro=async function(id){
+    try{const q=await window._supabaseClient.from('medicamentos_rotina_pacientes').select('*').eq('id',id).eq('user_id',window._authUser.id).single();if(q.error)throw q.error;
+      registroId=q.data.id;el('rotinaPaciente').value=q.data.nome_paciente||'';el('rotinaTextoOCR').value=q.data.texto_ocr||'';medicamentos=Array.isArray(q.data.medicamentos)?q.data.medicamentos:[];render();window.scrollTo(0,0);
+    }catch(e){alert('Não foi possível abrir o registro: '+(e.message||e));}
+  };
+  window.rotinaExcluirRegistro=async function(id){
+    if(!confirm('Excluir definitivamente esta lista de medicações?'))return;
+    try{const q=await window._supabaseClient.from('medicamentos_rotina_pacientes').delete().eq('id',id).eq('user_id',window._authUser.id);if(q.error)throw q.error;
+      if(registroId===id){registroId=null;medicamentos=[];el('rotinaResultado').innerHTML='';}await rotinaCarregarLista();
+    }catch(e){alert('Não foi possível excluir: '+(e.message||e));}
+  };
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>rotinaCarregarLista(),700));
+  document.querySelectorAll('.tab').forEach(t=>{if((t.getAttribute('onclick')||'').includes("'rotina'"))t.addEventListener('click',()=>setTimeout(()=>rotinaCarregarLista(),150));});
+})();
+</script>
